@@ -92,13 +92,41 @@ export const ProductFormModal = ({ onClose, onAdd, cats, seasons, currentSeason 
   <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}><button style={S.btn("ghost")} onClick={onClose}>Annuler</button><button style={S.btn("primary")} onClick={() => { const prices = {}; Object.entries(sp).forEach(([k, v]) => { if (v.price || v.cost || v.amort) prices[k] = v; }); onAdd({ ...f, prices, totalCost: f.totalCost }); }}>Ajouter</button></div></Modal>);
 };
 
-export const SettingsModal = ({ cats, setCats, seasons, currentSeason, onClose }) => {
+export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeason, onClose }) => {
   const [newCat, setNewCat] = useState("");
+  const [newSeason, setNewSeason] = useState({ name: "", startDate: "", endDate: "" });
+  const updateSeason = (id, key, value) => setSeasons(ss => ss.map(s => s.id === id ? { ...s, [key]: value } : s));
   return (<Modal title="⚙️ Paramètres" onClose={onClose}>
-    <div style={S.cT}>📁 Catégories</div>
+    <div style={S.cT}>📁 Catégories de produits</div>
     {cats.map(c => (<div key={c} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: `1px solid ${Cl.brd}` }}><span style={{ flex: 1, fontSize: 13 }}>{c}</span>{cats.length > 1 && <button style={S.btnS("ghost")} onClick={() => setCats(cs => cs.filter(x => x !== c))}>✕</button>}</div>))}
     <div style={{ marginTop: 8, display: "flex", gap: 6 }}><input style={{ ...S.inp, flex: 1 }} placeholder="Nouvelle catégorie..." value={newCat} onChange={e => setNewCat(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && newCat.trim() && !cats.includes(newCat.trim())) { setCats(cs => [...cs, newCat.trim()]); setNewCat(""); } }} /><button style={S.btn("primary")} onClick={() => { if (newCat.trim() && !cats.includes(newCat.trim())) { setCats(cs => [...cs, newCat.trim()]); setNewCat(""); } }}>Ajouter</button></div>
-    <div style={{ ...S.cT, marginTop: 16 }}>📅 Saisons</div>
-    {seasons.map(s => (<div key={s.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 12 }}><strong style={{ minWidth: 80 }}>{s.name}</strong><span style={{ color: Cl.txtL }}>{s.startDate} → {s.endDate}</span>{s.id === currentSeason && <Badge type="new">Active</Badge>}</div>))}
+
+    <div style={{ ...S.cT, marginTop: 20 }}>📅 Saisons</div>
+    <table style={S.tbl}>
+      <thead><tr><th style={S.th}>Nom</th><th style={S.th}>Date début</th><th style={S.th}>Date fin</th><th style={S.th}></th></tr></thead>
+      <tbody>{seasons.map(s => (
+        <tr key={s.id} style={s.id === currentSeason ? { background: Cl.priL } : {}}>
+          <td style={S.td}><div style={{ display: "flex", alignItems: "center", gap: 4 }}><input style={{ ...S.inp, fontWeight: 700 }} value={s.name} onChange={e => updateSeason(s.id, "name", e.target.value)} />{s.id === currentSeason && <Badge type="new">Active</Badge>}</div></td>
+          <td style={S.td}><input type="date" style={S.inp} value={s.startDate} onChange={e => updateSeason(s.id, "startDate", e.target.value)} /></td>
+          <td style={S.td}><input type="date" style={S.inp} value={s.endDate} onChange={e => updateSeason(s.id, "endDate", e.target.value)} /></td>
+          <td style={S.td}>{s.id !== currentSeason && seasons.length > 1 && <button style={S.btnS("ghost")} onClick={() => setSeasons(ss => ss.filter(x => x.id !== s.id))}>✕</button>}</td>
+        </tr>
+      ))}</tbody>
+    </table>
+
+    <div style={{ marginTop: 12 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: Cl.txtL, marginBottom: 6 }}>Ajouter une saison</div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <input style={{ ...S.inp, width: 100 }} placeholder="Ex: 2028-2029" value={newSeason.name} onChange={e => setNewSeason({ ...newSeason, name: e.target.value })} />
+        <input type="date" style={{ ...S.inp, width: 140 }} value={newSeason.startDate} onChange={e => setNewSeason({ ...newSeason, startDate: e.target.value })} />
+        <input type="date" style={{ ...S.inp, width: 140 }} value={newSeason.endDate} onChange={e => setNewSeason({ ...newSeason, endDate: e.target.value })} />
+        <button style={S.btn("primary")} onClick={() => {
+          if (newSeason.name.trim() && !seasons.find(s => s.id === newSeason.name.trim())) {
+            setSeasons(ss => [...ss, { id: newSeason.name.trim(), name: newSeason.name.trim(), startDate: newSeason.startDate, endDate: newSeason.endDate }]);
+            setNewSeason({ name: "", startDate: "", endDate: "" });
+          }
+        }}>Ajouter</button>
+      </div>
+    </div>
   </Modal>);
 };
