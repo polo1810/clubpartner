@@ -102,11 +102,11 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
   );
 }
  
-export default function ContractsTab({ onOpenCompany }) {
+export default function ContractsTab({ onOpenCompany, directContract, onDirectContractClosed }) {
   const { contracts, setContracts, getCompany, contractHT, contractTTC } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [editC, setEditC] = useState(null);
-  const [viewC, setViewC] = useState(null);
+  const [viewC, setViewC] = useState(directContract || null);
  
   return (<>
     <div style={S.fx}><h2 style={{ fontSize: 16, fontWeight: 700 }}>📝 Contrats</h2>
@@ -134,6 +134,7 @@ export default function ContractsTab({ onOpenCompany }) {
         </div>);
       })}</div>
     {showForm && <ContractForm initial={editC} onClose={() => { setShowForm(false); setEditC(null); }} />}
-    {viewC && <ContractDetail contract={contracts.find(c => c.id === viewC.id) || viewC} onClose={() => setViewC(null)} onOpenCompany={onOpenCompany} />}
+    {viewC && <ContractDetail contract={contracts.find(c => c.id === viewC.id) || viewC} onClose={() => { setViewC(null); if (onDirectContractClosed) onDirectContractClosed(); }} onOpenCompany={onOpenCompany} />}
   </>);
 }
+ 
