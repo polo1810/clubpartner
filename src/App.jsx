@@ -10,14 +10,14 @@ import ActionsTab from './tabs/ActionsTab';
 import ProductsTab from './tabs/ProductsTab';
 import AmortTab from './tabs/AmortTab';
 import ContractsTab from './tabs/ContractsTab';
-
+ 
 const tabs = [
   { id: "dashboard", label: "📊 Bord" }, { id: "prospects", label: "🎯 Prospects" },
   { id: "partners", label: "🤝 Partenaires" }, { id: "actions", label: "📋 Actions" },
   { id: "products", label: "📦 Stocks" }, { id: "amortize", label: "💰 Amort." },
   { id: "contracts", label: "📝 Contrats" },
 ];
-
+ 
 function AppInner() {
   const ctx = useApp();
   const { miniForm, setMiniForm, members, setMembers, addMember, cats, setCats, seasons, currentSeason, prospectsList, partnersList, products, contracts, stockSold, caByProd, contractHT } = ctx;
@@ -25,9 +25,11 @@ function AppInner() {
   const [showTeam, setShowTeam] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
-
-  const setTabAndView = (t) => setTab(t);
-
+  const [directContract, setDirectContract] = useState(null);
+ 
+  const openContractDirect = (contract) => { setDirectContract(contract); setTab("contracts"); };
+  const setTabAndView = (t) => { setDirectContract(null); setTab(t); };
+ 
   return (
     <div style={S.app}>
       <div style={S.header}>
@@ -42,11 +44,11 @@ function AppInner() {
       <div style={S.main}>
         {tab === "dashboard" && <Dashboard />}
         {tab === "prospects" && <ProspectsTab />}
-        {tab === "partners" && <PartnersTab onOpenContract={(c) => setTab("contracts")} />}
+        {tab === "partners" && <PartnersTab onOpenContract={openContractDirect} />}
         {tab === "actions" && <ActionsTab />}
         {tab === "products" && <ProductsTab />}
         {tab === "amortize" && <AmortTab />}
-        {tab === "contracts" && <ContractsTab onOpenCompany={(co) => setTab(co.isPartner ? "partners" : "prospects")} />}
+        {tab === "contracts" && <ContractsTab onOpenCompany={(co) => setTab(co.isPartner ? "partners" : "prospects")} directContract={directContract} onDirectContractClosed={() => setDirectContract(null)} />}
       </div>
       {showTeam && <TeamModal members={members} onAdd={addMember} onRemove={m => setMembers(ms => ms.filter(x => x !== m))} onClose={() => setShowTeam(false)} />}
       {showSettings && <SettingsModal cats={cats} setCats={setCats} seasons={seasons} currentSeason={currentSeason} onClose={() => setShowSettings(false)} />}
@@ -62,7 +64,7 @@ function AppInner() {
     </div>
   );
 }
-
+ 
 export default function App() {
   return <AppProvider><AppInner /></AppProvider>;
 }
