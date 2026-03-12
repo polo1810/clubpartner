@@ -43,6 +43,7 @@ export default function ProspectsTab() {
           <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
             <strong style={{ fontSize: 13 }}>{co.company}</strong><span style={{ color: Cl.txtL, fontSize: 11 }}>{co.sector}</span>
             <Badge type={statusBType(co.prospectStatus)}>{co.prospectStatus}</Badge>
+            <Badge type={co.dealType === "Mécénat" ? "mecenat" : "partenariat"}>{co.dealType || "Partenariat"}</Badge>
             <Badge type="draft">{co.season}</Badge>
           </div>
           <div style={{ display: "flex", gap: 4 }} onClick={e => e.stopPropagation()}>
