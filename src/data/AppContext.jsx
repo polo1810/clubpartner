@@ -39,10 +39,22 @@ export function AppProvider({ children }) {
     return acts;
   }, [companies, contracts]);
 
+  const caByType = useMemo(() => {
+    const r = { Partenariat: 0, "Mécénat": 0 };
+    partnersList.forEach(c => {
+      const cons = companyContracts(c.id);
+      if (cons.some(co => isSigned(co))) {
+        const ht = (c.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+        r[c.dealType || "Partenariat"] = (r[c.dealType || "Partenariat"] || 0) + ht;
+      }
+    });
+    return r;
+  }, [companies, contracts]);
+
   const convertToPartner = (companyId) => {
     const co = companies.find(c => c.id === companyId);
     if (!co) return;
-    setContracts(cs => [...cs, { id: uid(), companyId, type: "Partenariat", member: co.member, signataire: co.contact, seasons: 1, startSeason: currentSeason, status: "En attente", donAmount: 0, payments: [], actions: [] }]);
+    setContracts(cs => [...cs, { id: uid(), companyId, type: co.dealType || "Partenariat", member: co.member, signataire: co.contact, seasons: 1, startSeason: currentSeason, status: "En attente", donAmount: co.donAmount || 0, payments: [], actions: [] }]);
     setCompanies(cs => cs.map(c => c.id === companyId ? { ...c, isPartner: true, prospectStatus: "", partnerStatus: "Nouveau partenaire" } : c));
   };
 
@@ -81,7 +93,7 @@ export function AppProvider({ children }) {
     members, setMembers, addMember, seasons, setSeasons, cats, setCats, currentSeason,
     miniForm, setMiniForm, todayStr,
     prospectsList, partnersList, getCompany, companyContracts,
-    contractHT, contractTTC, stockSold, caByProd, totalCA, totalPaid, allActions,
+    contractHT, contractTTC, stockSold, caByProd, caByType, totalCA, totalPaid, allActions,
     convertToPartner, openAddAction, openAddContractAction,
   };
 
