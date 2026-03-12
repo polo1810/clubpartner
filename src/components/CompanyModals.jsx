@@ -7,10 +7,14 @@ import { Badge, Modal, Field, MemberSelect, ProductPicker, PhoneLink, EmailLink 
 export function CompanyForm({ data, onSave, onClose }) {
   const { products, members, addMember, seasons, cats, currentSeason } = useApp();
   const isP = data?.isPartner;
-  const [f, setF] = useState(data || { company: "", sector: "", contact: "", phone: "", email: "", address: "", siret: "", tvaNumber: "", season: currentSeason, isPartner: false, prospectStatus: "Nouveau", partnerStatus: "", callbackDate: "", rdvDate: "", member: members[0], products: [] });
+  const [f, setF] = useState(data || { company: "", sector: "", contact: "", phone: "", email: "", address: "", siret: "", tvaNumber: "", season: currentSeason, isPartner: false, dealType: "Partenariat", donAmount: 0, prospectStatus: "Nouveau", partnerStatus: "", callbackDate: "", rdvDate: "", member: members[0], products: [] });
   const [selP, setSelP] = useState(data?.products || []);
   const set = (k, v) => setF({ ...f, [k]: v });
   const togP = (id) => { const pr = products.find(x => x.id === id); const p = getPrice(pr, currentSeason).price || 0; setSelP(s => s.find(x => x.productId === id) ? s.filter(x => x.productId !== id) : [...s, { productId: id, qty: 1, unitPrice: p }]); };
+  const totalHT = selP.reduce((t, sp) => t + lineHT(sp), 0);
+  const isM = f.dealType === "Mécénat";
+  const ratio = isM && f.donAmount > 0 ? (totalHT / f.donAmount) * 100 : 0;
+  const ratioOK = !isM || f.donAmount === 0 || ratio <= 25;
   return (
     <Modal title={data ? `Modifier — ${data.company}` : "Nouvelle entreprise"} onClose={onClose}>
       <div style={S.g2}>
@@ -22,6 +26,8 @@ export function CompanyForm({ data, onSave, onClose }) {
         <Field label="Adresse"><input style={S.inp} value={f.address} onChange={e => set("address", e.target.value)} /></Field>
         <Field label="SIRET"><input style={S.inp} value={f.siret || ""} onChange={e => set("siret", e.target.value)} placeholder="Optionnel" /></Field>
         <Field label="N° TVA"><input style={S.inp} value={f.tvaNumber || ""} onChange={e => set("tvaNumber", e.target.value)} placeholder="Optionnel" /></Field>
+        <Field label="Type"><select style={S.sel} value={f.dealType || "Partenariat"} onChange={e => set("dealType", e.target.value)}><option>Partenariat</option><option>Mécénat</option></select></Field>
+        {isM && <Field label="Montant du don (€)"><input type="number" style={S.inp} value={f.donAmount || 0} onChange={e => set("donAmount", +e.target.value)} /></Field>}
         {!isP && <Field label="Statut prospection"><select style={S.sel} value={f.prospectStatus} onChange={e => set("prospectStatus", e.target.value)}>{P_STATUSES.map(s => <option key={s}>{s}</option>)}</select></Field>}
         {isP && <Field label="Statut partenaire"><select style={S.sel} value={f.partnerStatus} onChange={e => set("partnerStatus", e.target.value)}>{PARTNER_STATUSES.map(s => <option key={s}>{s}</option>)}</select></Field>}
         {f.prospectStatus === "À rappeler" && <Field label="Date rappel"><input type="date" style={S.inp} value={f.callbackDate || ""} onChange={e => set("callbackDate", e.target.value)} /></Field>}
@@ -29,17 +35,18 @@ export function CompanyForm({ data, onSave, onClose }) {
         <Field label="Saison"><select style={S.sel} value={f.season || currentSeason} onChange={e => set("season", e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select></Field>
         <Field label="Responsable"><MemberSelect value={f.member} onChange={v => set("member", v)} members={members} onAdd={addMember} /></Field>
       </div>
-      <div style={{ marginTop: 12 }}><label style={S.lbl}>{isP ? "Produits validés" : "Produits proposés"}</label>
+      <div style={{ marginTop: 12 }}><label style={S.lbl}>{isP ? "Produits validés" : "Produits proposés"}{isM ? " (contreparties)" : ""}</label>
         <ProductPicker products={products} selected={selP} onToggle={togP} cats={cats} currentSeason={currentSeason} />
       </div>
       {selP.length > 0 && <table style={{ ...S.tbl, marginTop: 8 }}><thead><tr><th style={S.th}>Produit</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th><th style={S.th}></th></tr></thead>
         <tbody>{selP.map(sp => { const pr = products.find(x => x.id === sp.productId); if (!pr) return null; return (
           <tr key={sp.productId}><td style={S.td}>{pr.name}</td><td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 80, fontWeight: 700 }} value={sp.unitPrice} onChange={e => setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, unitPrice: Math.max(0, +e.target.value) } : x))} /></td><td style={S.td}><input type="number" min="1" style={{ ...S.inp, width: 50 }} value={sp.qty} onChange={e => setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td><td style={S.tdR}><strong>{fmt(lineHT(sp))}</strong></td><td style={S.td}><button style={S.btnS("ghost")} onClick={() => setSelP(s => s.filter(x => x.productId !== sp.productId))}>✕</button></td></tr>
         ); })}</tbody></table>}
-      {selP.length > 0 && <div style={{ textAlign: "right", marginTop: 6, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Total : {fmt(selP.reduce((t, sp) => t + lineHT(sp), 0))} HT</div>}
+      {selP.length > 0 && <div style={{ textAlign: "right", marginTop: 6, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Total : {fmt(totalHT)} HT</div>}
+      {isM && f.donAmount > 0 && totalHT > 0 && <div style={S.alert(ratioOK ? "success" : "danger")}>{ratioOK ? `✅ Contreparties = ${ratio.toFixed(1)}% du don (max 25%)` : `⚠️ Contreparties = ${ratio.toFixed(1)}% du don — DÉPASSE 25% ! Réduire les produits ou augmenter le don.`}</div>}
       <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button style={S.btn("ghost")} onClick={onClose}>Annuler</button>
-        <button style={S.btn("primary")} onClick={() => onSave({ ...f, products: selP })}>Enregistrer</button>
+        <button style={{ ...S.btn("primary"), opacity: !ratioOK ? 0.5 : 1 }} disabled={!ratioOK} onClick={() => onSave({ ...f, products: selP })}>Enregistrer</button>
       </div>
     </Modal>
   );
@@ -57,6 +64,11 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
 
   const togP = (id) => { const pr = products.find(x => x.id === id); const p = getPrice(pr, currentSeason).price || 0; setSelP(s => s.find(x => x.productId === id) ? s.filter(x => x.productId !== id) : [...s, { productId: id, qty: 1, unitPrice: p }]); };
   const saveProducts = () => { setCo({ ...co, products: selP }); setEditingProducts(false); };
+  const isM = co.dealType === "Mécénat";
+  const totalHT = (co.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+  const editTotalHT = selP.reduce((t, sp) => t + lineHT(sp), 0);
+  const ratio = isM && co.donAmount > 0 ? (totalHT / co.donAmount) * 100 : 0;
+  const editRatio = isM && co.donAmount > 0 ? (editTotalHT / co.donAmount) * 100 : 0;
 
   return (
     <Modal title={co.company} onClose={onClose}>
@@ -69,7 +81,19 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         <div><span style={S.lbl}>Saison</span><Badge type="draft">{co.season}</Badge></div>
         {co.siret && <div><span style={S.lbl}>SIRET</span>{co.siret}</div>}
         <div><span style={S.lbl}>Dernier contact</span>{lastNote?.date || "—"}</div>
+        <div><span style={S.lbl}>Type</span><Badge type={isM ? "mecenat" : "partenariat"}>{co.dealType || "Partenariat"}</Badge>{isM && co.donAmount > 0 && <span style={{ fontSize: 11, marginLeft: 4 }}>Don: {fmt(co.donAmount)}</span>}</div>
         <div><span style={S.lbl}>Statut</span><Badge type={statusBType(co.isPartner ? co.partnerStatus : co.prospectStatus)}>{co.isPartner ? co.partnerStatus : co.prospectStatus}</Badge></div>
+      </div>
+
+      {/* Type selector */}
+      <div style={{ ...S.section, marginTop: 12 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={S.lbl}>Type :</span>
+          <button style={S.chip(!isM)} onClick={() => setCo({ ...co, dealType: "Partenariat" })}>🤝 Partenariat</button>
+          <button style={S.chip(isM)} onClick={() => setCo({ ...co, dealType: "Mécénat" })}>💜 Mécénat</button>
+          {isM && <><span style={{ ...S.lbl, marginLeft: 8 }}>Don :</span><input type="number" style={{ ...S.inp, width: 100 }} value={co.donAmount || 0} onChange={e => setCo({ ...co, donAmount: +e.target.value })} /> €</>}
+        </div>
+        {isM && co.donAmount > 0 && totalHT > 0 && <div style={{ ...S.alert(ratio <= 25 ? "success" : "danger"), marginTop: 6 }}>{ratio <= 25 ? `✅ Contreparties = ${ratio.toFixed(1)}% du don (max 25%)` : `⚠️ ${ratio.toFixed(1)}% > 25% ! Réduire les produits ou augmenter le don.`}</div>}
       </div>
 
       {!co.isPartner && <div style={S.section}>
@@ -117,10 +141,11 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
               );
             })}</tbody>
           </table>}
-          {selP.length > 0 && <div style={{ textAlign: "right", marginTop: 6, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Total : {fmt(selP.reduce((t, sp) => t + lineHT(sp), 0))} HT</div>}
+          {selP.length > 0 && <div style={{ textAlign: "right", marginTop: 6, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Total : {fmt(editTotalHT)} HT</div>}
+          {isM && co.donAmount > 0 && editTotalHT > 0 && <div style={S.alert(editRatio <= 25 ? "success" : "danger")}>{editRatio <= 25 ? `✅ Contreparties = ${editRatio.toFixed(1)}% du don (max 25%)` : `⚠️ ${editRatio.toFixed(1)}% > 25% ! Réduire les produits ou augmenter le don.`}</div>}
           <div style={{ marginTop: 8, display: "flex", gap: 6, justifyContent: "flex-end" }}>
             <button style={S.btn("ghost")} onClick={() => setEditingProducts(false)}>Annuler</button>
-            <button style={S.btn("success")} onClick={saveProducts}>✅ Enregistrer</button>
+            <button style={{ ...S.btn("success"), opacity: isM && co.donAmount > 0 && editRatio > 25 ? 0.5 : 1 }} disabled={isM && co.donAmount > 0 && editRatio > 25} onClick={saveProducts}>✅ Enregistrer</button>
           </div>
         </>) : (<>
           {(co.products || []).length === 0 ? (
