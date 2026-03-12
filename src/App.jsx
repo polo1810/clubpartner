@@ -51,7 +51,7 @@ function AppInner() {
         {tab === "contracts" && <ContractsTab onOpenCompany={(co) => setTab(co.isPartner ? "partners" : "prospects")} directContract={directContract} onDirectContractClosed={() => setDirectContract(null)} />}
       </div>
       {showTeam && <TeamModal members={members} onAdd={addMember} onRemove={m => setMembers(ms => ms.filter(x => x !== m))} onClose={() => setShowTeam(false)} />}
-      {showSettings && <SettingsModal cats={cats} setCats={setCats} seasons={seasons} currentSeason={currentSeason} onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModal cats={cats} setCats={setCats} seasons={seasons} setSeasons={ctx.setSeasons} currentSeason={currentSeason} onClose={() => setShowSettings(false)} />}
       {showExport && <Modal title="📤 Export" onClose={() => setShowExport(false)}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <button style={S.btn("primary")} onClick={() => { dlCSV("Prospects.csv", toCSV(prospectsList.map(p => ({ Entreprise: p.company, Secteur: p.sector, Saison: p.season, Contact: p.contact, Téléphone: p.phone, Email: p.email, Statut: p.prospectStatus, Responsable: p.member })))); setShowExport(false); }}>📤 Prospects</button>
