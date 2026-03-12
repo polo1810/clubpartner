@@ -94,10 +94,8 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
  
       {/* PRODUITS — éditable inline */}
       <div style={{ marginTop: 12 }}>
-        <div style={S.fx}>
-          <div style={S.cT}>📦 {co.isPartner ? "Produits validés" : "Produits proposés"}</div>
-          {!editingProducts && <button style={S.btnS("primary")} onClick={() => { setSelP(co.products || []); setEditingProducts(true); }}>✏️ Modifier</button>}
-        </div>
+        <div style={S.cT}>📦 {co.isPartner ? "Produits validés" : "Produits proposés"}</div>
+        {!editingProducts && <div style={{ marginBottom: 10 }}><button style={{ ...S.btn("primary"), width: "100%" }} onClick={() => { setSelP(co.products || []); setEditingProducts(true); }}>✏️ Modifier / Ajouter des produits</button></div>}
  
         {editingProducts ? (<>
           <ProductPicker products={products} selected={selP} onToggle={togP} cats={cats} currentSeason={currentSeason} />
