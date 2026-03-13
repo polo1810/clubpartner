@@ -76,8 +76,9 @@ function ContractForm({ initial, onClose }) {
   const [sp, setSp] = useState(() => {
     if (initial?.seasonProducts && Object.keys(initial.seasonProducts).length > 0) return { ...initial.seasonProducts };
     const sids = getContractSeasonIds({ ...f }, seasons);
+    const coSP = co?.seasonProducts || {};
     const o = {};
-    sids.forEach(sid => { o[sid] = [...(co?.products || []).map(p => ({ ...p }))]; });
+    sids.forEach(sid => { o[sid] = coSP[sid] ? coSP[sid].map(p => ({ ...p })) : [...(co?.products || []).map(p => ({ ...p }))]; });
     return o;
   });
 
@@ -86,7 +87,8 @@ function ContractForm({ initial, onClose }) {
 
   const ensureSp = (newCovered) => {
     const updated = { ...sp };
-    newCovered.forEach(sid => { if (!updated[sid]) updated[sid] = [...(co?.products || []).map(p => ({ ...p }))]; });
+    const coSP = co?.seasonProducts || {};
+    newCovered.forEach(sid => { if (!updated[sid]) updated[sid] = coSP[sid] ? coSP[sid].map(p => ({ ...p })) : [...(co?.products || []).map(p => ({ ...p }))]; });
     Object.keys(updated).forEach(sid => { if (!newCovered.includes(sid)) delete updated[sid]; });
     setSp(updated);
   };
@@ -117,8 +119,9 @@ function ContractForm({ initial, onClose }) {
     const c = getCompany(cid);
     setF({ ...f, companyId: cid, type: c?.dealType || "Partenariat", donAmount: c?.donAmount || 0 });
     const sids = getContractSeasonIds(f, seasons);
+    const coSP = c?.seasonProducts || {};
     const o = {};
-    sids.forEach(sid => { o[sid] = [...(c?.products || []).map(p => ({ ...p }))]; });
+    sids.forEach(sid => { o[sid] = coSP[sid] ? coSP[sid].map(p => ({ ...p })) : [...(c?.products || []).map(p => ({ ...p }))]; });
     setSp(o);
   };
 
