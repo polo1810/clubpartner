@@ -283,13 +283,28 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
   const [showForm, setShowForm] = useState(false);
   const [editC, setEditC] = useState(null);
   const [viewC, setViewC] = useState(directContract || null);
+  const [search, setSearch] = useState("");
+  const [statusF, setStatusF] = useState("Tous");
+  const [typeF, setTypeF] = useState("Tous");
+
+  let filtered = seasonContracts;
+  if (search) { const q = search.toLowerCase(); filtered = filtered.filter(c => { const co = getCompany(c.companyId); return (co?.company || "").toLowerCase().includes(q) || (c.member || "").toLowerCase().includes(q); }); }
+  if (statusF !== "Tous") filtered = filtered.filter(c => c.status === statusF);
+  if (typeF !== "Tous") filtered = filtered.filter(c => c.type === typeF);
+
+  const deleteContract = (e, cid) => { e.stopPropagation(); if (confirm("Supprimer ce contrat ?")) setContracts(cs => cs.filter(c => c.id !== cid)); };
 
   return (<>
-    <div style={S.fx}><h2 style={{ fontSize: 16, fontWeight: 700 }}>📝 Contrats</h2>
+    <div style={S.fx}><h2 style={{ fontSize: 16, fontWeight: 700 }}>📝 Contrats ({filtered.length})</h2>
       <button style={S.btn("primary")} onClick={() => { setEditC(null); setShowForm(true); }}>+ Contrat</button>
     </div>
-    <div style={{ marginTop: 8 }}>{seasonContracts.length === 0 ? <div style={{ textAlign: "center", padding: 30, color: Cl.txtL }}>Aucun contrat pour cette saison</div>
-      : seasonContracts.map(c => {
+    <div style={{ marginTop: 6, display: "flex", gap: 4, flexWrap: "wrap" }}>
+      <input style={{ ...S.inp, flex: 1, minWidth: 120 }} placeholder="🔍 Rechercher entreprise, responsable..." value={search} onChange={e => setSearch(e.target.value)} />
+      <select style={{ ...S.sel, width: "auto" }} value={statusF} onChange={e => setStatusF(e.target.value)}><option>Tous</option>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select>
+      <select style={{ ...S.sel, width: "auto" }} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
+    </div>
+    <div style={{ marginTop: 8 }}>{filtered.length === 0 ? <div style={{ textAlign: "center", padding: 30, color: Cl.txtL }}>Aucun contrat trouvé</div>
+      : filtered.map(c => {
         const co = getCompany(c.companyId);
         const paid = (c.payments || []).filter(p => p.status === "Payé").reduce((s, p) => s + p.amount, 0);
         return (<div key={c.id} style={{ ...S.card, cursor: "pointer" }} onClick={() => setViewC(c)}>
@@ -300,7 +315,10 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
               {c.seasons > 1 && <Badge type="draft">{c.seasons} sais.</Badge>}
               <select style={{ ...S.sel, width: "auto", fontSize: 10, padding: "2px 6px", borderRadius: 12, fontWeight: 700, background: isSigned(c) ? Cl.okL : c.status === "En attente" ? Cl.warnL : Cl.hov, color: isSigned(c) ? Cl.ok : c.status === "En attente" ? Cl.warn : Cl.txtL }} value={c.status} onClick={e => e.stopPropagation()} onChange={e => { e.stopPropagation(); setContracts(cs => cs.map(x => x.id === c.id ? { ...x, status: e.target.value } : x)); }}>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: Cl.pri }}>{fmt(contractHT(c))} HT</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: Cl.pri }}>{fmt(contractHT(c))} HT</div>
+              <button style={{ ...S.btnS("ghost"), color: Cl.err, fontSize: 12, padding: "2px 6px" }} onClick={e => deleteContract(e, c.id)} title="Supprimer">🗑️</button>
+            </div>
           </div>
           <div style={{ marginTop: 4, fontSize: 11, color: Cl.txtL, display: "flex", gap: 10 }}>
             <span>👷 {c.member}</span>
