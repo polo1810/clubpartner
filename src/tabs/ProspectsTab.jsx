@@ -7,7 +7,6 @@ import { CompanyForm, CompanyDetail } from '../components/CompanyModals';
 
 export default function ProspectsTab() {
   const { prospectsList, companies, setCompanies, seasons, currentSeason, members, convertToPartner } = useApp();
-  const [seasonF, setSeasonF] = useState(currentSeason);
   const [sectorF, setSectorF] = useState("Tous");
   const [statusF, setStatusF] = useState("Tous");
   const [showForm, setShowForm] = useState(false);
@@ -17,7 +16,6 @@ export default function ProspectsTab() {
 
   const sectors = [...new Set(prospectsList.map(p => p.sector).filter(Boolean))];
   let filtered = prospectsList;
-  if (seasonF !== "Toutes") filtered = filtered.filter(p => p.season === seasonF);
   if (sectorF !== "Tous") filtered = filtered.filter(p => p.sector === sectorF);
   if (statusF !== "Tous") filtered = filtered.filter(p => p.prospectStatus === statusF);
 
@@ -30,7 +28,6 @@ export default function ProspectsTab() {
   return (<>
     <div style={S.fx}><h2 style={{ fontSize: 16, fontWeight: 700 }}>🎯 Prospects ({filtered.length})</h2>
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-        <select style={{ ...S.sel, width: "auto", fontWeight: 700 }} value={seasonF} onChange={e => setSeasonF(e.target.value)}><option value="Toutes">Toutes</option>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select>
         <select style={{ ...S.sel, width: "auto" }} value={sectorF} onChange={e => setSectorF(e.target.value)}><option>Tous</option>{sectors.map(s => <option key={s}>{s}</option>)}</select>
         <select style={{ ...S.sel, width: "auto" }} value={statusF} onChange={e => setStatusF(e.target.value)}><option>Tous</option>{P_STATUSES.map(s => <option key={s}>{s}</option>)}</select>
         <button style={S.btn("ghost")} onClick={() => setShowImport(true)}>📥</button>
