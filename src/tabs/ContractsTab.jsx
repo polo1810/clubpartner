@@ -189,7 +189,7 @@ function ContractForm({ initial, onClose }) {
 }
 
 function ContractDetail({ contract, onClose, onOpenCompany }) {
-  const { getCompany, products, contracts, setContracts, openAddContractAction, clubInfo, seasons, currentSeason, contractHT, contractTTC } = useApp();
+  const { getCompany, products, contracts, setContracts, openAddContractAction, clubInfo, seasons, currentSeason, contractHT, contractTTC, generateInvoice, invoices } = useApp();
   const co = getCompany(contract.companyId);
   const isM = contract.type === "Mécénat" || co?.dealType === "Mécénat";
   const donAmount = contract.donAmount || co?.donAmount || 0;
@@ -225,9 +225,15 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
         </div>
       </div>}
 
-      {co && <div style={{ marginTop: 10, display: "flex", gap: 6 }}>
+      {co && <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
         <button style={S.btnS("primary")} onClick={() => { if (onOpenCompany) onOpenCompany(co); onClose(); }}>👁️ Fiche {co.company}</button>
-        <button style={S.btnS("ghost")} onClick={() => generateContrat(clubInfo, co, contract, products, seasons, currentSeason)}>📄 Télécharger le contrat PDF</button>
+        <button style={S.btnS("ghost")} onClick={() => generateContrat(clubInfo, co, contract, products, seasons, currentSeason)}>📄 Contrat PDF</button>
+        {isSigned(contract) && coveredSeasons.map(sid => {
+          const already = invoices.find(i => i.contractId === contract.id && i.season === sid);
+          return already
+            ? <span key={sid} style={{ fontSize: 10, color: Cl.ok, alignSelf: "center" }}>✅ {already.number}</span>
+            : <button key={sid} style={S.btnS("primary")} onClick={() => generateInvoice(contract, sid)}>🧾 Facturer {sid}</button>;
+        })}
       </div>}
 
       {/* Products per season */}
