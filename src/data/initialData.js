@@ -32,7 +32,7 @@ export const invoiceNum = (date, seq) => {
   return `FA-${d}-${String(seq).padStart(5, "0")}`;
 };
 export const INIT_ACCOUNT_CODES = {
-  tvaCollectee: "44571000",
+  tva: { 20: "44571000", 10: "44571000", 5.5: "44571000" },
   categories: { "Signalétique": "70820000", "Print": "70830000", "Textile": "70840000", "Digital": "70851000", "Événement": "70843000" },
 };
 export const INVOICE_STATUSES = ["Émise", "Payée partiellement", "Payée", "Annulée"];
