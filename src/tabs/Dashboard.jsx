@@ -4,13 +4,13 @@ import { S, Cl } from '../data/styles';
 import { fmt, isSigned } from '../data/initialData';
 
 export default function Dashboard() {
-  const { prospectsList, partnersList, allActions, todayStr, totalCA, totalPaid, contracts, contractTTC, caByType, caByMember, companies, members, objectives, setObjectives, currentSeason } = useApp();
+  const { prospectsList, partnersList, allActions, todayStr, totalCA, totalPaid, contracts, contractTTC, caByType, caByMember, members, objectives, setObjectives, currentSeason } = useApp();
   const [editObj, setEditObj] = useState(false);
   const totalDue = contracts.filter(c => isSigned(c)).reduce((t, c) => t + contractTTC(c), 0);
-  const nbPartP = companies.filter(c => (c.dealType || "Partenariat") === "Partenariat" && c.isPartner).length;
-  const nbPartM = companies.filter(c => c.dealType === "Mécénat" && c.isPartner).length;
-  const nbProsP = companies.filter(c => (c.dealType || "Partenariat") === "Partenariat" && !c.isPartner).length;
-  const nbProsM = companies.filter(c => c.dealType === "Mécénat" && !c.isPartner).length;
+  const nbPartP = partnersList.filter(c => (c.dealType || "Partenariat") === "Partenariat").length;
+  const nbPartM = partnersList.filter(c => c.dealType === "Mécénat").length;
+  const nbProsP = prospectsList.filter(c => (c.dealType || "Partenariat") === "Partenariat").length;
+  const nbProsM = prospectsList.filter(c => c.dealType === "Mécénat").length;
 
   const objTotal = (objectives.partenariat || 0) + (objectives.mecenat || 0);
   const realTotal = (caByType["Partenariat"] || 0) + (caByType["Mécénat"] || 0);
