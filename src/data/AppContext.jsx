@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useMemo } from 'react';
-import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, ACTION_TYPES, getPrice } from '../data/initialData';
+import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice } from '../data/initialData';
 
 const Ctx = createContext();
 export const useApp = () => useContext(Ctx);
@@ -13,6 +13,7 @@ export function AppProvider({ children }) {
   const [cats, setCats] = useState(INIT_CATS);
   const [currentSeason] = useState(INIT_CURRENT);
   const [miniForm, setMiniForm] = useState(null);
+  const [clubInfo, setClubInfo] = useState(INIT_CLUB_INFO);
 
   const addMember = (n) => { if (n && !members.includes(n)) setMembers(ms => [...ms, n]); };
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -112,7 +113,7 @@ export function AppProvider({ children }) {
   const value = {
     companies, setCompanies, products, setProducts, contracts, setContracts,
     members, setMembers, addMember, seasons, setSeasons, cats, setCats, currentSeason,
-    miniForm, setMiniForm, todayStr,
+    miniForm, setMiniForm, todayStr, clubInfo, setClubInfo,
     prospectsList, partnersList, getCompany, companyContracts,
     contractHT, contractTTC, stockSold, caByProd, caByType, totalCA, totalPaid, allActions,
     objectives, setObjectives, caByMember,
