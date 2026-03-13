@@ -117,24 +117,6 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
     y += 6;
   }
 
-  // Payments
-  if (payments && payments.length > 0) {
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("Échéancier de paiement", 20, y);
-    y += 2;
-    autoTable(doc, {
-      startY: y,
-      head: [["Échéance", "Montant", "Date"]],
-      body: payments.map(p => [p.label, fmtE(p.amount), p.dueDate || "À définir"]),
-      theme: "striped",
-      headStyles: { fillColor: [100, 100, 100], fontSize: 8 },
-      styles: { fontSize: 8, cellPadding: 3 },
-      margin: { left: 20, right: 20 },
-    });
-    y = doc.lastAutoTable.finalY + 8;
-  }
-
   // Validité
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
