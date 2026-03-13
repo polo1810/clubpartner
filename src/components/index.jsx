@@ -92,11 +92,12 @@ export const ProductFormModal = ({ onClose, onAdd, cats, seasons, currentSeason 
   <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}><button style={S.btn("ghost")} onClick={onClose}>Annuler</button><button style={S.btn("primary")} onClick={() => { const prices = {}; Object.entries(sp).forEach(([k, v]) => { if (v.price || v.cost || v.amort) prices[k] = v; }); onAdd({ ...f, prices, totalCost: f.totalCost }); }}>Ajouter</button></div></Modal>);
 };
 
-export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeason, clubInfo, setClubInfo, onClose }) => {
+export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeason, clubInfo, setClubInfo, accountCodes, setAccountCodes, onClose }) => {
   const [newCat, setNewCat] = useState("");
   const [newSeason, setNewSeason] = useState({ name: "", startDate: "", endDate: "" });
   const updateSeason = (id, key, value) => setSeasons(ss => ss.map(s => s.id === id ? { ...s, [key]: value } : s));
   const setClub = (k, v) => setClubInfo(ci => ({ ...ci, [k]: v }));
+  const setAccCat = (cat, val) => setAccountCodes(ac => ({ ...ac, categories: { ...ac.categories, [cat]: val } }));
   return (<Modal title="⚙️ Paramètres" onClose={onClose}>
     <div style={S.cT}>🏟️ Informations du club / association</div>
     <div style={S.g2}>
@@ -109,6 +110,20 @@ export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeaso
       <Field label="Président(e)"><input style={S.inp} value={clubInfo.president || ""} onChange={e => setClub("president", e.target.value)} /></Field>
       <Field label="Validité devis (jours)"><input type="number" style={S.inp} value={clubInfo.validiteDays || 30} onChange={e => setClub("validiteDays", +e.target.value)} /></Field>
     </div>
+
+    {/* Comptes comptables */}
+    <div style={{ ...S.cT, marginTop: 20 }}>🧾 Comptes comptables</div>
+    <Field label="Compte TVA collectée"><input style={S.inp} value={accountCodes.tvaCollectee || ""} onChange={e => setAccountCodes(ac => ({ ...ac, tvaCollectee: e.target.value }))} placeholder="44571000" /></Field>
+    <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: Cl.txtL }}>Comptes produits par catégorie :</div>
+    <table style={{ ...S.tbl, marginTop: 4 }}>
+      <thead><tr><th style={S.th}>Catégorie</th><th style={S.th}>N° de compte</th></tr></thead>
+      <tbody>{cats.map(cat => (
+        <tr key={cat}>
+          <td style={S.td}><strong>{cat}</strong></td>
+          <td style={S.td}><input style={{ ...S.inp, fontFamily: "monospace" }} value={accountCodes.categories?.[cat] || ""} onChange={e => setAccCat(cat, e.target.value)} placeholder="708XXXXX" /></td>
+        </tr>
+      ))}</tbody>
+    </table>
 
     <div style={{ ...S.cT, marginTop: 20 }}>📁 Catégories de produits</div>
     {cats.map(c => (<div key={c} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: `1px solid ${Cl.brd}` }}><span style={{ flex: 1, fontSize: 13 }}>{c}</span>{cats.length > 1 && <button style={S.btnS("ghost")} onClick={() => setCats(cs => cs.filter(x => x !== c))}>✕</button>}</div>))}
