@@ -10,10 +10,12 @@ import ActionsTab from './tabs/ActionsTab';
 import ProductsTab from './tabs/ProductsTab';
 import AmortTab from './tabs/AmortTab';
 import ContractsTab from './tabs/ContractsTab';
+import InvoicesTab from './tabs/InvoicesTab';
 
 const tabs = [
   { id: "dashboard", label: "📊 Bord" }, { id: "prospects", label: "🎯 Prospects" },
   { id: "partners", label: "🤝 Partenaires" }, { id: "contracts", label: "📝 Contrats" },
+  { id: "invoices", label: "🧾 Factures" },
   { id: "actions", label: "📋 Actions" }, { id: "products", label: "📦 Stocks" },
   { id: "amortize", label: "💰 Amort." },
 ];
@@ -49,9 +51,10 @@ function AppInner() {
         {tab === "products" && <ProductsTab />}
         {tab === "amortize" && <AmortTab />}
         {tab === "contracts" && <ContractsTab onOpenCompany={(co) => setTab(co.isPartner ? "partners" : "prospects")} directContract={directContract} onDirectContractClosed={() => setDirectContract(null)} />}
+        {tab === "invoices" && <InvoicesTab />}
       </div>
       {showTeam && <TeamModal members={members} onAdd={addMember} onRemove={m => setMembers(ms => ms.filter(x => x !== m))} onClose={() => setShowTeam(false)} />}
-      {showSettings && <SettingsModal cats={cats} setCats={setCats} seasons={seasons} setSeasons={ctx.setSeasons} currentSeason={currentSeason} clubInfo={ctx.clubInfo} setClubInfo={ctx.setClubInfo} onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModal cats={cats} setCats={setCats} seasons={seasons} setSeasons={ctx.setSeasons} currentSeason={currentSeason} clubInfo={ctx.clubInfo} setClubInfo={ctx.setClubInfo} accountCodes={ctx.accountCodes} setAccountCodes={ctx.setAccountCodes} onClose={() => setShowSettings(false)} />}
       {showExport && <Modal title="📤 Export" onClose={() => setShowExport(false)}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <button style={S.btn("primary")} onClick={() => { dlCSV("Prospects.csv", toCSV(prospectsList.map(p => ({ Entreprise: p.company, Secteur: p.sector, Saison: p.season, Contact: p.contact, Téléphone: p.phone, Email: p.email, Statut: p.prospectStatus, Responsable: p.member })))); setShowExport(false); }}>📤 Prospects</button>
