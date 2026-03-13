@@ -18,10 +18,15 @@ function InvoiceDetail({ invoice, onClose }) {
   const lib = `${invoice.companyName} - ${invoice.number}`;
   // 1. Debit client TTC
   entries.push({ journal: "VT", date: invoice.dateStr, compte: invoice.accountCode, piece: invoice.number, libelle: lib, debit: invoice.totalTTC, credit: 0 });
-  // 2. Credit TVA if any
-  if (invoice.totalTVA > 0) {
-    entries.push({ journal: "VT", date: invoice.dateStr, compte: accountCodes.tvaCollectee || "44571000", piece: invoice.number, libelle: lib, debit: 0, credit: Math.round(invoice.totalTVA * 100) / 100 });
-  }
+  // 2. Credit TVA per rate
+  const byTva = {};
+  invoice.lines.forEach(l => { byTva[l.tvaRate] = (byTva[l.tvaRate] || 0) + l.tvaAmount; });
+  Object.entries(byTva).forEach(([rate, amount]) => {
+    if (amount > 0) {
+      const compte = accountCodes.tva?.[rate] || "44571000";
+      entries.push({ journal: "VT", date: invoice.dateStr, compte, piece: invoice.number, libelle: lib, debit: 0, credit: Math.round(amount * 100) / 100 });
+    }
+  });
   // 3. Credit per category
   const byCat = {};
   invoice.lines.forEach(l => { byCat[l.category] = (byCat[l.category] || 0) + l.totalHT; });
@@ -99,9 +104,13 @@ export default function InvoicesTab() {
     seasonInvoices.forEach(inv => {
       const lib = `${inv.companyName} - ${inv.number}`;
       allEntries.push({ Journal: "VT", "Date d'opération": inv.dateStr, "Numéro de compte": inv.accountCode, "Numéro de pièce": inv.number, Libellé: lib, Débit: inv.totalTTC, Crédit: 0, "Créée par": "", "Modifiée par": "", "Type écriture": "vente_ecriture", "Génération automatique": "True", "Moyen de paiement": "", "Lien du document": "" });
-      if (inv.totalTVA > 0) {
-        allEntries.push({ Journal: "VT", "Date d'opération": inv.dateStr, "Numéro de compte": accountCodes.tvaCollectee || "44571000", "Numéro de pièce": inv.number, Libellé: lib, Débit: 0, Crédit: Math.round(inv.totalTVA * 100) / 100, "Créée par": "", "Modifiée par": "", "Type écriture": "vente_ecriture", "Génération automatique": "True", "Moyen de paiement": "", "Lien du document": "" });
-      }
+      const byTva = {};
+      inv.lines.forEach(l => { byTva[l.tvaRate] = (byTva[l.tvaRate] || 0) + l.tvaAmount; });
+      Object.entries(byTva).forEach(([rate, amount]) => {
+        if (amount > 0) {
+          allEntries.push({ Journal: "VT", "Date d'opération": inv.dateStr, "Numéro de compte": accountCodes.tva?.[rate] || "44571000", "Numéro de pièce": inv.number, Libellé: lib, Débit: 0, Crédit: Math.round(amount * 100) / 100, "Créée par": "", "Modifiée par": "", "Type écriture": "vente_ecriture", "Génération automatique": "True", "Moyen de paiement": "", "Lien du document": "" });
+        }
+      });
       const byCat = {};
       inv.lines.forEach(l => { byCat[l.category] = (byCat[l.category] || 0) + l.totalHT; });
       Object.entries(byCat).forEach(([cat, ht]) => {
