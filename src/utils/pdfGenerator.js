@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fmt, lineHT, getPrice } from '../data/initialData';
 
-const fmtN = (n) => Math.round(n).toLocaleString("fr-FR");
+const fmtN = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 const fmtE = (n) => fmtN(n) + " €";
 const today = () => new Date().toLocaleDateString("fr-FR");
 const devisNum = () => `DEV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
