@@ -41,7 +41,7 @@ export const statusBType = (s) => ({ "Nouveau": "new", "Pas répondu": "noreply"
 // --- Constants ---
 export const P_STATUSES = ["Nouveau", "Pas répondu", "Intéressé", "À rappeler", "RDV pris", "Proposition envoyée", "Renouvellement potentiel", "Refusé"];
 export const PARTNER_STATUSES = ["Nouveau partenaire", "Renouvellement"];
-export const ACTION_TYPES = ["Prospection", "Partenariat", "Mise en place", "Contrat et facturation"];
+export const ACTION_TYPES = ["Prospection", "Partenariat", "Mise en place", "Contrat", "Facturation"];
 
 export const INIT_MEMBERS = ["Sarah Martin", "Lucas Dupont", "Amina Bey", "Thomas Roux"];
 export const INIT_CATS = ["Signalétique", "Print", "Textile", "Digital", "Événement"];
@@ -78,7 +78,7 @@ export const INIT_CONTRACTS = [
   { id: 1, companyId: 2, type: "Partenariat", member: "Lucas Dupont", signataire: "Jean Petit", seasons: 2, startSeason: "2025-2026", status: "Signé", donAmount: 0, seasonProducts: {
     "2025-2026": [{ productId: 1, qty: 1, unitPrice: 1350 }, { productId: 9, qty: 5, unitPrice: 200 }],
     "2026-2027": [{ productId: 1, qty: 1, unitPrice: 1400 }, { productId: 9, qty: 5, unitPrice: 200 }, { productId: 6, qty: 1, unitPrice: 500 }]
-  }, payments: [{ id: 1, label: "Acompte 50%", amount: 1175, dueDate: "2026-04-01", status: "Payé" }, { id: 2, label: "Solde 50%", amount: 1175, dueDate: "2026-09-01", status: "En attente" }], actions: [{ id: 10, type: "Envoyer facture solde", category: "Contrat et facturation", date: "2026-08-15", done: false, note: "", assignee: "Lucas Dupont" }] },
+  }, payments: [{ id: 1, label: "Acompte 50%", amount: 1175, dueDate: "2026-04-01", status: "Payé" }, { id: 2, label: "Solde 50%", amount: 1175, dueDate: "2026-09-01", status: "En attente" }], actions: [{ id: 10, type: "Envoyer facture solde", category: "Facturation", date: "2026-08-15", done: false, note: "", assignee: "Lucas Dupont" }] },
 ];
 
 export const INIT_CLUB_INFO = {
