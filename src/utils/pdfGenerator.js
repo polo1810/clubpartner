@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { fmt, lineHT, getPrice } from '../data/initialData';
+import { fmt, lineHT, getPrice, getContractSeasonIds } from '../data/initialData';
 
 const fmtN = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 const fmtE = (n) => fmtN(n) + " €";
@@ -190,11 +190,14 @@ export function generateContrat(club, company, contract, allProducts, seasons, c
   if (isM) {
     doc.text(`Le Mécène s'engage à verser au Club un don de ${fmtE(donAmount)} dans le cadre d'une convention de mécénat.`, 20, y, { maxWidth: 170 });
     y += 8;
-    if ((company.products || []).length > 0) {
-      const totalHT = (company.products || []).reduce((t, cp) => t + lineHT(cp), 0);
-      doc.text(`En contrepartie, le Club s'engage à fournir les prestations ci-dessous, d'une valeur de ${fmtE(totalHT)} HT`, 20, y, { maxWidth: 170 });
+    const hasSPObj = contract.seasonProducts && Object.keys(contract.seasonProducts).length > 0;
+    const totalHTObjet = hasSPObj
+      ? Object.values(contract.seasonProducts).reduce((total, prods) => total + prods.reduce((t, cp) => t + lineHT(cp), 0), 0)
+      : (company.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+    if (totalHTObjet > 0) {
+      doc.text(`En contrepartie, le Club s'engage à fournir les prestations ci-dessous, d'une valeur de ${fmtE(totalHTObjet)} HT`, 20, y, { maxWidth: 170 });
       y += 4;
-      doc.text(`(soit ${donAmount > 0 ? ((totalHT / donAmount) * 100).toFixed(1) : 0}% du don, conformément à la règle des 25% maximum).`, 20, y, { maxWidth: 170 });
+      doc.text(`(soit ${donAmount > 0 ? ((totalHTObjet / donAmount) * 100).toFixed(1) : 0}% du don, conformément à la règle des 25% maximum).`, 20, y, { maxWidth: 170 });
       y += 6;
     }
   } else {
@@ -213,33 +216,84 @@ export function generateContrat(club, company, contract, allProducts, seasons, c
   doc.text(`Le présent contrat est conclu pour ${contract.seasons} saison(s), de ${contract.startSeason}${contract.seasons > 1 ? ` à ${seasons[seasons.indexOf(startS) + contract.seasons - 1]?.name || "___"}` : ""}.`, 20, y, { maxWidth: 170 });
   y += 8;
 
-  // Article 3 - Prestations
+  // Article 3 - Prestations (per season)
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.text(isM ? "Article 3 — Contreparties" : "Article 3 — Prestations", 20, y);
   y += 3;
 
-  const prods = (company.products || []).map(cp => {
-    const pr = allProducts.find(x => x.id === cp.productId);
-    if (!pr) return null;
-    return [pr.name, String(cp.qty), fmtE(cp.unitPrice), fmtE(lineHT(cp))];
-  }).filter(Boolean);
+  const hasSP = contract.seasonProducts && Object.keys(contract.seasonProducts).length > 0;
+  const coveredSeasons = getContractSeasonIds(contract, seasons);
+  let grandTotalHT = 0;
 
-  if (prods.length > 0) {
-    autoTable(doc, {
-      startY: y,
-      head: [["Prestation", "Qté", "Prix unitaire HT", "Total HT"]],
-      body: prods,
-      theme: "striped",
-      headStyles: { fillColor: isM ? [124, 58, 237] : [26, 115, 232], fontSize: 8 },
-      styles: { fontSize: 8, cellPadding: 3 },
-      columnStyles: { 3: { halign: "right", fontStyle: "bold" } },
-      margin: { left: 20, right: 20 },
+  if (hasSP) {
+    // One table per season
+    coveredSeasons.forEach(sid => {
+      const seasonProds = (contract.seasonProducts[sid] || []);
+      const rows = seasonProds.map(cp => {
+        const pr = allProducts.find(x => x.id === cp.productId);
+        if (!pr) return null;
+        return [pr.name, String(cp.qty), fmtE(cp.unitPrice), fmtE(lineHT(cp))];
+      }).filter(Boolean);
+      const seasonHT = seasonProds.reduce((t, cp) => t + lineHT(cp), 0);
+      grandTotalHT += seasonHT;
+
+      if (y > 240) { doc.addPage(); y = 25; }
+
+      // Season subtitle
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(26, 115, 232);
+      doc.text(`Saison ${sid}`, 20, y + 4);
+      doc.setTextColor(0);
+      y += 2;
+
+      if (rows.length > 0) {
+        autoTable(doc, {
+          startY: y,
+          head: [["Prestation", "Qté", "Prix unitaire HT", "Total HT"]],
+          body: rows,
+          theme: "striped",
+          headStyles: { fillColor: isM ? [124, 58, 237] : [26, 115, 232], fontSize: 8 },
+          styles: { fontSize: 8, cellPadding: 3 },
+          columnStyles: { 3: { halign: "right", fontStyle: "bold" } },
+          margin: { left: 20, right: 20 },
+        });
+        y = doc.lastAutoTable.finalY + 2;
+      }
+      // Season subtotal
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Sous-total ${sid} : ${fmtE(seasonHT)} HT`, 190, y, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      y += 6;
     });
-    y = doc.lastAutoTable.finalY + 6;
+  } else {
+    // Fallback: old contract without seasonProducts
+    const prods = (company.products || []).map(cp => {
+      const pr = allProducts.find(x => x.id === cp.productId);
+      if (!pr) return null;
+      return [pr.name, String(cp.qty), fmtE(cp.unitPrice), fmtE(lineHT(cp))];
+    }).filter(Boolean);
+    grandTotalHT = (company.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+
+    if (prods.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        head: [["Prestation", "Qté", "Prix unitaire HT", "Total HT"]],
+        body: prods,
+        theme: "striped",
+        headStyles: { fillColor: isM ? [124, 58, 237] : [26, 115, 232], fontSize: 8 },
+        styles: { fontSize: 8, cellPadding: 3 },
+        columnStyles: { 3: { halign: "right", fontStyle: "bold" } },
+        margin: { left: 20, right: 20 },
+      });
+      y = doc.lastAutoTable.finalY + 6;
+    }
   }
 
   // Article 4 - Montant
+  if (y > 240) { doc.addPage(); y = 25; }
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.text("Article 4 — Conditions financières", 20, y);
@@ -249,8 +303,7 @@ export function generateContrat(club, company, contract, allProducts, seasons, c
   if (isM) {
     doc.text(`Montant du don : ${fmtE(donAmount)}`, 20, y);
   } else {
-    const totalHT = (company.products || []).reduce((t, cp) => t + lineHT(cp), 0);
-    doc.text(`Montant total : ${fmtE(totalHT)} HT`, 20, y);
+    doc.text(`Montant total toutes saisons : ${fmtE(grandTotalHT)} HT`, 20, y);
   }
   y += 6;
 
