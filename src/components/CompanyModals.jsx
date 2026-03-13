@@ -121,6 +121,9 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         ))}</div>
         {co.prospectStatus === "À rappeler" && <div style={{ marginTop: 6 }}><span style={S.lbl}>📅 Date rappel</span><input type="date" style={{ ...S.inp, width: 160 }} value={co.callbackDate || ""} onChange={e => setCo({ ...co, callbackDate: e.target.value })} /></div>}
         {co.prospectStatus === "RDV pris" && <div style={{ marginTop: 6 }}><span style={S.lbl}>📅 Date RDV</span><input type="date" style={{ ...S.inp, width: 160 }} value={co.rdvDate || ""} onChange={e => setCo({ ...co, rdvDate: e.target.value })} /></div>}
+        <div style={{ marginTop: 10, borderTop: `1px solid ${Cl.brd}`, paddingTop: 8 }}>
+          <button style={{ ...S.btnS("ghost"), fontSize: 11, color: Cl.ok }} onClick={() => { convertToPartner(co.id); onClose(); }}>→ Convertir en partenaire</button>
+        </div>
       </div>}
 
       <div style={{ marginTop: 12 }}>
@@ -231,10 +234,6 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
             <Badge type={['Signé','Facturé','Payé'].includes(con.status) ? "signed" : "pending"}>{con.status}</Badge>
           </div>
         ))}
-      </div>}
-
-      {!co.isPartner && <div style={{ marginTop: 16, textAlign: "center" }}>
-        <button style={{ ...S.btn("success"), fontSize: 14, padding: "10px 28px" }} onClick={() => { convertToPartner(co.id); onClose(); }}>✅ Convertir en partenaire</button>
       </div>}
 
       {co.isPartner && <div style={{ marginTop: 16, textAlign: "center" }}>
