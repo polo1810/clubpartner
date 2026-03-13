@@ -113,8 +113,17 @@ export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeaso
 
     {/* Comptes comptables */}
     <div style={{ ...S.cT, marginTop: 20 }}>🧾 Comptes comptables</div>
-    <Field label="Compte TVA collectée"><input style={S.inp} value={accountCodes.tvaCollectee || ""} onChange={e => setAccountCodes(ac => ({ ...ac, tvaCollectee: e.target.value }))} placeholder="44571000" /></Field>
-    <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: Cl.txtL }}>Comptes produits par catégorie :</div>
+    <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: Cl.txtL }}>Comptes TVA collectée :</div>
+    <table style={{ ...S.tbl, marginTop: 4 }}>
+      <thead><tr><th style={S.th}>Taux TVA</th><th style={S.th}>N° de compte</th></tr></thead>
+      <tbody>{[20, 10, 5.5].map(rate => (
+        <tr key={rate}>
+          <td style={S.td}><strong>{rate}%</strong></td>
+          <td style={S.td}><input style={{ ...S.inp, fontFamily: "monospace" }} value={accountCodes.tva?.[rate] || ""} onChange={e => setAccountCodes(ac => ({ ...ac, tva: { ...ac.tva, [rate]: e.target.value } }))} placeholder="4457XXXX" /></td>
+        </tr>
+      ))}</tbody>
+    </table>
+    <div style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: Cl.txtL }}>Comptes produits par catégorie :</div>
     <table style={{ ...S.tbl, marginTop: 4 }}>
       <thead><tr><th style={S.th}>Catégorie</th><th style={S.th}>N° de compte</th></tr></thead>
       <tbody>{cats.map(cat => (
