@@ -273,7 +273,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
 }
 
 export default function ContractsTab({ onOpenCompany, directContract, onDirectContractClosed }) {
-  const { contracts, setContracts, getCompany, contractHT, contractTTC } = useApp();
+  const { contracts, setContracts, getCompany, contractHT, contractTTC, seasonContracts } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [editC, setEditC] = useState(null);
   const [viewC, setViewC] = useState(directContract || null);
@@ -282,8 +282,8 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
     <div style={S.fx}><h2 style={{ fontSize: 16, fontWeight: 700 }}>📝 Contrats</h2>
       <button style={S.btn("primary")} onClick={() => { setEditC(null); setShowForm(true); }}>+ Contrat</button>
     </div>
-    <div style={{ marginTop: 8 }}>{contracts.length === 0 ? <div style={{ textAlign: "center", padding: 30, color: Cl.txtL }}>Aucun contrat</div>
-      : contracts.map(c => {
+    <div style={{ marginTop: 8 }}>{seasonContracts.length === 0 ? <div style={{ textAlign: "center", padding: 30, color: Cl.txtL }}>Aucun contrat pour cette saison</div>
+      : seasonContracts.map(c => {
         const co = getCompany(c.companyId);
         const paid = (c.payments || []).filter(p => p.status === "Payé").reduce((s, p) => s + p.amount, 0);
         return (<div key={c.id} style={{ ...S.card, cursor: "pointer" }} onClick={() => setViewC(c)}>
