@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../data/AppContext';
 import { S, Cl } from '../data/styles';
-import { uid, fmt, lineHT, getPrice, statusBType, P_STATUSES, PARTNER_STATUSES, ACTION_TYPES } from '../data/initialData';
+import { uid, fmt, lineHT, getPrice, statusBType, P_STATUSES, PARTNER_STATUSES, ACTION_TYPES, genAccountCode } from '../data/initialData';
 import { Badge, Modal, Field, MemberSelect, ProductPicker, PhoneLink, EmailLink } from './index';
 import { generateDevis } from '../utils/pdfGenerator';
 
@@ -41,7 +41,7 @@ function hasAnyProduct(sp) {
 export function CompanyForm({ data, onSave, onClose }) {
   const { products, members, addMember, seasons, cats, currentSeason } = useApp();
   const isP = data?.isPartner;
-  const [f, setF] = useState(data || { company: "", sector: "", contact: "", phone: "", email: "", address: "", siret: "", tvaNumber: "", season: currentSeason, isPartner: false, dealType: "Partenariat", donAmount: 0, prospectStatus: "Nouveau", partnerStatus: "", callbackDate: "", rdvDate: "", member: members[0], products: [], seasonProducts: {} });
+  const [f, setF] = useState(data || { company: "", sector: "", contact: "", phone: "", email: "", address: "", siret: "", tvaNumber: "", accountCode: "", season: currentSeason, isPartner: false, dealType: "Partenariat", donAmount: 0, prospectStatus: "Nouveau", partnerStatus: "", callbackDate: "", rdvDate: "", member: members[0], products: [], seasonProducts: {} });
   const set = (k, v) => setF({ ...f, [k]: v });
 
   // Season products state
@@ -92,6 +92,7 @@ export function CompanyForm({ data, onSave, onClose }) {
         <Field label="Adresse"><input style={S.inp} value={f.address} onChange={e => set("address", e.target.value)} /></Field>
         <Field label="SIRET"><input style={S.inp} value={f.siret || ""} onChange={e => set("siret", e.target.value)} placeholder="Optionnel" /></Field>
         <Field label="N° TVA"><input style={S.inp} value={f.tvaNumber || ""} onChange={e => set("tvaNumber", e.target.value)} placeholder="Optionnel" /></Field>
+        <Field label="Compte comptable"><input style={{ ...S.inp, fontFamily: "monospace" }} value={f.accountCode || genAccountCode(f.company)} onChange={e => set("accountCode", e.target.value)} /></Field>
         <Field label="Type"><select style={S.sel} value={f.dealType || "Partenariat"} onChange={e => set("dealType", e.target.value)}><option>Partenariat</option><option>Mécénat</option></select></Field>
         {isM && <Field label="Montant du don (€)"><input type="number" style={S.inp} value={f.donAmount || 0} onChange={e => set("donAmount", +e.target.value)} /></Field>}
         {!isP && <Field label="Statut prospection"><select style={S.sel} value={f.prospectStatus} onChange={e => set("prospectStatus", e.target.value)}>{P_STATUSES.map(s => <option key={s}>{s}</option>)}</select></Field>}
