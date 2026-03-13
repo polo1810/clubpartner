@@ -18,10 +18,18 @@ export function AppProvider({ children }) {
   const addMember = (n) => { if (n && !members.includes(n)) setMembers(ms => [...ms, n]); };
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const prospectsList = useMemo(() => companies.filter(c => !c.isPartner), [companies]);
-  const partnersList = useMemo(() => companies.filter(c => c.isPartner), [companies]);
+  const prospectsList = useMemo(() => companies.filter(c => !c.isPartner && c.season === currentSeason), [companies, currentSeason]);
+  const partnersList = useMemo(() => companies.filter(c => c.isPartner && c.season === currentSeason), [companies, currentSeason]);
+  // All companies (unfiltered) for lookups
+  const allCompanies = companies;
   const getCompany = (id) => companies.find(c => c.id === id);
   const companyContracts = (cid) => contracts.filter(c => c.companyId === cid);
+
+  // Contracts covering the current season
+  const seasonContracts = useMemo(() => contracts.filter(c => {
+    const sids = getContractSeasonIds(c, seasons);
+    return sids.includes(currentSeason);
+  }), [contracts, currentSeason, seasons]);
 
   const contractHT = (con) => {
     if (con.seasonProducts && Object.keys(con.seasonProducts).length > 0) {
@@ -36,33 +44,42 @@ export function AppProvider({ children }) {
     const co = getCompany(con.companyId); return (co?.products || []).reduce((t, cp) => { const prod = products.find(x => x.id === cp.productId); return t + lineTTC(cp, prod?.tva); }, 0);
   };
 
-  const stockSold = useMemo(() => { const u = {}; partnersList.forEach(c => { const cons = companyContracts(c.id); if (cons.some(co => isSigned(co))) (c.products || []).forEach(cp => { u[cp.productId] = (u[cp.productId] || 0) + cp.qty; }); }); return u; }, [companies, contracts]);
+  // Helper: get products for a company for the current season
+  const seasonProdsFor = (c) => {
+    if (c.seasonProducts && c.seasonProducts[currentSeason]) return c.seasonProducts[currentSeason];
+    return c.products || [];
+  };
 
-  const stockProv = useMemo(() => { const u = {}; prospectsList.forEach(c => { (c.products || []).forEach(cp => { u[cp.productId] = (u[cp.productId] || 0) + cp.qty; }); }); partnersList.forEach(c => { const cons = companyContracts(c.id); if (!cons.some(co => isSigned(co))) (c.products || []).forEach(cp => { u[cp.productId] = (u[cp.productId] || 0) + cp.qty; }); }); return u; }, [companies, contracts]);
+  const stockSold = useMemo(() => { const u = {}; partnersList.forEach(c => { const cons = companyContracts(c.id); if (cons.some(co => isSigned(co))) seasonProdsFor(c).forEach(cp => { u[cp.productId] = (u[cp.productId] || 0) + cp.qty; }); }); return u; }, [companies, contracts, currentSeason]);
 
-  const caByProd = useMemo(() => { const r = {}; partnersList.forEach(c => { const cons = companyContracts(c.id); if (cons.some(co => isSigned(co))) (c.products || []).forEach(cp => { r[cp.productId] = (r[cp.productId] || 0) + lineHT(cp); }); }); return r; }, [companies, contracts]);
+  const stockProv = useMemo(() => { const u = {}; prospectsList.forEach(c => { seasonProdsFor(c).forEach(cp => { u[cp.productId] = (u[cp.productId] || 0) + cp.qty; }); }); partnersList.forEach(c => { const cons = companyContracts(c.id); if (!cons.some(co => isSigned(co))) seasonProdsFor(c).forEach(cp => { u[cp.productId] = (u[cp.productId] || 0) + cp.qty; }); }); return u; }, [companies, contracts, currentSeason]);
+
+  const caByProd = useMemo(() => { const r = {}; partnersList.forEach(c => { const cons = companyContracts(c.id); if (cons.some(co => isSigned(co))) seasonProdsFor(c).forEach(cp => { r[cp.productId] = (r[cp.productId] || 0) + lineHT(cp); }); }); return r; }, [companies, contracts, currentSeason]);
 
   const totalCA = useMemo(() => Object.values(caByProd).reduce((a, b) => a + b, 0), [caByProd]);
-  const totalPaid = useMemo(() => contracts.reduce((t, c) => t + (c.payments || []).filter(p => p.status === "Payé").reduce((s, p) => s + p.amount, 0), 0), [contracts]);
+  const totalPaid = useMemo(() => seasonContracts.reduce((t, c) => t + (c.payments || []).filter(p => p.status === "Payé").reduce((s, p) => s + p.amount, 0), 0), [seasonContracts]);
 
   const allActions = useMemo(() => {
     const acts = [];
-    companies.forEach(co => { (co.actions || []).forEach(a => acts.push({ ...a, companyId: co.id, companyName: co.company, source: co.isPartner ? "partner" : "prospect" })); });
-    contracts.forEach(con => { const co = getCompany(con.companyId); (con.actions || []).forEach(a => acts.push({ ...a, companyId: con.companyId, companyName: co?.company || "?", contractId: con.id, source: "contract" })); });
+    // Actions from companies of current season
+    const seasonCompanies = companies.filter(c => c.season === currentSeason);
+    seasonCompanies.forEach(co => { (co.actions || []).forEach(a => acts.push({ ...a, companyId: co.id, companyName: co.company, source: co.isPartner ? "partner" : "prospect" })); });
+    // Actions from contracts covering current season
+    seasonContracts.forEach(con => { const co = getCompany(con.companyId); (con.actions || []).forEach(a => acts.push({ ...a, companyId: con.companyId, companyName: co?.company || "?", contractId: con.id, source: "contract" })); });
     return acts;
-  }, [companies, contracts]);
+  }, [companies, contracts, currentSeason, seasons]);
 
   const caByType = useMemo(() => {
     const r = { Partenariat: 0, "Mécénat": 0 };
     partnersList.forEach(c => {
       const cons = companyContracts(c.id);
       if (cons.some(co => isSigned(co))) {
-        const ht = (c.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+        const ht = seasonProdsFor(c).reduce((t, cp) => t + lineHT(cp), 0);
         r[c.dealType || "Partenariat"] = (r[c.dealType || "Partenariat"] || 0) + ht;
       }
     });
     return r;
-  }, [companies, contracts]);
+  }, [companies, contracts, currentSeason]);
 
   const convertToPartner = (companyId) => {
     const co = companies.find(c => c.id === companyId);
@@ -103,7 +120,7 @@ export function AppProvider({ children }) {
     partnersList.forEach(c => {
       const cons = companyContracts(c.id);
       if (cons.some(co => isSigned(co))) {
-        const ht = (c.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+        const ht = seasonProdsFor(c).reduce((t, cp) => t + lineHT(cp), 0);
         const isM = c.dealType === "Mécénat";
         const amount = isM ? (c.donAmount || 0) : ht;
         const m = c.member;
@@ -113,7 +130,7 @@ export function AppProvider({ children }) {
       }
     });
     return r;
-  }, [companies, contracts, members]);
+  }, [companies, contracts, members, currentSeason]);
 
   const openAddContractAction = (contractId) => {
     const con = contracts.find(c => c.id === contractId);
@@ -135,7 +152,7 @@ export function AppProvider({ children }) {
     members, setMembers, addMember, seasons, setSeasons, cats, setCats, currentSeason, setCurrentSeason,
     miniForm, setMiniForm, todayStr, clubInfo, setClubInfo,
     prospectsList, partnersList, getCompany, companyContracts,
-    contractHT, contractTTC, stockSold, stockProv, caByProd, caByType, totalCA, totalPaid, allActions,
+    contractHT, contractTTC, stockSold, stockProv, caByProd, caByType, totalCA, totalPaid, allActions, seasonContracts,
     objectives, setObjectives, caByMember,
     convertToPartner, openAddAction, openAddContractAction,
   };
