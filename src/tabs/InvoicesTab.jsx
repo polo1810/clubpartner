@@ -6,7 +6,7 @@ import { Badge, Modal } from '../components/index';
 import { generateFacturePDF } from '../utils/pdfGenerator';
 
 function InvoiceDetail({ invoice, onClose }) {
-  const { getCompany, contracts, invoices, setInvoices, clubInfo, accountCodes, products } = useApp();
+  const { getCompany, contracts, invoices, setInvoices, clubInfo, accountCodes, products, openAddInvoiceAction } = useApp();
   const co = getCompany(invoice.companyId);
   const con = contracts.find(c => c.id === invoice.contractId);
   const payments = (con?.payments || []);
@@ -81,6 +81,17 @@ function InvoiceDetail({ invoice, onClose }) {
           <tr key={i}><td style={S.td}>{e.journal}</td><td style={{ ...S.td, fontFamily: "monospace" }}>{e.compte}</td><td style={S.td}>{e.libelle}</td><td style={{ ...S.td, fontWeight: e.debit > 0 ? 700 : 400 }}>{e.debit > 0 ? fmt(e.debit) : ""}</td><td style={{ ...S.td, fontWeight: e.credit > 0 ? 700 : 400 }}>{e.credit > 0 ? fmt(e.credit) : ""}</td></tr>
         ))}</tbody>
       </table>
+
+      {/* Actions */}
+      <div style={{ ...S.fx, marginTop: 14 }}><div style={S.cT}>📋 Actions</div><button style={S.btnS("ghost")} onClick={() => openAddInvoiceAction(invoice.id)}>+</button></div>
+      {(invoice.actions || []).length === 0 ? <p style={{ fontSize: 11, color: Cl.txtL }}>Aucune action — cliquez + pour ajouter (relance, suivi...)</p>
+      : (invoice.actions || []).map(a => (
+        <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 11, opacity: a.done ? 0.5 : 1 }}>
+          <input type="checkbox" checked={a.done} onChange={() => upd({ actions: invoice.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) })} />
+          <Badge type="draft">{a.category}</Badge><strong>{a.type}</strong><span style={{ color: Cl.txtL }}>{a.date}</span><span style={{ color: Cl.pri, fontSize: 10 }}>👤 {a.assignee}</span>
+          <button style={S.btnS("ghost")} onClick={() => upd({ actions: invoice.actions.filter(x => x.id !== a.id) })}>✕</button>
+        </div>
+      ))}
 
       {/* Buttons */}
       <div style={{ marginTop: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
