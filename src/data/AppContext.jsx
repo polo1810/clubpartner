@@ -28,6 +28,8 @@ export function AppProvider({ children }) {
 
   const stockSold = useMemo(() => { const u = {}; partnersList.forEach(c => { const cons = companyContracts(c.id); if (cons.some(co => isSigned(co))) (c.products || []).forEach(cp => { u[cp.productId] = (u[cp.productId] || 0) + cp.qty; }); }); return u; }, [companies, contracts]);
 
+  const stockProv = useMemo(() => { const u = {}; prospectsList.forEach(c => { (c.products || []).forEach(cp => { u[cp.productId] = (u[cp.productId] || 0) + cp.qty; }); }); partnersList.forEach(c => { const cons = companyContracts(c.id); if (!cons.some(co => isSigned(co))) (c.products || []).forEach(cp => { u[cp.productId] = (u[cp.productId] || 0) + cp.qty; }); }); return u; }, [companies, contracts]);
+
   const caByProd = useMemo(() => { const r = {}; partnersList.forEach(c => { const cons = companyContracts(c.id); if (cons.some(co => isSigned(co))) (c.products || []).forEach(cp => { r[cp.productId] = (r[cp.productId] || 0) + lineHT(cp); }); }); return r; }, [companies, contracts]);
 
   const totalCA = useMemo(() => Object.values(caByProd).reduce((a, b) => a + b, 0), [caByProd]);
@@ -115,7 +117,7 @@ export function AppProvider({ children }) {
     members, setMembers, addMember, seasons, setSeasons, cats, setCats, currentSeason,
     miniForm, setMiniForm, todayStr, clubInfo, setClubInfo,
     prospectsList, partnersList, getCompany, companyContracts,
-    contractHT, contractTTC, stockSold, caByProd, caByType, totalCA, totalPaid, allActions,
+    contractHT, contractTTC, stockSold, stockProv, caByProd, caByType, totalCA, totalPaid, allActions,
     objectives, setObjectives, caByMember,
     convertToPartner, openAddAction, openAddContractAction,
   };
