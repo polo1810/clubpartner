@@ -54,3 +54,14 @@ export const INIT_COMPANIES = [
 export const INIT_CONTRACTS = [
   { id: 1, companyId: 2, type: "Partenariat", member: "Lucas Dupont", signataire: "Jean Petit", seasons: 2, startSeason: "2025-2026", status: "Signé", donAmount: 0, payments: [{ id: 1, label: "Acompte 50%", amount: 1175, dueDate: "2026-04-01", status: "Payé" }, { id: 2, label: "Solde 50%", amount: 1175, dueDate: "2026-09-01", status: "En attente" }], actions: [{ id: 10, type: "Envoyer facture solde", category: "Contrat et facturation", date: "2026-08-15", done: false, note: "", assignee: "Lucas Dupont" }] },
 ];
+
+export const INIT_CLUB_INFO = {
+  name: "Club Sportif de Cholet",
+  address: "12 avenue du Stade, 49300 Cholet",
+  phone: "02 41 00 00 00",
+  email: "contact@clubcholet.fr",
+  siret: "123 456 789 00012",
+  tvaNumber: "FR 12 345678900",
+  president: "Michel Dupont",
+  validiteDays: 30,
+};
