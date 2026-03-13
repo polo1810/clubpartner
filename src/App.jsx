@@ -10,30 +10,30 @@ import ActionsTab from './tabs/ActionsTab';
 import ProductsTab from './tabs/ProductsTab';
 import AmortTab from './tabs/AmortTab';
 import ContractsTab from './tabs/ContractsTab';
-
+ 
 const tabs = [
   { id: "dashboard", label: "📊 Bord" }, { id: "prospects", label: "🎯 Prospects" },
   { id: "partners", label: "🤝 Partenaires" }, { id: "contracts", label: "📝 Contrats" },
   { id: "actions", label: "📋 Actions" }, { id: "products", label: "📦 Stocks" },
   { id: "amortize", label: "💰 Amort." },
 ];
-
+ 
 function AppInner() {
   const ctx = useApp();
-  const { miniForm, setMiniForm, members, setMembers, addMember, cats, setCats, seasons, currentSeason, prospectsList, partnersList, products, contracts, stockSold, caByProd, contractHT } = ctx;
+  const { miniForm, setMiniForm, members, setMembers, addMember, cats, setCats, seasons, currentSeason, setCurrentSeason, prospectsList, partnersList, products, contracts, stockSold, caByProd, contractHT } = ctx;
   const [tab, setTab] = useState("dashboard");
   const [showTeam, setShowTeam] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [directContract, setDirectContract] = useState(null);
-
+ 
   const openContractDirect = (contract) => { setDirectContract(contract); setTab("contracts"); };
   const setTabAndView = (t) => { setDirectContract(null); setTab(t); };
-
+ 
   return (
     <div style={S.app}>
       <div style={S.header}>
-        <div><div style={{ fontSize: 18, fontWeight: 700 }}>🏟️ ClubPartner</div><div style={{ fontSize: 11, opacity: 0.8 }}>Saison {currentSeason}</div></div>
+        <div><div style={{ fontSize: 18, fontWeight: 700 }}>🏟️ ClubPartner</div><select value={currentSeason} onChange={e => setCurrentSeason(e.target.value)} style={{ fontSize: 11, background: "rgba(255,255,255,0.15)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, padding: "2px 6px", cursor: "pointer" }}>{seasons.map(s => <option key={s.id} value={s.id} style={{ color: "#000" }}>{s.name}</option>)}</select></div>
         <div style={{ display: "flex", gap: 6 }}>
           <button style={{ ...S.btn("ghost"), color: "#fff", borderColor: "rgba(255,255,255,0.3)", fontSize: 11 }} onClick={() => setShowTeam(true)}>👥</button>
           <button style={{ ...S.btn("ghost"), color: "#fff", borderColor: "rgba(255,255,255,0.3)", fontSize: 11 }} onClick={() => setShowSettings(true)}>⚙️</button>
@@ -64,7 +64,7 @@ function AppInner() {
     </div>
   );
 }
-
+ 
 export default function App() {
   return <AppProvider><AppInner /></AppProvider>;
 }
