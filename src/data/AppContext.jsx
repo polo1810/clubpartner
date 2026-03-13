@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useMemo } from 'react';
-import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice } from '../data/initialData';
+import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds } from '../data/initialData';
 
 const Ctx = createContext();
 export const useApp = () => useContext(Ctx);
@@ -23,8 +23,18 @@ export function AppProvider({ children }) {
   const getCompany = (id) => companies.find(c => c.id === id);
   const companyContracts = (cid) => contracts.filter(c => c.companyId === cid);
 
-  const contractHT = (con) => { const co = getCompany(con.companyId); return (co?.products || []).reduce((t, cp) => t + lineHT(cp), 0); };
-  const contractTTC = (con) => { const co = getCompany(con.companyId); return (co?.products || []).reduce((t, cp) => { const prod = products.find(x => x.id === cp.productId); return t + lineTTC(cp, prod?.tva); }, 0); };
+  const contractHT = (con) => {
+    if (con.seasonProducts && Object.keys(con.seasonProducts).length > 0) {
+      return Object.values(con.seasonProducts).reduce((total, prods) => total + prods.reduce((t, cp) => t + lineHT(cp), 0), 0);
+    }
+    const co = getCompany(con.companyId); return (co?.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+  };
+  const contractTTC = (con) => {
+    if (con.seasonProducts && Object.keys(con.seasonProducts).length > 0) {
+      return Object.values(con.seasonProducts).reduce((total, prods) => total + prods.reduce((t, cp) => { const prod = products.find(x => x.id === cp.productId); return t + lineTTC(cp, prod?.tva); }, 0), 0);
+    }
+    const co = getCompany(con.companyId); return (co?.products || []).reduce((t, cp) => { const prod = products.find(x => x.id === cp.productId); return t + lineTTC(cp, prod?.tva); }, 0);
+  };
 
   const stockSold = useMemo(() => { const u = {}; partnersList.forEach(c => { const cons = companyContracts(c.id); if (cons.some(co => isSigned(co))) (c.products || []).forEach(cp => { u[cp.productId] = (u[cp.productId] || 0) + cp.qty; }); }); return u; }, [companies, contracts]);
 
@@ -57,7 +67,8 @@ export function AppProvider({ children }) {
   const convertToPartner = (companyId) => {
     const co = companies.find(c => c.id === companyId);
     if (!co) return;
-    setContracts(cs => [...cs, { id: uid(), companyId, type: co.dealType || "Partenariat", member: co.member, signataire: co.contact, seasons: 1, startSeason: currentSeason, status: "En attente", donAmount: co.donAmount || 0, payments: [], actions: [] }]);
+    const sp = {}; sp[currentSeason] = [...(co.products || []).map(p => ({ ...p }))];
+    setContracts(cs => [...cs, { id: uid(), companyId, type: co.dealType || "Partenariat", member: co.member, signataire: co.contact, seasons: 1, startSeason: currentSeason, status: "En attente", donAmount: co.donAmount || 0, seasonProducts: sp, payments: [], actions: [] }]);
     setCompanies(cs => cs.map(c => c.id === companyId ? { ...c, isPartner: true, prospectStatus: "", partnerStatus: "Nouveau partenaire" } : c));
   };
 
