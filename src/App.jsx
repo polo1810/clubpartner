@@ -10,14 +10,14 @@ import ActionsTab from './tabs/ActionsTab';
 import ProductsTab from './tabs/ProductsTab';
 import AmortTab from './tabs/AmortTab';
 import ContractsTab from './tabs/ContractsTab';
- 
+
 const tabs = [
   { id: "dashboard", label: "📊 Bord" }, { id: "prospects", label: "🎯 Prospects" },
   { id: "partners", label: "🤝 Partenaires" }, { id: "contracts", label: "📝 Contrats" },
   { id: "actions", label: "📋 Actions" }, { id: "products", label: "📦 Stocks" },
   { id: "amortize", label: "💰 Amort." },
 ];
- 
+
 function AppInner() {
   const ctx = useApp();
   const { miniForm, setMiniForm, members, setMembers, addMember, cats, setCats, seasons, currentSeason, setCurrentSeason, prospectsList, partnersList, products, contracts, stockSold, caByProd, contractHT } = ctx;
@@ -26,10 +26,10 @@ function AppInner() {
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [directContract, setDirectContract] = useState(null);
- 
+
   const openContractDirect = (contract) => { setDirectContract(contract); setTab("contracts"); };
   const setTabAndView = (t) => { setDirectContract(null); setTab(t); };
- 
+
   return (
     <div style={S.app}>
       <div style={S.header}>
@@ -64,7 +64,7 @@ function AppInner() {
     </div>
   );
 }
- 
+
 export default function App() {
   return <AppProvider><AppInner /></AppProvider>;
 }
