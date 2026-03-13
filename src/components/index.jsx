@@ -92,12 +92,25 @@ export const ProductFormModal = ({ onClose, onAdd, cats, seasons, currentSeason 
   <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}><button style={S.btn("ghost")} onClick={onClose}>Annuler</button><button style={S.btn("primary")} onClick={() => { const prices = {}; Object.entries(sp).forEach(([k, v]) => { if (v.price || v.cost || v.amort) prices[k] = v; }); onAdd({ ...f, prices, totalCost: f.totalCost }); }}>Ajouter</button></div></Modal>);
 };
 
-export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeason, onClose }) => {
+export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeason, clubInfo, setClubInfo, onClose }) => {
   const [newCat, setNewCat] = useState("");
   const [newSeason, setNewSeason] = useState({ name: "", startDate: "", endDate: "" });
   const updateSeason = (id, key, value) => setSeasons(ss => ss.map(s => s.id === id ? { ...s, [key]: value } : s));
+  const setClub = (k, v) => setClubInfo(ci => ({ ...ci, [k]: v }));
   return (<Modal title="⚙️ Paramètres" onClose={onClose}>
-    <div style={S.cT}>📁 Catégories de produits</div>
+    <div style={S.cT}>🏟️ Informations du club / association</div>
+    <div style={S.g2}>
+      <Field label="Nom du club"><input style={S.inp} value={clubInfo.name || ""} onChange={e => setClub("name", e.target.value)} /></Field>
+      <Field label="Adresse"><input style={S.inp} value={clubInfo.address || ""} onChange={e => setClub("address", e.target.value)} /></Field>
+      <Field label="Téléphone"><input style={S.inp} value={clubInfo.phone || ""} onChange={e => setClub("phone", e.target.value)} /></Field>
+      <Field label="Email"><input style={S.inp} value={clubInfo.email || ""} onChange={e => setClub("email", e.target.value)} /></Field>
+      <Field label="SIRET"><input style={S.inp} value={clubInfo.siret || ""} onChange={e => setClub("siret", e.target.value)} /></Field>
+      <Field label="N° TVA"><input style={S.inp} value={clubInfo.tvaNumber || ""} onChange={e => setClub("tvaNumber", e.target.value)} /></Field>
+      <Field label="Président(e)"><input style={S.inp} value={clubInfo.president || ""} onChange={e => setClub("president", e.target.value)} /></Field>
+      <Field label="Validité devis (jours)"><input type="number" style={S.inp} value={clubInfo.validiteDays || 30} onChange={e => setClub("validiteDays", +e.target.value)} /></Field>
+    </div>
+
+    <div style={{ ...S.cT, marginTop: 20 }}>📁 Catégories de produits</div>
     {cats.map(c => (<div key={c} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: `1px solid ${Cl.brd}` }}><span style={{ flex: 1, fontSize: 13 }}>{c}</span>{cats.length > 1 && <button style={S.btnS("ghost")} onClick={() => setCats(cs => cs.filter(x => x !== c))}>✕</button>}</div>))}
     <div style={{ marginTop: 8, display: "flex", gap: 6 }}><input style={{ ...S.inp, flex: 1 }} placeholder="Nouvelle catégorie..." value={newCat} onChange={e => setNewCat(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && newCat.trim() && !cats.includes(newCat.trim())) { setCats(cs => [...cs, newCat.trim()]); setNewCat(""); } }} /><button style={S.btn("primary")} onClick={() => { if (newCat.trim() && !cats.includes(newCat.trim())) { setCats(cs => [...cs, newCat.trim()]); setNewCat(""); } }}>Ajouter</button></div>
 
@@ -113,7 +126,6 @@ export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeaso
         </tr>
       ))}</tbody>
     </table>
-
     <div style={{ marginTop: 12 }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: Cl.txtL, marginBottom: 6 }}>Ajouter une saison</div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
