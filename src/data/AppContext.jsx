@@ -73,6 +73,27 @@ export function AppProvider({ children }) {
     }});
   };
 
+  const [objectives, setObjectives] = useState({ partenariat: 50000, mecenat: 20000, members: {} });
+
+  // CA réalisé par membre (basé sur le responsable de l'entreprise)
+  const caByMember = useMemo(() => {
+    const r = {};
+    members.forEach(m => { r[m] = { partenariat: 0, mecenat: 0, total: 0 }; });
+    partnersList.forEach(c => {
+      const cons = companyContracts(c.id);
+      if (cons.some(co => isSigned(co))) {
+        const ht = (c.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+        const isM = c.dealType === "Mécénat";
+        const amount = isM ? (c.donAmount || 0) : ht;
+        const m = c.member;
+        if (!r[m]) r[m] = { partenariat: 0, mecenat: 0, total: 0 };
+        if (isM) r[m].mecenat += amount; else r[m].partenariat += amount;
+        r[m].total += amount;
+      }
+    });
+    return r;
+  }, [companies, contracts, members]);
+
   const openAddContractAction = (contractId) => {
     const con = contracts.find(c => c.id === contractId);
     setMiniForm({ title: "Action contrat", fields: [
@@ -94,6 +115,7 @@ export function AppProvider({ children }) {
     miniForm, setMiniForm, todayStr,
     prospectsList, partnersList, getCompany, companyContracts,
     contractHT, contractTTC, stockSold, caByProd, caByType, totalCA, totalPaid, allActions,
+    objectives, setObjectives, caByMember,
     convertToPartner, openAddAction, openAddContractAction,
   };
 
