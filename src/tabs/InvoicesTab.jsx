@@ -34,7 +34,7 @@ function InvoiceDetail({ invoice, onClose }) {
     <Modal title={`Facture ${invoice.number}`} onClose={onClose}>
       <div style={S.g2}>
         <div><span style={S.lbl}>Entreprise</span><strong>{invoice.companyName}</strong></div>
-        <div><span style={S.lbl}>Date</span>{invoice.dateStr}</div>
+        <div><span style={S.lbl}>Date de facturation</span><input type="date" style={{ ...S.inp, width: 160 }} value={invoice.date} onChange={e => { const d = e.target.value; const parts = d.split("-"); const ds = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : invoice.dateStr; upd({ date: d, dateStr: ds }); }} /></div>
         <div><span style={S.lbl}>Saison</span><Badge type="draft">{invoice.season}</Badge></div>
         <div><span style={S.lbl}>Statut</span><select style={{ ...S.sel, width: "auto" }} value={invoice.status} onChange={e => upd({ status: e.target.value })}>{INVOICE_STATUSES.map(s => <option key={s}>{s}</option>)}</select></div>
       </div>
