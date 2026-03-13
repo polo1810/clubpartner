@@ -111,7 +111,15 @@ export function AppProvider({ children }) {
     }});
   };
 
-  const [objectives, setObjectives] = useState({ partenariat: 50000, mecenat: 20000, members: {} });
+  const [allObjectives, setAllObjectives] = useState({ "2025-2026": { partenariat: 50000, mecenat: 20000, members: {} } });
+  const objectives = allObjectives[currentSeason] || { partenariat: 0, mecenat: 0, members: {} };
+  const setObjectives = (updater) => {
+    setAllObjectives(prev => {
+      const cur = prev[currentSeason] || { partenariat: 0, mecenat: 0, members: {} };
+      const next = typeof updater === "function" ? updater(cur) : updater;
+      return { ...prev, [currentSeason]: next };
+    });
+  };
 
   // CA réalisé par membre (basé sur le responsable de l'entreprise)
   const caByMember = useMemo(() => {
