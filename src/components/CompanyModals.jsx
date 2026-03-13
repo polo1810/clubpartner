@@ -41,15 +41,19 @@ function hasAnyProduct(sp) {
 export function CompanyForm({ data, onSave, onClose }) {
   const { products, members, addMember, seasons, cats, currentSeason } = useApp();
   const isP = data?.isPartner;
-  const [f, setF] = useState(data || { company: "", sector: "", contact: "", phone: "", email: "", address: "", siret: "", tvaNumber: "", accountCode: "", season: currentSeason, isPartner: false, dealType: "Partenariat", donAmount: 0, prospectStatus: "Nouveau", partnerStatus: "", callbackDate: "", rdvDate: "", member: members[0], products: [], seasonProducts: {} });
+  const [f, setF] = useState(data || { company: "", sector: "", contact: "", phone: "", email: "", address: "", siret: "", tvaNumber: "", accountCode: "", season: currentSeason, isPartner: false, dealType: "Partenariat", donAmount: 0, prospectStatus: "Nouveau", partnerStatus: "", callbackDate: "", rdvDate: "", member: members[0], products: [], seasonProducts: {}, seasonDonAmounts: {} });
   const set = (k, v) => setF({ ...f, [k]: v });
 
   // Season products state
   const [sp, setSp] = useState(() => {
     const existing = getCompanySP(data || {}, seasons);
-    // Ensure at least the current season exists
     if (!existing[currentSeason]) existing[currentSeason] = [];
     return existing;
+  });
+  // Season don amounts
+  const [sda, setSda] = useState(() => {
+    if (data?.seasonDonAmounts && Object.keys(data.seasonDonAmounts).length > 0) return { ...data.seasonDonAmounts };
+    return { [currentSeason]: data?.donAmount || 0 };
   });
   const [activeSeason, setActiveSeason] = useState(currentSeason);
   const seasonIds = seasons.map(s => s.id);
@@ -66,19 +70,22 @@ export function CompanyForm({ data, onSave, onClose }) {
   const setCP = (prods) => setSp({ ...sp, [activeSeason]: prods });
   const totalHT = allSeasonsHT(sp);
   const isM = f.dealType === "Mécénat";
-  const ratio = isM && f.donAmount > 0 ? (totalHT / f.donAmount) * 100 : 0;
-  const ratioOK = !isM || f.donAmount === 0 || ratio <= 25;
+  const curDon = sda[activeSeason] || 0;
+  const curHT = curProds.reduce((t, cp) => t + lineHT(cp), 0);
+  const curRatio = isM && curDon > 0 ? (curHT / curDon) * 100 : 0;
+  const totDon = Object.values(sda).reduce((t, d) => t + (d || 0), 0);
+  const allRatiosOK = !isM || seasonIds.every(sid => { const d = sda[sid] || 0; const h = (sp[sid] || []).reduce((t, cp) => t + lineHT(cp), 0); return d === 0 || (h / d) * 100 <= 25; });
 
   const copyFrom = (fromSid) => {
     if (sp[fromSid]) setSp({ ...sp, [activeSeason]: sp[fromSid].map(p => ({ ...p })) });
+    if (sda[fromSid] !== undefined) setSda({ ...sda, [activeSeason]: sda[fromSid] });
   };
 
   const doSave = () => {
-    // Clean: remove empty seasons
-    const cleanSP = {};
+    const cleanSP = {}; const cleanSDA = {};
     Object.entries(sp).forEach(([k, v]) => { if (v.length > 0) cleanSP[k] = v; });
-    // products = current season for backward compat
-    onSave({ ...f, seasonProducts: cleanSP, products: cleanSP[currentSeason] || [] });
+    Object.entries(sda).forEach(([k, v]) => { if (v > 0) cleanSDA[k] = v; });
+    onSave({ ...f, seasonProducts: cleanSP, seasonDonAmounts: cleanSDA, donAmount: totDon, products: cleanSP[currentSeason] || [] });
   };
 
   return (
@@ -94,7 +101,6 @@ export function CompanyForm({ data, onSave, onClose }) {
         <Field label="N° TVA"><input style={S.inp} value={f.tvaNumber || ""} onChange={e => set("tvaNumber", e.target.value)} placeholder="Optionnel" /></Field>
         <Field label="Compte comptable"><input style={{ ...S.inp, fontFamily: "monospace" }} value={f.accountCode || genAccountCode(f.company)} onChange={e => set("accountCode", e.target.value)} /></Field>
         <Field label="Type"><select style={S.sel} value={f.dealType || "Partenariat"} onChange={e => set("dealType", e.target.value)}><option>Partenariat</option><option>Mécénat</option></select></Field>
-        {isM && <Field label="Montant du don (€)"><input type="number" style={S.inp} value={f.donAmount || 0} onChange={e => set("donAmount", +e.target.value)} /></Field>}
         {!isP && <Field label="Statut prospection"><select style={S.sel} value={f.prospectStatus} onChange={e => set("prospectStatus", e.target.value)}>{P_STATUSES.map(s => <option key={s}>{s}</option>)}</select></Field>}
         {isP && <Field label="Statut partenaire"><select style={S.sel} value={f.partnerStatus} onChange={e => set("partnerStatus", e.target.value)}>{PARTNER_STATUSES.map(s => <option key={s}>{s}</option>)}</select></Field>}
         {f.prospectStatus === "À rappeler" && <Field label="Date rappel"><input type="date" style={S.inp} value={f.callbackDate || ""} onChange={e => set("callbackDate", e.target.value)} /></Field>}
@@ -108,9 +114,14 @@ export function CompanyForm({ data, onSave, onClose }) {
         <label style={S.lbl}>{isP ? "Produits validés" : "Produits proposés"}{isM ? " (contreparties)" : ""} — par saison</label>
         <SeasonTabs seasonIds={seasonIds} active={activeSeason} onChange={(sid) => { if (!sp[sid]) setSp({ ...sp, [sid]: [] }); setActiveSeason(sid); }} />
         {Object.keys(sp).length > 1 && <div style={{ marginBottom: 6, fontSize: 10, color: Cl.txtL }}>
-          Copier depuis : {seasonIds.filter(s => s !== activeSeason && sp[s]?.length > 0).map(s => (
+          Copier depuis : {seasonIds.filter(s => s !== activeSeason && (sp[s]?.length > 0 || sda[s] > 0)).map(s => (
             <button key={s} style={{ ...S.btnS("ghost"), fontSize: 10, padding: "1px 6px" }} onClick={() => copyFrom(s)}>📋 {s}</button>
           ))}
+        </div>}
+        {isM && <div style={{ marginBottom: 8, padding: 8, background: Cl.purL, borderRadius: 6, border: `1px solid ${Cl.pur}` }}>
+          <label style={{ ...S.lbl, color: Cl.pur }}>💜 Montant du don — {activeSeason}</label>
+          <input type="number" style={{ ...S.inp, fontWeight: 700, fontSize: 16 }} value={sda[activeSeason] || 0} onChange={e => setSda({ ...sda, [activeSeason]: Math.max(0, +e.target.value) })} />
+          {curDon > 0 && curHT > 0 && <div style={S.alert(curRatio <= 25 ? "success" : "danger")}>{curRatio <= 25 ? `✅ Contreparties = ${curRatio.toFixed(1)}% du don (max 25%)` : `⚠️ ${curRatio.toFixed(1)}% > 25% !`}</div>}
         </div>}
         <ProductPicker products={products} selected={curProds} onToggle={togP} cats={cats} currentSeason={activeSeason} />
       </div>
@@ -137,12 +148,12 @@ export function CompanyForm({ data, onSave, onClose }) {
             <td style={S.tdR}><strong>{fmt(lineHT(spi))}</strong></td>
             <td style={S.td}><button style={S.btnS("ghost")} onClick={() => setCP(curProds.filter(x => x.productId !== spi.productId))}>✕</button></td>
           </tr>); })}</tbody></table>}
-      {curProds.length > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: Cl.txtL }}>Sous-total {activeSeason} : {fmt(curProds.reduce((t, cp) => t + lineHT(cp), 0))} HT</div>}
-      {hasAnyProduct(sp) && <div style={{ textAlign: "right", marginTop: 4, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Total toutes saisons : {fmt(totalHT)} HT</div>}
-      {isM && f.donAmount > 0 && totalHT > 0 && <div style={S.alert(ratioOK ? "success" : "danger")}>{ratioOK ? `✅ Contreparties = ${ratio.toFixed(1)}% du don (max 25%)` : `⚠️ Contreparties = ${ratio.toFixed(1)}% du don — DÉPASSE 25% ! Réduire les produits ou augmenter le don.`}</div>}
+      {curProds.length > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: Cl.txtL }}>Sous-total {activeSeason} : {fmt(curHT)} HT</div>}
+      {isM && totDon > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 14, fontWeight: 700, color: Cl.pur }}>Don total : {fmt(totDon)}</div>}
+      {hasAnyProduct(sp) && <div style={{ textAlign: "right", marginTop: 2, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Contreparties total : {fmt(totalHT)} HT</div>}
       <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button style={S.btn("ghost")} onClick={onClose}>Annuler</button>
-        <button style={{ ...S.btn("primary"), opacity: !ratioOK ? 0.5 : 1 }} disabled={!ratioOK} onClick={doSave}>Enregistrer</button>
+        <button style={{ ...S.btn("primary"), opacity: isM && !allRatiosOK ? 0.5 : 1 }} disabled={isM && !allRatiosOK} onClick={doSave}>Enregistrer</button>
       </div>
     </Modal>
   );
@@ -161,6 +172,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
   // Season products
   const coSP = getCompanySP(co, seasons);
   const [editSP, setEditSP] = useState({ ...coSP });
+  const [editSDA, setEditSDA] = useState({ ...(co.seasonDonAmounts || {}) });
   const [activeSeason, setActiveSeason] = useState(currentSeason);
   const seasonIds = seasons.map(s => s.id);
 
@@ -174,26 +186,32 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
   };
 
   const saveProducts = () => {
-    const cleanSP = {};
+    const cleanSP = {}; const cleanSDA = {};
     Object.entries(editSP).forEach(([k, v]) => { if (v.length > 0) cleanSP[k] = v; });
-    setCo({ ...co, seasonProducts: cleanSP, products: cleanSP[currentSeason] || [] });
+    Object.entries(editSDA).forEach(([k, v]) => { if (v > 0) cleanSDA[k] = v; });
+    const newDon = Object.values(cleanSDA).reduce((t, d) => t + (d || 0), 0);
+    setCo({ ...co, seasonProducts: cleanSP, seasonDonAmounts: cleanSDA, donAmount: newDon, products: cleanSP[currentSeason] || [] });
     setEditingProducts(false);
   };
 
   const startEdit = () => {
     setEditSP({ ...getCompanySP(co, seasons) });
+    setEditSDA({ ...(co.seasonDonAmounts || {}) });
     if (!editSP[activeSeason]) setEditSP(prev => ({ ...prev, [activeSeason]: [] }));
     setEditingProducts(true);
   };
 
   const copyFrom = (fromSid) => {
     if (editSP[fromSid]) setEditSP({ ...editSP, [activeSeason]: editSP[fromSid].map(p => ({ ...p })) });
+    if (editSDA[fromSid] !== undefined) setEditSDA({ ...editSDA, [activeSeason]: editSDA[fromSid] });
   };
 
-  const totalHT = allSeasonsHT(coSP);
   const editTotalHT = allSeasonsHT(editSP);
-  const ratio = isM && co.donAmount > 0 ? (totalHT / co.donAmount) * 100 : 0;
-  const editRatio = isM && co.donAmount > 0 ? (editTotalHT / co.donAmount) * 100 : 0;
+  const editCurHT = editProds.reduce((t, cp) => t + lineHT(cp), 0);
+  const editCurDon = editSDA[activeSeason] || 0;
+  const editCurRatio = isM && editCurDon > 0 ? (editCurHT / editCurDon) * 100 : 0;
+  const coSDA = co.seasonDonAmounts || {};
+  const totDon = Object.keys(coSDA).length > 0 ? Object.values(coSDA).reduce((t, d) => t + (d || 0), 0) : (co.donAmount || 0);
 
   return (
     <Modal title={co.company} onClose={onClose}>
@@ -206,7 +224,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         <div><span style={S.lbl}>Saison</span><Badge type="draft">{co.season}</Badge></div>
         {co.siret && <div><span style={S.lbl}>SIRET</span>{co.siret}</div>}
         <div><span style={S.lbl}>Dernier contact</span>{lastNote?.date || "—"}</div>
-        <div><span style={S.lbl}>Type</span><Badge type={isM ? "mecenat" : "partenariat"}>{co.dealType || "Partenariat"}</Badge>{isM && co.donAmount > 0 && <span style={{ fontSize: 11, marginLeft: 4 }}>Don: {fmt(co.donAmount)}</span>}</div>
+        <div><span style={S.lbl}>Type</span><Badge type={isM ? "mecenat" : "partenariat"}>{co.dealType || "Partenariat"}</Badge>{isM && totDon > 0 && <span style={{ fontSize: 11, marginLeft: 4 }}>Don total: {fmt(totDon)}</span>}</div>
         <div><span style={S.lbl}>Statut</span><Badge type={statusBType(co.isPartner ? co.partnerStatus : co.prospectStatus)}>{co.isPartner ? co.partnerStatus : co.prospectStatus}</Badge></div>
       </div>
 
@@ -216,9 +234,8 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
           <span style={S.lbl}>Type :</span>
           <button style={S.chip(!isM)} onClick={() => setCo({ ...co, dealType: "Partenariat" })}>🤝 Partenariat</button>
           <button style={S.chip(isM)} onClick={() => setCo({ ...co, dealType: "Mécénat" })}>💜 Mécénat</button>
-          {isM && <><span style={{ ...S.lbl, marginLeft: 8 }}>Don :</span><input type="number" style={{ ...S.inp, width: 100 }} value={co.donAmount || 0} onChange={e => setCo({ ...co, donAmount: +e.target.value })} /> €</>}
         </div>
-        {isM && co.donAmount > 0 && totalHT > 0 && <div style={{ ...S.alert(ratio <= 25 ? "success" : "danger"), marginTop: 6 }}>{ratio <= 25 ? `✅ Contreparties = ${ratio.toFixed(1)}% du don (max 25%)` : `⚠️ ${ratio.toFixed(1)}% > 25% ! Réduire les produits ou augmenter le don.`}</div>}
+        {isM && totDon > 0 && <div style={{ marginTop: 6, fontSize: 11, color: Cl.pur }}>Don total : <strong>{fmt(totDon)}</strong> (modifiable depuis les onglets produits ci-dessous)</div>}
       </div>
 
       {!co.isPartner && <div style={S.section}>
@@ -256,10 +273,15 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         }} />
 
         {editingProducts ? (<>
-          {seasonIds.filter(s => s !== activeSeason && editSP[s]?.length > 0).length > 0 && <div style={{ marginBottom: 6, fontSize: 10, color: Cl.txtL }}>
-            Copier depuis : {seasonIds.filter(s => s !== activeSeason && editSP[s]?.length > 0).map(s => (
+          {seasonIds.filter(s => s !== activeSeason && (editSP[s]?.length > 0 || editSDA[s] > 0)).length > 0 && <div style={{ marginBottom: 6, fontSize: 10, color: Cl.txtL }}>
+            Copier depuis : {seasonIds.filter(s => s !== activeSeason && (editSP[s]?.length > 0 || editSDA[s] > 0)).map(s => (
               <button key={s} style={{ ...S.btnS("ghost"), fontSize: 10, padding: "1px 6px" }} onClick={() => copyFrom(s)}>📋 {s}</button>
             ))}
+          </div>}
+          {isM && <div style={{ marginBottom: 8, padding: 8, background: Cl.purL, borderRadius: 6, border: `1px solid ${Cl.pur}` }}>
+            <label style={{ ...S.lbl, color: Cl.pur }}>💜 Montant du don — {activeSeason}</label>
+            <input type="number" style={{ ...S.inp, fontWeight: 700, fontSize: 16 }} value={editSDA[activeSeason] || 0} onChange={e => setEditSDA({ ...editSDA, [activeSeason]: Math.max(0, +e.target.value) })} />
+            {editCurDon > 0 && editCurHT > 0 && <div style={S.alert(editCurRatio <= 25 ? "success" : "danger")}>{editCurRatio <= 25 ? `✅ Contreparties = ${editCurRatio.toFixed(1)}% du don (max 25%)` : `⚠️ ${editCurRatio.toFixed(1)}% > 25% !`}</div>}
           </div>}
           <ProductPicker products={products} selected={editProds} onToggle={togP} cats={cats} currentSeason={activeSeason} />
           {editProds.length > 0 && <table style={{ ...S.tbl, marginTop: 8 }}>
@@ -291,18 +313,22 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
               );
             })}</tbody>
           </table>}
-          {editProds.length > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: Cl.txtL }}>Sous-total {activeSeason} : {fmt(editProds.reduce((t, cp) => t + lineHT(cp), 0))} HT</div>}
-          {hasAnyProduct(editSP) && <div style={{ textAlign: "right", marginTop: 4, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Total toutes saisons : {fmt(editTotalHT)} HT</div>}
-          {isM && co.donAmount > 0 && editTotalHT > 0 && <div style={S.alert(editRatio <= 25 ? "success" : "danger")}>{editRatio <= 25 ? `✅ Contreparties = ${editRatio.toFixed(1)}% du don (max 25%)` : `⚠️ ${editRatio.toFixed(1)}% > 25% ! Réduire les produits ou augmenter le don.`}</div>}
+          {editProds.length > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: Cl.txtL }}>Sous-total {activeSeason} : {fmt(editCurHT)} HT</div>}
+          {hasAnyProduct(editSP) && <div style={{ textAlign: "right", marginTop: 4, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Contreparties total : {fmt(editTotalHT)} HT</div>}
           <div style={{ marginTop: 8, display: "flex", gap: 6, justifyContent: "flex-end" }}>
             <button style={S.btn("ghost")} onClick={() => setEditingProducts(false)}>Annuler</button>
-            <button style={{ ...S.btn("success"), opacity: isM && co.donAmount > 0 && editRatio > 25 ? 0.5 : 1 }} disabled={isM && co.donAmount > 0 && editRatio > 25} onClick={saveProducts}>✅ Enregistrer</button>
+            <button style={S.btn("success")} onClick={saveProducts}>✅ Enregistrer</button>
           </div>
         </>) : (<>
           {/* Read-only view for active season */}
+          {isM && (coSDA[activeSeason] || 0) > 0 && <div style={{ marginBottom: 6, fontSize: 12, color: Cl.pur }}>💜 Don {activeSeason} : <strong>{fmt(coSDA[activeSeason])}</strong></div>}
           {(() => {
             const viewProds = coSP[activeSeason] || [];
-            if (viewProds.length === 0) return <p style={{ fontSize: 12, color: Cl.txtL }}>Aucun produit pour {activeSeason} — cliquez Modifier pour en ajouter</p>;
+            if (viewProds.length === 0 && !(isM && (coSDA[activeSeason] || 0) > 0)) return <p style={{ fontSize: 12, color: Cl.txtL }}>Aucun produit pour {activeSeason} — cliquez Modifier pour en ajouter</p>;
+            if (viewProds.length === 0) return null;
+            const viewHT = viewProds.reduce((t, cp) => t + lineHT(cp), 0);
+            const viewDon = coSDA[activeSeason] || 0;
+            const viewRatio = isM && viewDon > 0 ? (viewHT / viewDon) * 100 : 0;
             return (<>
               <table style={{ ...S.tbl, marginTop: 4 }}>
                 <thead><tr><th style={S.th}>Produit</th><th style={S.th}>Catalogue</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th></tr></thead>
@@ -322,10 +348,11 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
                   );
                 })}</tbody>
               </table>
-              <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: Cl.txtL }}>Sous-total {activeSeason} : {fmt(viewProds.reduce((t, cp) => t + lineHT(cp), 0))} HT</div>
+              <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: Cl.txtL }}>Sous-total {activeSeason} : {fmt(viewHT)} HT</div>
+              {isM && viewDon > 0 && viewHT > 0 && <div style={{ textAlign: "right", fontSize: 11, color: viewRatio <= 25 ? Cl.ok : Cl.err, fontWeight: 700 }}>Ratio : {viewRatio.toFixed(1)}% du don</div>}
             </>);
           })()}
-          {hasAnyProduct(coSP) && <div style={{ textAlign: "right", marginTop: 4, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Total toutes saisons : {fmt(totalHT)} HT</div>}
+          {hasAnyProduct(coSP) && <div style={{ textAlign: "right", marginTop: 4, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Contreparties total : {fmt(allSeasonsHT(coSP))} HT</div>}
         </>)}
       </div>
 
