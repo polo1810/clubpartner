@@ -369,3 +369,73 @@ export function generateContrat(club, company, contract, allProducts, seasons, c
 
   doc.save(`Contrat_${company.company.replace(/\s/g, "_")}_${num}.pdf`);
 }
+
+export function generateFacturePDF(club, company, invoice) {
+  const doc = new jsPDF();
+
+  // Header
+  let y = addHeader(doc, club, "Facture", invoice.number);
+  y = addCompanyBlock(doc, company, y);
+
+  // Invoice info
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Saison : ${invoice.season}`, 20, y);
+  y += 8;
+
+  // Lines table
+  const rows = invoice.lines.map(l => [l.name, String(l.qty), fmtE(l.unitPrice), fmtE(l.totalHT), `${l.tvaRate}%`, fmtE(l.tvaAmount)]);
+
+  autoTable(doc, {
+    startY: y,
+    head: [["Prestation", "Qté", "Prix unitaire HT", "Total HT", "TVA %", "TVA"]],
+    body: rows,
+    theme: "striped",
+    headStyles: { fillColor: [26, 115, 232], fontSize: 8 },
+    styles: { fontSize: 8, cellPadding: 3 },
+    columnStyles: { 3: { halign: "right", fontStyle: "bold" }, 5: { halign: "right" } },
+    margin: { left: 20, right: 20 },
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  // Totals
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Total HT : ${fmtE(invoice.totalHT)}`, 190, y, { align: "right" });
+  y += 5;
+  doc.text(`TVA : ${fmtE(invoice.totalTVA)}`, 190, y, { align: "right" });
+  y += 6;
+  doc.setFontSize(12);
+  doc.setDrawColor(26, 115, 232);
+  doc.setLineWidth(0.5);
+  doc.line(130, y - 1, 190, y - 1);
+  doc.text(`Total TTC : ${fmtE(invoice.totalTTC)}`, 190, y + 4, { align: "right" });
+  y += 14;
+
+  // Payment info
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100);
+  doc.text("Conditions de paiement : selon échéancier convenu ou à réception de facture.", 20, y);
+  y += 4;
+  doc.text(`Pénalités de retard : 3 fois le taux d'intérêt légal. Indemnité forfaitaire de recouvrement : 40 €.`, 20, y);
+  y += 10;
+
+  // Signature area
+  if (y > 240) { doc.addPage(); y = 25; }
+  doc.setTextColor(0);
+  doc.setDrawColor(200);
+  doc.setLineWidth(0.3);
+  doc.rect(110, y, 80, 30);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("Cachet et signature", 150, y + 6, { align: "center" });
+
+  // Footer
+  const pageH = doc.internal.pageSize.height;
+  doc.setFontSize(6);
+  doc.setTextColor(150);
+  doc.text(`${club.name} · SIRET ${club.siret || "___"} · TVA ${club.tvaNumber || "___"}`, 105, pageH - 10, { align: "center" });
+
+  doc.save(`Facture_${(company?.company || invoice.companyName).replace(/\s/g, "_")}_${invoice.number.replace(/\//g, "-")}.pdf`);
+}
