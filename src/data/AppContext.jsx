@@ -67,8 +67,15 @@ export function AppProvider({ children }) {
   const convertToPartner = (companyId) => {
     const co = companies.find(c => c.id === companyId);
     if (!co) return;
-    const sp = {}; sp[currentSeason] = [...(co.products || []).map(p => ({ ...p }))];
-    setContracts(cs => [...cs, { id: uid(), companyId, type: co.dealType || "Partenariat", member: co.member, signataire: co.contact, seasons: 1, startSeason: currentSeason, status: "En attente", donAmount: co.donAmount || 0, seasonProducts: sp, payments: [], actions: [] }]);
+    const coSP = co.seasonProducts && Object.keys(co.seasonProducts).length > 0 ? co.seasonProducts : {};
+    const sp = {};
+    if (Object.keys(coSP).length > 0) {
+      // Copy all season products from company
+      Object.entries(coSP).forEach(([sid, prods]) => { sp[sid] = prods.map(p => ({ ...p })); });
+    } else {
+      sp[currentSeason] = [...(co.products || []).map(p => ({ ...p }))];
+    }
+    setContracts(cs => [...cs, { id: uid(), companyId, type: co.dealType || "Partenariat", member: co.member, signataire: co.contact, seasons: Object.keys(sp).length || 1, startSeason: Object.keys(sp).sort()[0] || currentSeason, status: "En attente", donAmount: co.donAmount || 0, seasonProducts: sp, payments: [], actions: [] }]);
     setCompanies(cs => cs.map(c => c.id === companyId ? { ...c, isPartner: true, prospectStatus: "", partnerStatus: "Nouveau partenaire" } : c));
   };
 
