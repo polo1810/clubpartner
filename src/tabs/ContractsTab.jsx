@@ -5,7 +5,7 @@ import { uid, fmt, lineHT, lineTTC, isSigned, getPrice, getContractSeasonIds } f
 import { Badge, Modal, Field, MemberSelect, PhoneLink, ProductPicker } from '../components/index';
 import { generateContrat } from '../utils/pdfGenerator';
 
-// --- Shared: season product table (read-only) ---
+// --- Shared components ---
 function SeasonProductTable({ prods, products: allProducts }) {
   if (!prods || prods.length === 0) return <p style={{ fontSize: 11, color: Cl.txtL }}>Aucun produit pour cette saison</p>;
   const tot = prods.reduce((t, cp) => t + lineHT(cp), 0);
@@ -17,20 +17,16 @@ function SeasonProductTable({ prods, products: allProducts }) {
   </>);
 }
 
-// --- Shared: season tabs ---
 function SeasonTabs({ seasonIds, active, onChange }) {
   return (
     <div style={{ display: "flex", gap: 3, marginBottom: 8, flexWrap: "wrap" }}>
       {seasonIds.map(sid => (
-        <button key={sid} style={{ ...S.btnS(active === sid ? "primary" : "ghost"), fontWeight: active === sid ? 700 : 400 }} onClick={() => onChange(sid)}>
-          📅 {sid}
-        </button>
+        <button key={sid} style={{ ...S.btnS(active === sid ? "primary" : "ghost"), fontWeight: active === sid ? 700 : 400 }} onClick={() => onChange(sid)}>📅 {sid}</button>
       ))}
     </div>
   );
 }
 
-// --- Season product editor (for ContractForm) ---
 function SeasonProductEditor({ seasonId, prods, setProds, allProducts, cats, currentSeason }) {
   const togP = (id) => {
     const pr = allProducts.find(x => x.id === id);
@@ -38,7 +34,6 @@ function SeasonProductEditor({ seasonId, prods, setProds, allProducts, cats, cur
     setProds(prods.find(x => x.productId === id) ? prods.filter(x => x.productId !== id) : [...prods, { productId: id, qty: 1, unitPrice: p }]);
   };
   const totalHT = prods.reduce((t, sp) => t + lineHT(sp), 0);
-
   return (<div>
     <ProductPicker products={allProducts} selected={prods} onToggle={togP} cats={cats} currentSeason={seasonId} />
     {prods.length > 0 && <table style={{ ...S.tbl, marginTop: 8 }}>
@@ -46,23 +41,23 @@ function SeasonProductEditor({ seasonId, prods, setProds, allProducts, cats, cur
       <tbody>{prods.map(sp => {
         const pr = allProducts.find(x => x.id === sp.productId);
         if (!pr) return null;
-        return (
-          <tr key={sp.productId}>
-            <td style={S.td}>{pr.name}</td>
-            <td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 80, fontWeight: 700 }} value={sp.unitPrice} onChange={e => setProds(prods.map(x => x.productId === sp.productId ? { ...x, unitPrice: Math.max(0, +e.target.value) } : x))} /></td>
-            <td style={S.td}><input type="number" min="1" style={{ ...S.inp, width: 50 }} value={sp.qty} onChange={e => setProds(prods.map(x => x.productId === sp.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td>
-            <td style={S.tdR}><strong>{fmt(lineHT(sp))}</strong></td>
-            <td style={S.td}><button style={S.btnS("ghost")} onClick={() => setProds(prods.filter(x => x.productId !== sp.productId))}>✕</button></td>
-          </tr>);
+        return (<tr key={sp.productId}>
+          <td style={S.td}>{pr.name}</td>
+          <td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 80, fontWeight: 700 }} value={sp.unitPrice} onChange={e => setProds(prods.map(x => x.productId === sp.productId ? { ...x, unitPrice: Math.max(0, +e.target.value) } : x))} /></td>
+          <td style={S.td}><input type="number" min="1" style={{ ...S.inp, width: 50 }} value={sp.qty} onChange={e => setProds(prods.map(x => x.productId === sp.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td>
+          <td style={S.tdR}><strong>{fmt(lineHT(sp))}</strong></td>
+          <td style={S.td}><button style={S.btnS("ghost")} onClick={() => setProds(prods.filter(x => x.productId !== sp.productId))}>✕</button></td>
+        </tr>);
       })}</tbody>
     </table>}
     {prods.length > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 13, fontWeight: 700, color: Cl.pri }}>Sous-total : {fmt(totalHT)} HT</div>}
   </div>);
 }
 
+// --- Contract Form ---
 function ContractForm({ initial, onClose }) {
   const { companies, partnersList, products, members, addMember, seasons, currentSeason, contracts, setContracts, getCompany, cats } = useApp();
-  const def = { companyId: partnersList[0]?.id || companies[0]?.id, type: "Partenariat", member: members[0], signataire: "", seasons: 1, startSeason: currentSeason, status: "En attente", donAmount: 0, payments: [], actions: [], seasonProducts: {} };
+  const def = { companyId: partnersList[0]?.id || companies[0]?.id, type: "Partenariat", member: members[0], signataire: "", seasons: 1, startSeason: currentSeason, status: "En attente", donAmount: 0, payments: [], actions: [], seasonProducts: {}, seasonDonAmounts: {} };
   const [f, setF] = useState(() => {
     const base = { ...def, ...initial };
     if (!initial?.id) { const co = partnersList[0]; if (co) { base.type = co.dealType || "Partenariat"; base.donAmount = co.donAmount || 0; } }
@@ -70,78 +65,75 @@ function ContractForm({ initial, onClose }) {
   });
   const co = getCompany(f.companyId);
   const isM = f.type === "Mécénat" || co?.dealType === "Mécénat";
-  const donAmount = f.donAmount || co?.donAmount || 0;
 
-  // Season products state
+  // Season products
   const [sp, setSp] = useState(() => {
     if (initial?.seasonProducts && Object.keys(initial.seasonProducts).length > 0) return { ...initial.seasonProducts };
     const sids = getContractSeasonIds({ ...f }, seasons);
     const coSP = co?.seasonProducts || {};
-    const o = {};
-    sids.forEach(sid => { o[sid] = coSP[sid] ? coSP[sid].map(p => ({ ...p })) : [...(co?.products || []).map(p => ({ ...p }))]; });
+    const o = {}; sids.forEach(sid => { o[sid] = coSP[sid] ? coSP[sid].map(p => ({ ...p })) : [...(co?.products || []).map(p => ({ ...p }))]; });
     return o;
+  });
+  // Season don amounts
+  const [sda, setSda] = useState(() => {
+    if (initial?.seasonDonAmounts && Object.keys(initial.seasonDonAmounts).length > 0) return { ...initial.seasonDonAmounts };
+    const sids = getContractSeasonIds({ ...f }, seasons);
+    const coSDA = co?.seasonDonAmounts || {};
+    const fb = initial?.donAmount || co?.donAmount || 0;
+    const o = {}; sids.forEach(sid => { o[sid] = coSDA[sid] ?? fb; }); return o;
   });
 
   const coveredSeasons = getContractSeasonIds(f, seasons);
   const [activeSeason, setActiveSeason] = useState(coveredSeasons[0] || currentSeason);
 
-  const ensureSp = (newCovered) => {
-    const updated = { ...sp };
-    const coSP = co?.seasonProducts || {};
-    newCovered.forEach(sid => { if (!updated[sid]) updated[sid] = coSP[sid] ? coSP[sid].map(p => ({ ...p })) : [...(co?.products || []).map(p => ({ ...p }))]; });
-    Object.keys(updated).forEach(sid => { if (!newCovered.includes(sid)) delete updated[sid]; });
-    setSp(updated);
+  const ensureSeasons = (nc) => {
+    const uSp = { ...sp }; const uSda = { ...sda };
+    const coSP = co?.seasonProducts || {}; const coSDA = co?.seasonDonAmounts || {};
+    const fb = co?.donAmount || 0;
+    nc.forEach(sid => {
+      if (!uSp[sid]) uSp[sid] = coSP[sid] ? coSP[sid].map(p => ({ ...p })) : [...(co?.products || []).map(p => ({ ...p }))];
+      if (uSda[sid] === undefined) uSda[sid] = coSDA[sid] ?? fb;
+    });
+    Object.keys(uSp).forEach(sid => { if (!nc.includes(sid)) { delete uSp[sid]; delete uSda[sid]; } });
+    setSp(uSp); setSda(uSda);
   };
 
-  const onSeasonsChange = (val) => {
-    const nf = { ...f, seasons: val };
-    setF(nf);
-    const newCovered = getContractSeasonIds(nf, seasons);
-    ensureSp(newCovered);
-    if (!newCovered.includes(activeSeason)) setActiveSeason(newCovered[0] || currentSeason);
-  };
-  const onStartChange = (val) => {
-    const nf = { ...f, startSeason: val };
-    setF(nf);
-    const newCovered = getContractSeasonIds(nf, seasons);
-    ensureSp(newCovered);
-    if (!newCovered.includes(activeSeason)) setActiveSeason(newCovered[0] || currentSeason);
-  };
+  const onSeasonsChange = (v) => { const nf = { ...f, seasons: v }; setF(nf); const nc = getContractSeasonIds(nf, seasons); ensureSeasons(nc); if (!nc.includes(activeSeason)) setActiveSeason(nc[0] || currentSeason); };
+  const onStartChange = (v) => { const nf = { ...f, startSeason: v }; setF(nf); const nc = getContractSeasonIds(nf, seasons); ensureSeasons(nc); if (!nc.includes(activeSeason)) setActiveSeason(nc[0] || currentSeason); };
 
-  const totHT = Object.values(sp).reduce((total, prods) => total + prods.reduce((t, cp) => t + lineHT(cp), 0), 0);
-  const totTTC = Object.values(sp).reduce((total, prods) => total + prods.reduce((t, cp) => { const pr = products.find(x => x.id === cp.productId); return t + lineTTC(cp, pr?.tva); }, 0), 0);
-  const totFacture = isM && donAmount > 0 ? donAmount : totTTC;
-  const ratio = isM && donAmount > 0 ? (totHT / donAmount) * 100 : 0;
-  const ratioOK = !isM || donAmount === 0 || ratio <= 25;
+  // Per-season calcs
+  const sHT = (sid) => (sp[sid] || []).reduce((t, cp) => t + lineHT(cp), 0);
+  const sDon = (sid) => sda[sid] || 0;
+  const sRatio = (sid) => { const d = sDon(sid); return d > 0 ? (sHT(sid) / d) * 100 : 0; };
+  const sOK = (sid) => !isM || sDon(sid) === 0 || sRatio(sid) <= 25;
+  const allOK = coveredSeasons.every(sOK);
+
+  const totHT = Object.values(sp).reduce((t, ps) => t + ps.reduce((s, cp) => s + lineHT(cp), 0), 0);
+  const totTTC = Object.values(sp).reduce((t, ps) => t + ps.reduce((s, cp) => { const pr = products.find(x => x.id === cp.productId); return s + lineTTC(cp, pr?.tva); }, 0), 0);
+  const totDon = Object.values(sda).reduce((t, d) => t + (d || 0), 0);
+  const totFacture = isM && totDon > 0 ? totDon : totTTC;
   const [payments, setPayments] = useState(initial?.payments || []);
 
   const changeCompany = (cid) => {
-    const c = getCompany(cid);
-    setF({ ...f, companyId: cid, type: c?.dealType || "Partenariat", donAmount: c?.donAmount || 0 });
-    const sids = getContractSeasonIds(f, seasons);
-    const coSP = c?.seasonProducts || {};
-    const o = {};
-    sids.forEach(sid => { o[sid] = coSP[sid] ? coSP[sid].map(p => ({ ...p })) : [...(c?.products || []).map(p => ({ ...p }))]; });
-    setSp(o);
+    const c = getCompany(cid); setF({ ...f, companyId: cid, type: c?.dealType || "Partenariat", donAmount: c?.donAmount || 0 });
+    const sids = getContractSeasonIds(f, seasons); const coSP = c?.seasonProducts || {}; const coSDA = c?.seasonDonAmounts || {};
+    const o = {}; const od = {};
+    sids.forEach(sid => { o[sid] = coSP[sid] ? coSP[sid].map(p => ({ ...p })) : [...(c?.products || []).map(p => ({ ...p }))]; od[sid] = coSDA[sid] ?? (c?.donAmount || 0); });
+    setSp(o); setSda(od);
   };
-
-  const setSeasonProds = (prods) => {
-    setSp({ ...sp, [activeSeason]: prods });
+  const copyFrom = (from) => {
+    if (sp[from]) setSp({ ...sp, [activeSeason]: sp[from].map(p => ({ ...p })) });
+    if (sda[from] !== undefined) setSda({ ...sda, [activeSeason]: sda[from] });
   };
-
-  const copyFrom = (fromSid) => {
-    if (sp[fromSid]) setSp({ ...sp, [activeSeason]: sp[fromSid].map(p => ({ ...p })) });
-  };
-
   const save = () => {
-    const c = { ...f, id: initial?.id || uid(), payments, donAmount, seasonProducts: sp };
+    const c = { ...f, id: initial?.id || uid(), payments, donAmount: totDon, seasonProducts: sp, seasonDonAmounts: sda };
     if (initial?.id) setContracts(cs => cs.map(x => x.id === initial.id ? c : x)); else setContracts(cs => [...cs, c]);
     onClose();
   };
 
   return (
     <Modal title={initial?.id ? "Modifier contrat" : `Contrat — ${co?.company || ""}`} onClose={onClose}>
-      {co && <div style={S.alert("success")}><strong>{co.company}</strong> · {fmt(totHT)} HT total ({coveredSeasons.length} saison{coveredSeasons.length > 1 ? "s" : ""})</div>}
+      {co && <div style={S.alert("success")}><strong>{co.company}</strong> · {isM ? `Don total: ${fmt(totDon)}` : `${fmt(totHT)} HT`} ({coveredSeasons.length} saison{coveredSeasons.length > 1 ? "s" : ""})</div>}
       <div style={S.g2}>
         <Field label="Entreprise"><select style={S.sel} value={f.companyId} onChange={e => changeCompany(+e.target.value)}>{partnersList.map(c => <option key={c.id} value={c.id}>{c.company}</option>)}</select></Field>
         <Field label="Type"><select style={S.sel} value={f.type} onChange={e => setF({ ...f, type: e.target.value })}><option>Partenariat</option><option>Mécénat</option></select></Field>
@@ -151,31 +143,28 @@ function ContractForm({ initial, onClose }) {
         <Field label="Début"><select style={S.sel} value={f.startSeason} onChange={e => onStartChange(e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select></Field>
         <Field label="Statut"><select style={S.sel} value={f.status} onChange={e => setF({ ...f, status: e.target.value })}>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select></Field>
       </div>
-      {isM && <Field label="Montant du mécénat (don)"><input type="number" style={S.inp} value={donAmount} onChange={e => setF({ ...f, donAmount: +e.target.value })} /></Field>}
-      {isM && donAmount > 0 && totHT > 0 && <div style={S.alert(ratioOK ? "success" : "danger")}>{ratioOK ? `✅ Contreparties = ${ratio.toFixed(1)}% du don (max 25%)` : `⚠️ ${ratio.toFixed(1)}% > 25% !`}</div>}
 
-      {/* Per-season products */}
+      {/* Per-season */}
       <div style={{ marginTop: 14 }}>
-        <div style={S.cT}>📦 Produits par saison</div>
+        <div style={S.cT}>{isM ? "💜 Mécénat par saison" : "📦 Produits par saison"}</div>
         <SeasonTabs seasonIds={coveredSeasons} active={activeSeason} onChange={setActiveSeason} />
         {coveredSeasons.length > 1 && <div style={{ marginBottom: 6, fontSize: 10, color: Cl.txtL }}>
           Copier depuis : {coveredSeasons.filter(s => s !== activeSeason).map(s => (
             <button key={s} style={{ ...S.btnS("ghost"), fontSize: 10, padding: "1px 6px" }} onClick={() => copyFrom(s)}>📋 {s}</button>
           ))}
         </div>}
-        <SeasonProductEditor
-          seasonId={activeSeason}
-          prods={sp[activeSeason] || []}
-          setProds={setSeasonProds}
-          allProducts={products}
-          cats={cats}
-          currentSeason={currentSeason}
-        />
+        {isM && <div style={{ marginBottom: 8, padding: 8, background: Cl.purL, borderRadius: 6, border: `1px solid ${Cl.pur}` }}>
+          <label style={{ ...S.lbl, color: Cl.pur }}>💜 Montant du don — {activeSeason}</label>
+          <input type="number" style={{ ...S.inp, fontWeight: 700, fontSize: 16 }} value={sda[activeSeason] || 0} onChange={e => setSda({ ...sda, [activeSeason]: Math.max(0, +e.target.value) })} />
+          {sDon(activeSeason) > 0 && sHT(activeSeason) > 0 && <div style={S.alert(sOK(activeSeason) ? "success" : "danger")}>{sOK(activeSeason) ? `✅ Contreparties = ${sRatio(activeSeason).toFixed(1)}% du don (max 25%)` : `⚠️ ${sRatio(activeSeason).toFixed(1)}% > 25% !`}</div>}
+        </div>}
+        <div style={{ fontSize: 11, color: Cl.txtL, marginBottom: 4 }}>{isM ? "Contreparties" : "Produits"} — {activeSeason}</div>
+        <SeasonProductEditor seasonId={activeSeason} prods={sp[activeSeason] || []} setProds={(p) => setSp({ ...sp, [activeSeason]: p })} allProducts={products} cats={cats} currentSeason={currentSeason} />
       </div>
 
       <div style={{ marginTop: 10, textAlign: "right" }}>
-        {isM ? <div style={{ fontSize: 13 }}>Don: <strong style={{ color: Cl.pur }}>{fmt(donAmount)}</strong> · Contreparties: {fmt(totHT)} HT</div>
-          : <div style={{ fontSize: 13 }}>Total toutes saisons : <strong style={{ color: Cl.pri }}>{fmt(totHT)} HT</strong> · TTC: {fmt(totTTC)}</div>}
+        {isM ? <div style={{ fontSize: 13 }}>Don total : <strong style={{ color: Cl.pur }}>{fmt(totDon)}</strong> · Contreparties : {fmt(totHT)} HT</div>
+          : <div style={{ fontSize: 13 }}>Total : <strong style={{ color: Cl.pri }}>{fmt(totHT)} HT</strong> · TTC: {fmt(totTTC)}</div>}
       </div>
 
       <div style={{ marginTop: 14 }}><div style={S.fx}><label style={S.lbl}>💳 Échéancier — base : {fmt(totFacture)}</label><button style={S.btnS("ghost")} onClick={() => { const rem = totFacture - payments.reduce((s, p) => s + p.amount, 0); setPayments(ps => [...ps, { id: uid(), label: `Éch. ${ps.length + 1}`, amount: Math.round(Math.max(0, rem)), dueDate: "", status: "En attente" }]); }}>+</button></div>
@@ -183,26 +172,37 @@ function ContractForm({ initial, onClose }) {
           : <table style={S.tbl}><thead><tr><th style={S.th}>Libellé</th><th style={S.th}>Montant</th><th style={S.th}>Date</th><th style={S.th}>Statut</th><th style={S.th}></th></tr></thead>
             <tbody>{payments.map(p => (<tr key={p.id}><td style={S.td}><input style={S.inp} value={p.label} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, label: e.target.value } : x))} /></td><td style={S.td}><input type="number" style={{ ...S.inp, width: 80 }} value={p.amount} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, amount: +e.target.value } : x))} /></td><td style={S.td}><input type="date" style={{ ...S.inp, width: 130 }} value={p.dueDate} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, dueDate: e.target.value } : x))} /></td><td style={S.td}><select style={{ ...S.sel, width: "auto" }} value={p.status} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, status: e.target.value } : x))}><option>En attente</option><option>Payé</option><option>En retard</option></select></td><td style={S.td}><button style={S.btnS("ghost")} onClick={() => setPayments(ps => ps.filter(x => x.id !== p.id))}>✕</button></td></tr>))}</tbody></table>}
       </div>
-      <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}><button style={S.btn("ghost")} onClick={onClose}>Annuler</button><button style={S.btn("primary")} onClick={save}>Enregistrer</button></div>
+      <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button style={S.btn("ghost")} onClick={onClose}>Annuler</button>
+        <button style={{ ...S.btn("primary"), opacity: isM && !allOK ? 0.5 : 1 }} disabled={isM && !allOK} onClick={save}>Enregistrer</button>
+      </div>
     </Modal>
   );
 }
 
+// --- Contract Detail ---
 function ContractDetail({ contract, onClose, onOpenCompany }) {
   const { getCompany, products, contracts, setContracts, openAddContractAction, clubInfo, seasons, currentSeason, contractHT, contractTTC, generateInvoice, invoices } = useApp();
   const co = getCompany(contract.companyId);
   const isM = contract.type === "Mécénat" || co?.dealType === "Mécénat";
-  const donAmount = contract.donAmount || co?.donAmount || 0;
   const coveredSeasons = getContractSeasonIds(contract, seasons);
   const hasSP = contract.seasonProducts && Object.keys(contract.seasonProducts).length > 0;
+  const sda = contract.seasonDonAmounts || {};
+  const donAmount = contract.donAmount || co?.donAmount || 0;
 
   const prodHT = contractHT(contract);
   const prodTTC = contractTTC(contract);
-  const totFacture = isM && donAmount > 0 ? donAmount : prodTTC;
+  const totDon = Object.keys(sda).length > 0 ? Object.values(sda).reduce((t, d) => t + (d || 0), 0) : donAmount;
+  const totFacture = isM && totDon > 0 ? totDon : prodTTC;
   const paid = (contract.payments || []).filter(p => p.status === "Payé").reduce((s, p) => s + p.amount, 0);
   const upd = (ch) => { const u = { ...contract, ...ch }; setContracts(cs => cs.map(c => c.id === contract.id ? u : c)); };
 
   const [activeSeason, setActiveSeason] = useState(coveredSeasons[0] || currentSeason);
+
+  // Per-season don for display
+  const seasonDon = (sid) => sda[sid] ?? donAmount;
+  const seasonHT = (sid) => (contract.seasonProducts?.[sid] || []).reduce((t, cp) => t + lineHT(cp), 0);
+  const seasonRatio = (sid) => { const d = seasonDon(sid); return d > 0 ? (seasonHT(sid) / d) * 100 : 0; };
 
   return (
     <Modal title={`Contrat — ${co?.company || "?"}`} onClose={onClose}>
@@ -215,14 +215,22 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
 
       {isM && <div style={{ ...S.card, marginTop: 10, border: `2px solid ${Cl.pur}`, background: Cl.purL }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div><div style={{ fontSize: 11, fontWeight: 700, color: Cl.pur }}>💜 MONTANT DU MÉCÉNAT</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: Cl.pur }}>{fmt(donAmount)}</div>
+          <div><div style={{ fontSize: 11, fontWeight: 700, color: Cl.pur }}>💜 MÉCÉNAT TOTAL</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: Cl.pur }}>{fmt(totDon)}</div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 10, color: Cl.txtL }}>Contreparties : {fmt(prodHT)} HT</div>
-            {donAmount > 0 && prodHT > 0 && <div style={{ fontSize: 11, fontWeight: 700, color: (prodHT / donAmount) * 100 <= 25 ? Cl.ok : Cl.err }}>{((prodHT / donAmount) * 100).toFixed(1)}% du don</div>}
           </div>
         </div>
+        {coveredSeasons.length > 1 && <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {coveredSeasons.map(sid => {
+            const r = seasonRatio(sid);
+            return <div key={sid} style={{ fontSize: 10 }}>
+              <strong>{sid}</strong>: {fmt(seasonDon(sid))} don · {fmt(seasonHT(sid))} HT
+              {seasonDon(sid) > 0 && seasonHT(sid) > 0 && <span style={{ marginLeft: 4, fontWeight: 700, color: r <= 25 ? Cl.ok : Cl.err }}>{r.toFixed(1)}%</span>}
+            </div>;
+          })}
+        </div>}
       </div>}
 
       {co && <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -240,6 +248,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
       <div style={{ ...S.cT, marginTop: 14 }}>{isM ? "📦 Contreparties" : "💰 Produits"} — {fmt(prodHT)} HT total</div>
       {hasSP && coveredSeasons.length > 1 ? (<>
         <SeasonTabs seasonIds={coveredSeasons} active={activeSeason} onChange={setActiveSeason} />
+        {isM && seasonDon(activeSeason) > 0 && <div style={{ fontSize: 11, color: Cl.pur, marginBottom: 4 }}>Don {activeSeason} : <strong>{fmt(seasonDon(activeSeason))}</strong> · Ratio : <strong style={{ color: seasonRatio(activeSeason) <= 25 ? Cl.ok : Cl.err }}>{seasonRatio(activeSeason).toFixed(1)}%</strong></div>}
         <SeasonProductTable prods={contract.seasonProducts[activeSeason] || []} products={products} />
       </>) : hasSP ? (
         <SeasonProductTable prods={contract.seasonProducts[coveredSeasons[0]] || []} products={products} />
@@ -252,7 +261,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
         <button style={S.btnS("primary")} onClick={() => { const rem = totFacture - (contract.payments || []).reduce((s, p) => s + p.amount, 0); upd({ payments: [...(contract.payments || []), { id: uid(), label: `Éch. ${(contract.payments || []).length + 1}`, amount: Math.round(Math.max(0, rem)), dueDate: "", status: "En attente" }] }); }}>+ Échéance</button>
       </div>
       {totFacture > 0 && <div style={S.barBox}><div style={S.bar((paid / totFacture) * 100, Cl.ok)} /></div>}
-      {(contract.payments || []).length === 0 ? <p style={{ fontSize: 11, color: Cl.txtL, marginTop: 6 }}>Paiement en une fois — cliquez + pour ajouter des échéances</p>
+      {(contract.payments || []).length === 0 ? <p style={{ fontSize: 11, color: Cl.txtL, marginTop: 6 }}>Paiement en une fois</p>
         : <table style={{ ...S.tbl, marginTop: 8 }}>
           <thead><tr><th style={S.th}>Libellé</th><th style={S.th}>Montant</th><th style={S.th}>Date</th><th style={S.th}>Statut</th><th style={S.th}></th></tr></thead>
           <tbody>{(contract.payments || []).map(p => (
@@ -278,6 +287,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
   );
 }
 
+// --- Contracts List ---
 export default function ContractsTab({ onOpenCompany, directContract, onDirectContractClosed }) {
   const { contracts, setContracts, getCompany, contractHT, contractTTC, seasonContracts } = useApp();
   const [showForm, setShowForm] = useState(false);
