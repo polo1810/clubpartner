@@ -11,7 +11,7 @@ export function AppProvider({ children }) {
   const [members, setMembers] = useState(INIT_MEMBERS);
   const [seasons, setSeasons] = useState(INIT_SEASONS);
   const [cats, setCats] = useState(INIT_CATS);
-  const [currentSeason] = useState(INIT_CURRENT);
+  const [currentSeason, setCurrentSeason] = useState(INIT_CURRENT);
   const [miniForm, setMiniForm] = useState(null);
   const [clubInfo, setClubInfo] = useState(INIT_CLUB_INFO);
 
@@ -132,7 +132,7 @@ export function AppProvider({ children }) {
 
   const value = {
     companies, setCompanies, products, setProducts, contracts, setContracts,
-    members, setMembers, addMember, seasons, setSeasons, cats, setCats, currentSeason,
+    members, setMembers, addMember, seasons, setSeasons, cats, setCats, currentSeason, setCurrentSeason,
     miniForm, setMiniForm, todayStr, clubInfo, setClubInfo,
     prospectsList, partnersList, getCompany, companyContracts,
     contractHT, contractTTC, stockSold, stockProv, caByProd, caByType, totalCA, totalPaid, allActions,
