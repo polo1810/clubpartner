@@ -3,6 +3,7 @@ import { useApp } from '../data/AppContext';
 import { S, Cl } from '../data/styles';
 import { uid, fmt, lineHT, getPrice, statusBType, P_STATUSES, PARTNER_STATUSES, ACTION_TYPES } from '../data/initialData';
 import { Badge, Modal, Field, MemberSelect, ProductPicker, PhoneLink, EmailLink } from './index';
+import { generateDevis } from '../utils/pdfGenerator';
 
 export function CompanyForm({ data, onSave, onClose }) {
   const { products, members, addMember, seasons, cats, currentSeason } = useApp();
@@ -71,7 +72,7 @@ export function CompanyForm({ data, onSave, onClose }) {
 }
 
 export function CompanyDetail({ company, onClose, onOpenContract }) {
-  const { companies, setCompanies, products, todayStr, convertToPartner, openAddAction, companyContracts, cats, currentSeason, setMiniForm, members, addMember } = useApp();
+  const { companies, setCompanies, products, todayStr, convertToPartner, openAddAction, companyContracts, cats, currentSeason, setMiniForm, members, addMember, clubInfo } = useApp();
   const [co, setCo_] = useState(company);
   const [noteText, setNoteText] = useState("");
   const [editingProducts, setEditingProducts] = useState(false);
@@ -205,6 +206,11 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
           {(co.products || []).length > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Total : {fmt((co.products || []).reduce((t, cp) => t + lineHT(cp), 0))} HT</div>}
         </>)}
       </div>
+
+      {/* Devis PDF */}
+      {(co.products || []).length > 0 && <div style={{ marginTop: 10 }}>
+        <button style={{ ...S.btn("ghost"), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => generateDevis(clubInfo, co, co.products, products, currentSeason, [])}>📄 Télécharger le devis / proposition</button>
+      </div>}
 
       <div style={{ marginTop: 12 }}>
         <div style={S.fx}><div style={S.cT}>📋 Actions</div><button style={S.btnS("ghost")} onClick={() => openAddAction(co.id, co.isPartner ? "Partenariat" : "Prospection")}>+</button></div>
