@@ -62,6 +62,8 @@ export function AppProvider({ children }) {
   const totalCA = useMemo(() => Object.values(caByProd).reduce((a, b) => a + b, 0), [caByProd]);
   const totalPaid = useMemo(() => seasonContracts.reduce((t, c) => t + (c.payments || []).filter(p => p.status === "Payé").reduce((s, p) => s + p.amount, 0), 0), [seasonContracts]);
 
+  const seasonInvoices = useMemo(() => invoices.filter(i => i.season === currentSeason), [invoices, currentSeason]);
+
   const allActions = useMemo(() => {
     const acts = [];
     // Actions from companies of current season
@@ -69,8 +71,10 @@ export function AppProvider({ children }) {
     seasonCompanies.forEach(co => { (co.actions || []).forEach(a => acts.push({ ...a, companyId: co.id, companyName: co.company, source: co.isPartner ? "partner" : "prospect" })); });
     // Actions from contracts covering current season
     seasonContracts.forEach(con => { const co = getCompany(con.companyId); (con.actions || []).forEach(a => acts.push({ ...a, companyId: con.companyId, companyName: co?.company || "?", contractId: con.id, source: "contract" })); });
+    // Actions from invoices of current season
+    seasonInvoices.forEach(inv => { (inv.actions || []).forEach(a => acts.push({ ...a, companyId: inv.companyId, companyName: inv.companyName, invoiceId: inv.id, source: "invoice" })); });
     return acts;
-  }, [companies, contracts, currentSeason, seasons]);
+  }, [companies, contracts, invoices, currentSeason, seasons]);
 
   const caByType = useMemo(() => {
     const r = { Partenariat: 0, "Mécénat": 0 };
@@ -147,13 +151,29 @@ export function AppProvider({ children }) {
     const con = contracts.find(c => c.id === contractId);
     setMiniForm({ title: "Action contrat", fields: [
       { key: "type", label: "Intitulé", value: "" },
-      { key: "category", label: "Catégorie", value: "Contrat et facturation", type: "select", options: ACTION_TYPES },
+      { key: "category", label: "Catégorie", value: "Contrat", type: "select", options: ACTION_TYPES },
       { key: "date", label: "Date", value: todayStr, type: "date" },
       { key: "assignee", label: "Assigné à", value: con?.member || members[0], type: "member", options: members, onAdd: addMember },
       { key: "note", label: "Note", value: "", type: "textarea" },
     ], onSave: (v) => {
       if (!v.type) return;
       setContracts(cs => cs.map(c => c.id === contractId ? { ...c, actions: [...(c.actions || []), { id: uid(), type: v.type, category: v.category, date: v.date || todayStr, done: false, note: v.note || "", assignee: v.assignee || c.member }] } : c));
+      setMiniForm(null);
+    }});
+  };
+
+  const openAddInvoiceAction = (invoiceId) => {
+    const inv = invoices.find(i => i.id === invoiceId);
+    const co = getCompany(inv?.companyId);
+    setMiniForm({ title: "Action facturation", fields: [
+      { key: "type", label: "Intitulé", value: "" },
+      { key: "category", label: "Catégorie", value: "Facturation", type: "select", options: ACTION_TYPES },
+      { key: "date", label: "Date", value: todayStr, type: "date" },
+      { key: "assignee", label: "Assigné à", value: co?.member || members[0], type: "member", options: members, onAdd: addMember },
+      { key: "note", label: "Note", value: "", type: "textarea" },
+    ], onSave: (v) => {
+      if (!v.type) return;
+      setInvoices(is => is.map(i => i.id === invoiceId ? { ...i, actions: [...(i.actions || []), { id: uid(), type: v.type, category: v.category, date: v.date || todayStr, done: false, note: v.note || "", assignee: v.assignee || co?.member || "" }] } : i));
       setMiniForm(null);
     }});
   };
@@ -192,7 +212,6 @@ export function AppProvider({ children }) {
     return inv;
   };
 
-  const seasonInvoices = useMemo(() => invoices.filter(i => i.season === currentSeason), [invoices, currentSeason]);
 
   const value = {
     companies, setCompanies, products, setProducts, contracts, setContracts,
@@ -202,7 +221,7 @@ export function AppProvider({ children }) {
     prospectsList, partnersList, getCompany, companyContracts,
     contractHT, contractTTC, stockSold, stockProv, caByProd, caByType, totalCA, totalPaid, allActions, seasonContracts,
     objectives, setObjectives, caByMember,
-    convertToPartner, openAddAction, openAddContractAction,
+    convertToPartner, openAddAction, openAddContractAction, openAddInvoiceAction,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
