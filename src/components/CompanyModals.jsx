@@ -3,7 +3,7 @@ import { useApp } from '../data/AppContext';
 import { S, Cl } from '../data/styles';
 import { uid, fmt, lineHT, getPrice, statusBType, P_STATUSES, PARTNER_STATUSES } from '../data/initialData';
 import { Badge, Modal, Field, MemberSelect, ProductPicker, PhoneLink, EmailLink } from './index';
-
+ 
 export function CompanyForm({ data, onSave, onClose }) {
   const { products, members, addMember, seasons, cats, currentSeason } = useApp();
   const isP = data?.isPartner;
@@ -38,10 +38,28 @@ export function CompanyForm({ data, onSave, onClose }) {
       <div style={{ marginTop: 12 }}><label style={S.lbl}>{isP ? "Produits validés" : "Produits proposés"}{isM ? " (contreparties)" : ""}</label>
         <ProductPicker products={products} selected={selP} onToggle={togP} cats={cats} currentSeason={currentSeason} />
       </div>
-      {selP.length > 0 && <table style={{ ...S.tbl, marginTop: 8 }}><thead><tr><th style={S.th}>Produit</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th><th style={S.th}></th></tr></thead>
-        <tbody>{selP.map(sp => { const pr = products.find(x => x.id === sp.productId); if (!pr) return null; return (
-          <tr key={sp.productId}><td style={S.td}>{pr.name}</td><td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 80, fontWeight: 700 }} value={sp.unitPrice} onChange={e => setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, unitPrice: Math.max(0, +e.target.value) } : x))} /></td><td style={S.td}><input type="number" min="1" style={{ ...S.inp, width: 50 }} value={sp.qty} onChange={e => setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td><td style={S.tdR}><strong>{fmt(lineHT(sp))}</strong></td><td style={S.td}><button style={S.btnS("ghost")} onClick={() => setSelP(s => s.filter(x => x.productId !== sp.productId))}>✕</button></td></tr>
-        ); })}</tbody></table>}
+      {selP.length > 0 && <table style={{ ...S.tbl, marginTop: 8 }}><thead><tr><th style={S.th}>Produit</th><th style={S.th}>Catalogue</th><th style={S.th}>Remise</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th><th style={S.th}></th></tr></thead>
+        <tbody>{selP.map(sp => { const pr = products.find(x => x.id === sp.productId); if (!pr) return null; const catPrice = getPrice(pr, currentSeason).price;
+          const applyDiscount = (type, val) => {
+            const v = Math.max(0, val);
+            const newPrice = type === "%" ? Math.round(catPrice * (1 - v / 100)) : Math.max(0, catPrice - v);
+            setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, unitPrice: newPrice, discountType: type, discountValue: v } : x));
+          };
+          const dt = sp.discountType || "%"; const dv = sp.discountValue || 0;
+          const pctOff = catPrice > 0 ? Math.round((1 - sp.unitPrice / catPrice) * 100) : 0;
+          return (
+          <tr key={sp.productId}>
+            <td style={S.td}>{pr.name}</td>
+            <td style={S.td}><span style={{ color: Cl.txtL }}>{fmt(catPrice)}</span></td>
+            <td style={S.td}><div style={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <input type="number" min="0" style={{ ...S.inp, width: 50, fontSize: 11 }} value={dv} onChange={e => applyDiscount(dt, +e.target.value)} />
+              <select style={{ ...S.sel, width: 42, fontSize: 10, padding: "3px 2px" }} value={dt} onChange={e => applyDiscount(e.target.value, dv)}><option value="%">%</option><option value="€">€</option></select>
+            </div></td>
+            <td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 75, fontWeight: 700 }} value={sp.unitPrice} onChange={e => setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, unitPrice: Math.max(0, +e.target.value), discountType: "", discountValue: 0 } : x))} />{pctOff > 0 && <div style={{ fontSize: 9, color: Cl.ok }}>-{pctOff}%</div>}</td>
+            <td style={S.td}><input type="number" min="1" style={{ ...S.inp, width: 45 }} value={sp.qty} onChange={e => setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td>
+            <td style={S.tdR}><strong>{fmt(lineHT(sp))}</strong></td>
+            <td style={S.td}><button style={S.btnS("ghost")} onClick={() => setSelP(s => s.filter(x => x.productId !== sp.productId))}>✕</button></td>
+          </tr>); })}</tbody></table>}
       {selP.length > 0 && <div style={{ textAlign: "right", marginTop: 6, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Total : {fmt(totalHT)} HT</div>}
       {isM && f.donAmount > 0 && totalHT > 0 && <div style={S.alert(ratioOK ? "success" : "danger")}>{ratioOK ? `✅ Contreparties = ${ratio.toFixed(1)}% du don (max 25%)` : `⚠️ Contreparties = ${ratio.toFixed(1)}% du don — DÉPASSE 25% ! Réduire les produits ou augmenter le don.`}</div>}
       <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -51,7 +69,7 @@ export function CompanyForm({ data, onSave, onClose }) {
     </Modal>
   );
 }
-
+ 
 export function CompanyDetail({ company, onClose, onOpenContract }) {
   const { companies, setCompanies, products, todayStr, convertToPartner, openAddAction, companyContracts, cats, currentSeason } = useApp();
   const [co, setCo_] = useState(company);
@@ -61,7 +79,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
   const setCo = (u) => { setCo_(u); setCompanies(cs => cs.map(x => x.id === u.id ? u : x)); };
   const myContracts = companyContracts(co.id);
   const lastNote = (co.notes || []).sort((a, b) => b.date.localeCompare(a.date))[0];
-
+ 
   const togP = (id) => { const pr = products.find(x => x.id === id); const p = getPrice(pr, currentSeason).price || 0; setSelP(s => s.find(x => x.productId === id) ? s.filter(x => x.productId !== id) : [...s, { productId: id, qty: 1, unitPrice: p }]); };
   const saveProducts = () => { setCo({ ...co, products: selP }); setEditingProducts(false); };
   const isM = co.dealType === "Mécénat";
@@ -69,7 +87,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
   const editTotalHT = selP.reduce((t, sp) => t + lineHT(sp), 0);
   const ratio = isM && co.donAmount > 0 ? (totalHT / co.donAmount) * 100 : 0;
   const editRatio = isM && co.donAmount > 0 ? (editTotalHT / co.donAmount) * 100 : 0;
-
+ 
   return (
     <Modal title={co.company} onClose={onClose}>
       <div style={S.g2}>
@@ -84,7 +102,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         <div><span style={S.lbl}>Type</span><Badge type={isM ? "mecenat" : "partenariat"}>{co.dealType || "Partenariat"}</Badge>{isM && co.donAmount > 0 && <span style={{ fontSize: 11, marginLeft: 4 }}>Don: {fmt(co.donAmount)}</span>}</div>
         <div><span style={S.lbl}>Statut</span><Badge type={statusBType(co.isPartner ? co.partnerStatus : co.prospectStatus)}>{co.isPartner ? co.partnerStatus : co.prospectStatus}</Badge></div>
       </div>
-
+ 
       {/* Type selector */}
       <div style={{ ...S.section, marginTop: 12 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -95,7 +113,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         </div>
         {isM && co.donAmount > 0 && totalHT > 0 && <div style={{ ...S.alert(ratio <= 25 ? "success" : "danger"), marginTop: 6 }}>{ratio <= 25 ? `✅ Contreparties = ${ratio.toFixed(1)}% du don (max 25%)` : `⚠️ ${ratio.toFixed(1)}% > 25% ! Réduire les produits ou augmenter le don.`}</div>}
       </div>
-
+ 
       {!co.isPartner && <div style={S.section}>
         <div style={S.sectionTitle}>Statut prospection</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>{P_STATUSES.map(s => (
@@ -104,7 +122,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         {co.prospectStatus === "À rappeler" && <div style={{ marginTop: 6 }}><span style={S.lbl}>📅 Date rappel</span><input type="date" style={{ ...S.inp, width: 160 }} value={co.callbackDate || ""} onChange={e => setCo({ ...co, callbackDate: e.target.value })} /></div>}
         {co.prospectStatus === "RDV pris" && <div style={{ marginTop: 6 }}><span style={S.lbl}>📅 Date RDV</span><input type="date" style={{ ...S.inp, width: 160 }} value={co.rdvDate || ""} onChange={e => setCo({ ...co, rdvDate: e.target.value })} /></div>}
       </div>}
-
+ 
       <div style={{ marginTop: 12 }}>
         <div style={S.cT}>📝 Journal</div>
         <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -115,27 +133,38 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
           <div key={n.id} style={{ padding: "5px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 12 }}><span style={{ fontWeight: 600, color: Cl.pri, marginRight: 6 }}>{n.date}</span>{n.text}</div>
         ))}
       </div>
-
+ 
       {/* PRODUITS — éditable inline */}
       <div style={{ marginTop: 12 }}>
         <div style={S.cT}>📦 {co.isPartner ? "Produits validés" : "Produits proposés"}</div>
         {!editingProducts && <div style={{ marginBottom: 10 }}><button style={{ ...S.btn("primary"), width: "100%" }} onClick={() => { setSelP(co.products || []); setEditingProducts(true); }}>✏️ Modifier / Ajouter des produits</button></div>}
-
+ 
         {editingProducts ? (<>
           <ProductPicker products={products} selected={selP} onToggle={togP} cats={cats} currentSeason={currentSeason} />
           {selP.length > 0 && <table style={{ ...S.tbl, marginTop: 8 }}>
-            <thead><tr><th style={S.th}>Produit</th><th style={S.th}>Catalogue</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th><th style={S.th}></th></tr></thead>
+            <thead><tr><th style={S.th}>Produit</th><th style={S.th}>Catalogue</th><th style={S.th}>Remise</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th><th style={S.th}></th></tr></thead>
             <tbody>{selP.map(sp => {
               const pr = products.find(x => x.id === sp.productId);
               if (!pr) return null;
               const catPrice = getPrice(pr, currentSeason).price;
+              const applyDiscount = (type, val) => {
+                const v = Math.max(0, val);
+                const newPrice = type === "%" ? Math.round(catPrice * (1 - v / 100)) : Math.max(0, catPrice - v);
+                setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, unitPrice: newPrice, discountType: type, discountValue: v } : x));
+              };
+              const dt = sp.discountType || "%"; const dv = sp.discountValue || 0;
+              const pctOff = catPrice > 0 ? Math.round((1 - sp.unitPrice / catPrice) * 100) : 0;
               return (
                 <tr key={sp.productId}>
                   <td style={S.td}>{pr.name}</td>
                   <td style={S.td}><span style={{ color: Cl.txtL }}>{fmt(catPrice)}</span></td>
-                  <td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 80, fontWeight: 700 }} value={sp.unitPrice} onChange={e => setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, unitPrice: Math.max(0, +e.target.value) } : x))} /></td>
-                  <td style={S.td}><input type="number" min="1" style={{ ...S.inp, width: 50 }} value={sp.qty} onChange={e => setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td>
-                  <td style={S.tdR}><strong>{fmt(lineHT(sp))}</strong>{sp.unitPrice < catPrice && catPrice > 0 && <div style={{ fontSize: 9, color: Cl.ok }}>-{Math.round((1 - sp.unitPrice / catPrice) * 100)}%</div>}</td>
+                  <td style={S.td}><div style={{ display: "flex", gap: 2, alignItems: "center" }}>
+                    <input type="number" min="0" style={{ ...S.inp, width: 50, fontSize: 11 }} value={dv} onChange={e => applyDiscount(dt, +e.target.value)} />
+                    <select style={{ ...S.sel, width: 42, fontSize: 10, padding: "3px 2px" }} value={dt} onChange={e => applyDiscount(e.target.value, dv)}><option value="%">%</option><option value="€">€</option></select>
+                  </div></td>
+                  <td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 75, fontWeight: 700 }} value={sp.unitPrice} onChange={e => setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, unitPrice: Math.max(0, +e.target.value), discountType: "", discountValue: 0 } : x))} />{pctOff > 0 && <div style={{ fontSize: 9, color: Cl.ok }}>-{pctOff}%</div>}</td>
+                  <td style={S.td}><input type="number" min="1" style={{ ...S.inp, width: 45 }} value={sp.qty} onChange={e => setSelP(s => s.map(x => x.productId === sp.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td>
+                  <td style={S.tdR}><strong>{fmt(lineHT(sp))}</strong></td>
                   <td style={S.td}><button style={S.btnS("ghost")} onClick={() => setSelP(s => s.filter(x => x.productId !== sp.productId))}>✕</button></td>
                 </tr>
               );
@@ -152,14 +181,17 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
             <p style={{ fontSize: 12, color: Cl.txtL }}>Aucun produit — cliquez Modifier pour en ajouter</p>
           ) : (
             <table style={{ ...S.tbl, marginTop: 4 }}>
-              <thead><tr><th style={S.th}>Produit</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th></tr></thead>
+              <thead><tr><th style={S.th}>Produit</th><th style={S.th}>Catalogue</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th></tr></thead>
               <tbody>{(co.products || []).map(cp => {
                 const pr = products.find(x => x.id === cp.productId);
                 if (!pr) return null;
+                const catPrice = getPrice(pr, currentSeason).price;
+                const pctOff = catPrice > 0 ? Math.round((1 - cp.unitPrice / catPrice) * 100) : 0;
                 return (
                   <tr key={cp.productId}>
                     <td style={S.td}><strong>{pr.name}</strong><span style={{ fontSize: 10, color: Cl.txtL, marginLeft: 4 }}>{pr.category}</span></td>
-                    <td style={S.td}>{fmt(cp.unitPrice)}</td>
+                    <td style={S.td}><span style={{ color: Cl.txtL }}>{fmt(catPrice)}</span></td>
+                    <td style={S.td}>{fmt(cp.unitPrice)}{pctOff > 0 && <span style={{ fontSize: 9, color: Cl.ok, marginLeft: 4 }}>-{pctOff}%</span>}</td>
                     <td style={S.td}>{cp.qty}</td>
                     <td style={S.tdR}><strong>{fmt(lineHT(cp))}</strong></td>
                   </tr>
@@ -170,7 +202,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
           {(co.products || []).length > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Total : {fmt((co.products || []).reduce((t, cp) => t + lineHT(cp), 0))} HT</div>}
         </>)}
       </div>
-
+ 
       <div style={{ marginTop: 12 }}>
         <div style={S.fx}><div style={S.cT}>📋 Actions</div><button style={S.btnS("ghost")} onClick={() => openAddAction(co.id, co.isPartner ? "Partenariat" : "Prospection")}>+</button></div>
         {(co.actions || []).map(a => (
@@ -182,7 +214,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
           </div>
         ))}
       </div>
-
+ 
       {myContracts.length > 0 && <div style={{ marginTop: 12 }}>
         <div style={S.cT}>📝 Contrats liés</div>
         {myContracts.map(con => (
@@ -192,11 +224,11 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
           </div>
         ))}
       </div>}
-
+ 
       {!co.isPartner && <div style={{ marginTop: 16, textAlign: "center" }}>
         <button style={{ ...S.btn("success"), fontSize: 14, padding: "10px 28px" }} onClick={() => { convertToPartner(co.id); onClose(); }}>✅ Convertir en partenaire</button>
       </div>}
-
+ 
       {co.isPartner && <div style={{ marginTop: 16, textAlign: "center" }}>
         <button style={{ ...S.btn("ghost"), fontSize: 12, color: Cl.err }} onClick={() => { setCo({ ...co, isPartner: false, partnerStatus: "", prospectStatus: "Nouveau" }); onClose(); }}>↩️ Repasser en prospect</button>
       </div>}
