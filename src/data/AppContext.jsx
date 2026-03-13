@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useMemo } from 'react';
-import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds } from '../data/initialData';
+import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds, INIT_ACCOUNT_CODES, genAccountCode, invoiceNum } from '../data/initialData';
 
 const Ctx = createContext();
 export const useApp = () => useContext(Ctx);
@@ -14,6 +14,9 @@ export function AppProvider({ children }) {
   const [currentSeason, setCurrentSeason] = useState(INIT_CURRENT);
   const [miniForm, setMiniForm] = useState(null);
   const [clubInfo, setClubInfo] = useState(INIT_CLUB_INFO);
+  const [invoices, setInvoices] = useState([]);
+  const [accountCodes, setAccountCodes] = useState(INIT_ACCOUNT_CODES);
+  const [invoiceSeq, setInvoiceSeq] = useState(1);
 
   const addMember = (n) => { if (n && !members.includes(n)) setMembers(ms => [...ms, n]); };
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -155,10 +158,47 @@ export function AppProvider({ children }) {
     }});
   };
 
+  // --- Invoice generation ---
+  const generateInvoice = (contract, season) => {
+    const co = getCompany(contract.companyId);
+    if (!co) return null;
+    const sp = contract.seasonProducts || {};
+    const prods = sp[season] || co.products || [];
+    const lines = prods.map(cp => {
+      const pr = products.find(x => x.id === cp.productId);
+      if (!pr) return null;
+      const ht = lineHT(cp);
+      const tvaRate = pr.tva || 20;
+      const tvaAmount = Math.round(ht * tvaRate / 100 * 100) / 100;
+      return { productId: cp.productId, name: pr.name, category: pr.category, qty: cp.qty, unitPrice: cp.unitPrice, totalHT: ht, tvaRate, tvaAmount };
+    }).filter(Boolean);
+    const totalHT = lines.reduce((t, l) => t + l.totalHT, 0);
+    const totalTVA = lines.reduce((t, l) => t + l.tvaAmount, 0);
+    const totalTTC = totalHT + totalTVA;
+    const dateStr = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const seq = invoiceSeq;
+    setInvoiceSeq(s => s + 1);
+    const inv = {
+      id: uid(), number: invoiceNum(dateStr, seq),
+      contractId: contract.id, companyId: co.id, companyName: co.company,
+      accountCode: co.accountCode || genAccountCode(co.company),
+      date: todayStr, dateStr, season,
+      lines, totalHT: Math.round(totalHT * 100) / 100, totalTVA: Math.round(totalTVA * 100) / 100, totalTTC: Math.round(totalTTC * 100) / 100,
+      status: "Émise",
+    };
+    setInvoices(is => [...is, inv]);
+    // Set contract status to Facturé if not already
+    setContracts(cs => cs.map(c => c.id === contract.id ? { ...c, status: c.status === "Signé" ? "Facturé" : c.status } : c));
+    return inv;
+  };
+
+  const seasonInvoices = useMemo(() => invoices.filter(i => i.season === currentSeason), [invoices, currentSeason]);
+
   const value = {
     companies, setCompanies, products, setProducts, contracts, setContracts,
     members, setMembers, addMember, seasons, setSeasons, cats, setCats, currentSeason, setCurrentSeason,
     miniForm, setMiniForm, todayStr, clubInfo, setClubInfo,
+    invoices, setInvoices, seasonInvoices, generateInvoice, accountCodes, setAccountCodes,
     prospectsList, partnersList, getCompany, companyContracts,
     contractHT, contractTTC, stockSold, stockProv, caByProd, caByType, totalCA, totalPaid, allActions, seasonContracts,
     objectives, setObjectives, caByMember,
