@@ -13,6 +13,15 @@ export const lineHT = (cp) => (cp.unitPrice || 0) * (cp.qty || 1);
 export const lineTTC = (cp, tva) => lineHT(cp) * (1 + (tva || 20) / 100);
 export const getPrice = (prod, season) => (prod.prices && prod.prices[season]) || { cost: 0, price: 0, amort: 0 };
 export const isSigned = (c) => ["Signé", "Facturé", "Payé"].includes(c.status);
+export const getContractSeasonIds = (contract, seasons) => {
+  const i = seasons.findIndex(s => s.id === contract.startSeason);
+  return i < 0 ? [] : seasons.slice(i, i + (contract.seasons || 1)).map(s => s.id);
+};
+export const getSeasonProducts = (contract, company) => {
+  if (contract.seasonProducts && Object.keys(contract.seasonProducts).length > 0) return contract.seasonProducts;
+  // Fallback: company products for all seasons
+  return {};
+};
 export const statusBType = (s) => ({ "Nouveau": "new", "Pas répondu": "noreply", "Intéressé": "interested", "À rappeler": "callback", "RDV pris": "rdv", "Proposition envoyée": "proposition", "Renouvellement potentiel": "renewal", "Refusé": "refused", "Nouveau partenaire": "partner", "Renouvellement": "renewal" }[s] || "draft");
 
 // --- Constants ---
@@ -52,7 +61,10 @@ export const INIT_COMPANIES = [
 ];
 
 export const INIT_CONTRACTS = [
-  { id: 1, companyId: 2, type: "Partenariat", member: "Lucas Dupont", signataire: "Jean Petit", seasons: 2, startSeason: "2025-2026", status: "Signé", donAmount: 0, payments: [{ id: 1, label: "Acompte 50%", amount: 1175, dueDate: "2026-04-01", status: "Payé" }, { id: 2, label: "Solde 50%", amount: 1175, dueDate: "2026-09-01", status: "En attente" }], actions: [{ id: 10, type: "Envoyer facture solde", category: "Contrat et facturation", date: "2026-08-15", done: false, note: "", assignee: "Lucas Dupont" }] },
+  { id: 1, companyId: 2, type: "Partenariat", member: "Lucas Dupont", signataire: "Jean Petit", seasons: 2, startSeason: "2025-2026", status: "Signé", donAmount: 0, seasonProducts: {
+    "2025-2026": [{ productId: 1, qty: 1, unitPrice: 1350 }, { productId: 9, qty: 5, unitPrice: 200 }],
+    "2026-2027": [{ productId: 1, qty: 1, unitPrice: 1400 }, { productId: 9, qty: 5, unitPrice: 200 }, { productId: 6, qty: 1, unitPrice: 500 }]
+  }, payments: [{ id: 1, label: "Acompte 50%", amount: 1175, dueDate: "2026-04-01", status: "Payé" }, { id: 2, label: "Solde 50%", amount: 1175, dueDate: "2026-09-01", status: "En attente" }], actions: [{ id: 10, type: "Envoyer facture solde", category: "Contrat et facturation", date: "2026-08-15", done: false, note: "", assignee: "Lucas Dupont" }] },
 ];
 
 export const INIT_CLUB_INFO = {
