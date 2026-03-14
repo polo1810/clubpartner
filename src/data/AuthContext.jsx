@@ -90,7 +90,7 @@ export function AuthProvider({ children }) {
   const isSuperAdmin = role === "superadmin";
 
   const value = {
-    user, member, clubData, clubInfo: clubInfoState, loading, error, isLocal,
+    user, member, clubData, clubInfo, loading, error, isLocal,
     login, logout, saveClubData, loadUserData,
     role, canEdit, canInvoice, canSettings, isSuperAdmin,
   };
