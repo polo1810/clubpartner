@@ -92,7 +92,7 @@ export const ProductFormModal = ({ onClose, onAdd, cats, seasons, currentSeason 
   <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}><button style={S.btn("ghost")} onClick={onClose}>Annuler</button><button style={S.btn("primary")} onClick={() => { const prices = {}; Object.entries(sp).forEach(([k, v]) => { if (v.price || v.cost || v.amort) prices[k] = v; }); onAdd({ ...f, prices, totalCost: f.totalCost }); }}>Ajouter</button></div></Modal>);
 };
 
-export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeason, clubInfo, setClubInfo, accountCodes, setAccountCodes, onClose }) => {
+export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeason, clubInfo, setClubInfo, accountCodes, setAccountCodes, scripts, setScripts, onClose }) => {
   const [newCat, setNewCat] = useState("");
   const [newSeason, setNewSeason] = useState({ name: "", startDate: "", endDate: "" });
   const updateSeason = (id, key, value) => setSeasons(ss => ss.map(s => s.id === id ? { ...s, [key]: value } : s));
@@ -164,5 +164,15 @@ export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeaso
         }}>Ajouter</button>
       </div>
     </div>
+
+    {/* Scripts de prospection */}
+    <div style={{ ...S.cT, marginTop: 20 }}>📞 Scripts de prospection</div>
+    {["Partenariat", "Mécénat"].map(type => (
+      <div key={type} style={{ marginTop: 8 }}>
+        <label style={{ ...S.lbl, fontWeight: 700 }}>{type === "Partenariat" ? "🤝" : "💜"} Script {type}</label>
+        <textarea style={{ ...S.inp, minHeight: 120, resize: "vertical", fontFamily: "inherit", fontSize: 12, lineHeight: 1.5 }} value={scripts?.[type] || ""} onChange={e => setScripts(sc => ({ ...sc, [type]: e.target.value }))} placeholder={`Script d'appel pour ${type}...`} />
+      </div>
+    ))}
+    <div style={{ marginTop: 4, fontSize: 10, color: Cl.txtL }}>Utilisez **texte** pour le gras, • pour les puces. Les placeholders [contact], [nom], [club], [saison] seront remplacés automatiquement.</div>
   </Modal>);
 };
