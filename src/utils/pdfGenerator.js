@@ -8,7 +8,7 @@ const today = () => new Date().toLocaleDateString("fr-FR");
 const devisNum = () => `DEV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
 const contratNum = () => `CTR-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
 
-function addHeader(doc, club, title, num) {
+function addHeader(doc, club, title, num, customDate) {
   // Club info (left)
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
@@ -31,7 +31,7 @@ function addHeader(doc, club, title, num) {
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text(`N° ${num}`, 190, 32, { align: "right" });
-  doc.text(`Date : ${today()}`, 190, 37, { align: "right" });
+  doc.text(`Date : ${customDate || today()}`, 190, 37, { align: "right" });
 
   // Line
   doc.setDrawColor(30, 115, 232);
@@ -374,7 +374,7 @@ export function generateFacturePDF(club, company, invoice) {
   const doc = new jsPDF();
 
   // Header
-  let y = addHeader(doc, club, "Facture", invoice.number);
+  let y = addHeader(doc, club, "Facture", invoice.number, invoice.dateStr);
   y = addCompanyBlock(doc, company, y);
 
   // Invoice info
