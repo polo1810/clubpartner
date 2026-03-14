@@ -81,11 +81,17 @@ export function CompanyForm({ data, onSave, onClose }) {
     if (sda[fromSid] !== undefined) setSda({ ...sda, [activeSeason]: sda[fromSid] });
   };
 
+  // Seasons with data
+  const activeSeasons = seasonIds.filter(sid => (sp[sid]?.length > 0) || (sda[sid] > 0));
+
   const doSave = () => {
     const cleanSP = {}; const cleanSDA = {};
     Object.entries(sp).forEach(([k, v]) => { if (v.length > 0) cleanSP[k] = v; });
     Object.entries(sda).forEach(([k, v]) => { if (v > 0) cleanSDA[k] = v; });
-    onSave({ ...f, seasonProducts: cleanSP, seasonDonAmounts: cleanSDA, donAmount: totDon, products: cleanSP[currentSeason] || [] });
+    // Auto-set season to first season with data
+    const dataSeasons = seasons.map(s => s.id).filter(sid => cleanSP[sid]?.length > 0 || cleanSDA[sid] > 0);
+    const autoSeason = dataSeasons[0] || f.season || currentSeason;
+    onSave({ ...f, season: autoSeason, seasonProducts: cleanSP, seasonDonAmounts: cleanSDA, donAmount: totDon, products: cleanSP[currentSeason] || [] });
   };
 
   return (
@@ -105,7 +111,7 @@ export function CompanyForm({ data, onSave, onClose }) {
         {isP && <Field label="Statut partenaire"><select style={S.sel} value={f.partnerStatus} onChange={e => set("partnerStatus", e.target.value)}>{PARTNER_STATUSES.map(s => <option key={s}>{s}</option>)}</select></Field>}
         {f.prospectStatus === "À rappeler" && <Field label="Date rappel"><input type="date" style={S.inp} value={f.callbackDate || ""} onChange={e => set("callbackDate", e.target.value)} /></Field>}
         {f.prospectStatus === "RDV pris" && <Field label="Date RDV"><input type="date" style={S.inp} value={f.rdvDate || ""} onChange={e => set("rdvDate", e.target.value)} /></Field>}
-        <Field label="Saison"><select style={S.sel} value={f.season || currentSeason} onChange={e => set("season", e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select></Field>
+        <Field label="Saison(s)">{activeSeasons.length > 0 ? <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>{activeSeasons.map(s => <Badge key={s} type="new">{s}</Badge>)}</div> : <select style={S.sel} value={f.season || currentSeason} onChange={e => set("season", e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select>}{activeSeasons.length > 0 && <div style={{ fontSize: 10, color: Cl.txtL, marginTop: 2 }}>Auto-détecté depuis les produits/dons saisis</div>}</Field>
         <Field label="Responsable"><MemberSelect value={f.member} onChange={v => set("member", v)} members={members} onAdd={addMember} /></Field>
       </div>
 
@@ -221,7 +227,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         <div><span style={S.lbl}>Téléphone</span><PhoneLink phone={co.phone} /></div>
         <div><span style={S.lbl}>Email</span><EmailLink email={co.email} /></div>
         <div><span style={S.lbl}>Responsable</span><strong>{co.member}</strong></div>
-        <div><span style={S.lbl}>Saison</span><Badge type="draft">{co.season}</Badge></div>
+        <div><span style={S.lbl}>Saison(s)</span>{(() => { const as = seasons.map(s=>s.id).filter(sid => coSP[sid]?.length > 0 || (coSDA[sid] || 0) > 0); return as.length > 0 ? as.map(s => <Badge key={s} type="draft">{s}</Badge>) : <Badge type="draft">{co.season}</Badge>; })()}</div>
         {co.siret && <div><span style={S.lbl}>SIRET</span>{co.siret}</div>}
         <div><span style={S.lbl}>Dernier contact</span>{lastNote?.date || "—"}</div>
         <div><span style={S.lbl}>Type</span><Badge type={isM ? "mecenat" : "partenariat"}>{co.dealType || "Partenariat"}</Badge>{isM && totDon > 0 && <span style={{ fontSize: 11, marginLeft: 4 }}>Don total: {fmt(totDon)}</span>}</div>
@@ -357,8 +363,8 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
       </div>
 
       {/* Devis PDF */}
-      {hasAnyProduct(coSP) && <div style={{ marginTop: 10 }}>
-        <button style={{ ...S.btn("ghost"), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => generateDevis(clubInfo, co, co.products, products, currentSeason, [])}>📄 Télécharger le devis / proposition</button>
+      {(hasAnyProduct(coSP) || totDon > 0) && <div style={{ marginTop: 10 }}>
+        <button style={{ ...S.btn("ghost"), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => generateDevis(clubInfo, co, co.products, products, currentSeason, [], seasons)}>📄 Télécharger le devis / proposition</button>
       </div>}
 
       <div style={{ marginTop: 12 }}>
