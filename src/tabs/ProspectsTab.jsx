@@ -9,6 +9,8 @@ export default function ProspectsTab() {
   const { prospectsList, companies, setCompanies, seasons, currentSeason, members, convertToPartner } = useApp();
   const [sectorF, setSectorF] = useState("Tous");
   const [statusF, setStatusF] = useState("Tous");
+  const [typeF, setTypeF] = useState("Tous");
+  const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editCo, setEditCo] = useState(null);
   const [viewCo, setViewCo] = useState(null);
@@ -16,8 +18,10 @@ export default function ProspectsTab() {
 
   const sectors = [...new Set(prospectsList.map(p => p.sector).filter(Boolean))];
   let filtered = prospectsList;
+  if (search) { const q = search.toLowerCase(); filtered = filtered.filter(p => (p.company || "").toLowerCase().includes(q) || (p.contact || "").toLowerCase().includes(q) || (p.member || "").toLowerCase().includes(q)); }
   if (sectorF !== "Tous") filtered = filtered.filter(p => p.sector === sectorF);
   if (statusF !== "Tous") filtered = filtered.filter(p => p.prospectStatus === statusF);
+  if (typeF !== "Tous") filtered = filtered.filter(p => (p.dealType || "Partenariat") === typeF);
 
   const saveCo = (d) => {
     if (editCo) setCompanies(cs => cs.map(c => c.id === editCo.id ? { ...c, ...d } : c));
@@ -28,13 +32,17 @@ export default function ProspectsTab() {
   return (<>
     <div style={S.fx}><h2 style={{ fontSize: 16, fontWeight: 700 }}>🎯 Prospects ({filtered.length})</h2>
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-        <select style={{ ...S.sel, width: "auto" }} value={sectorF} onChange={e => setSectorF(e.target.value)}><option>Tous</option>{sectors.map(s => <option key={s}>{s}</option>)}</select>
-        <select style={{ ...S.sel, width: "auto" }} value={statusF} onChange={e => setStatusF(e.target.value)}><option>Tous</option>{P_STATUSES.map(s => <option key={s}>{s}</option>)}</select>
         <button style={S.btn("ghost")} onClick={() => setShowImport(true)}>📥</button>
         <button style={S.btn("primary")} onClick={() => { setEditCo(null); setShowForm(true); }}>+ Prospect</button>
       </div>
     </div>
-    <div style={{ marginTop: 8 }}>{filtered.map(co => (
+    <div style={{ marginTop: 6, display: "flex", gap: 4, flexWrap: "wrap" }}>
+      <input style={{ ...S.inp, flex: 1, minWidth: 120 }} placeholder="🔍 Rechercher entreprise, contact, responsable..." value={search} onChange={e => setSearch(e.target.value)} />
+      <select style={{ ...S.sel, width: "auto" }} value={sectorF} onChange={e => setSectorF(e.target.value)}><option>Tous</option>{sectors.map(s => <option key={s}>{s}</option>)}</select>
+      <select style={{ ...S.sel, width: "auto" }} value={statusF} onChange={e => setStatusF(e.target.value)}><option>Tous</option>{P_STATUSES.map(s => <option key={s}>{s}</option>)}</select>
+      <select style={{ ...S.sel, width: "auto" }} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
+    </div>
+    <div style={{ marginTop: 8 }}>{filtered.length === 0 ? <div style={{ textAlign: "center", padding: 30, color: Cl.txtL }}>Aucun prospect trouvé</div> : filtered.map(co => (
       <div key={co.id} style={{ ...S.card, cursor: "pointer", borderLeft: `4px solid ${co.prospectStatus === "Intéressé" ? Cl.ok : co.prospectStatus === "RDV pris" ? Cl.pur : co.prospectStatus === "Refusé" ? Cl.err : co.prospectStatus === "À rappeler" ? Cl.warn : Cl.brd}` }} onClick={() => setViewCo(co)}>
         <div style={S.fx}>
           <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
