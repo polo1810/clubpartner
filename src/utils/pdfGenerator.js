@@ -60,7 +60,7 @@ function addCompanyBlock(doc, co, startY) {
   return y + 36;
 }
 
-export function generateDevis(club, company, products, allProducts, currentSeason, payments) {
+export function generateDevis(club, company, products, allProducts, currentSeason, payments, seasons) {
   const doc = new jsPDF();
   const isM = company.dealType === "Mécénat";
   const num = devisNum();
@@ -77,43 +77,119 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
   doc.setTextColor(0);
   y += 8;
 
-  // Products table
-  const prods = (company.products || []).map(cp => {
-    const pr = allProducts.find(x => x.id === cp.productId);
-    if (!pr) return null;
-    const catPrice = getPrice(pr, currentSeason).price;
-    const remise = catPrice > 0 && cp.unitPrice < catPrice ? `-${Math.round((1 - cp.unitPrice / catPrice) * 100)}%` : "";
-    return [pr.name, fmtE(catPrice), remise, fmtE(cp.unitPrice), String(cp.qty), fmtE(lineHT(cp))];
-  }).filter(Boolean);
+  const coSP = company.seasonProducts || {};
+  const coSDA = company.seasonDonAmounts || {};
+  const hasSP = Object.keys(coSP).length > 0;
+  // Find which seasons have data (products or don)
+  const allSeasons = seasons ? seasons.map(s => s.id) : [currentSeason];
+  const activeSeasons = allSeasons.filter(sid => (coSP[sid]?.length > 0) || (coSDA[sid] > 0));
+  const displaySeasons = activeSeasons.length > 0 ? activeSeasons : [currentSeason];
 
-  const totalHT = (company.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+  // Duration line if multi-season
+  if (displaySeasons.length > 1) {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Durée : ${displaySeasons.length} saisons (${displaySeasons[0]} à ${displaySeasons[displaySeasons.length - 1]})`, 20, y);
+    y += 6;
+  }
 
-  if (prods.length > 0) {
-    autoTable(doc, {
-      startY: y,
-      head: [["Produit", "Prix catalogue", "Remise", "Prix conclu", "Qté", "Total HT"]],
-      body: prods,
-      theme: "striped",
-      headStyles: { fillColor: isM ? [124, 58, 237] : [26, 115, 232], fontSize: 8 },
-      styles: { fontSize: 8, cellPadding: 3 },
-      columnStyles: { 0: { cellWidth: 50 }, 5: { halign: "right", fontStyle: "bold" } },
-      margin: { left: 20, right: 20 },
+  let grandTotalHT = 0;
+  let grandTotalDon = 0;
+
+  if (hasSP && displaySeasons.length > 0) {
+    // One table per season
+    displaySeasons.forEach(sid => {
+      const seasonProds = coSP[sid] || [];
+      const seasonDon = coSDA[sid] || 0;
+      const rows = seasonProds.map(cp => {
+        const pr = allProducts.find(x => x.id === cp.productId);
+        if (!pr) return null;
+        const catPrice = getPrice(pr, sid).price || getPrice(pr, currentSeason).price;
+        const remise = catPrice > 0 && cp.unitPrice < catPrice ? `-${Math.round((1 - cp.unitPrice / catPrice) * 100)}%` : "";
+        return [pr.name, fmtE(catPrice), remise, fmtE(cp.unitPrice), String(cp.qty), fmtE(lineHT(cp))];
+      }).filter(Boolean);
+      const seasonHT = seasonProds.reduce((t, cp) => t + lineHT(cp), 0);
+      grandTotalHT += seasonHT;
+      grandTotalDon += seasonDon;
+
+      if (y > 240) { doc.addPage(); y = 25; }
+
+      // Season subtitle
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(isM ? 124 : 26, isM ? 58 : 115, isM ? 237 : 232);
+      doc.text(`Saison ${sid}`, 20, y + 4);
+      if (isM && seasonDon > 0) {
+        doc.text(`Don : ${fmtE(seasonDon)}`, 190, y + 4, { align: "right" });
+      }
+      doc.setTextColor(0);
+      y += 2;
+
+      if (rows.length > 0) {
+        autoTable(doc, {
+          startY: y,
+          head: [["Produit", "Prix catalogue", "Remise", "Prix conclu", "Qté", "Total HT"]],
+          body: rows,
+          theme: "striped",
+          headStyles: { fillColor: isM ? [124, 58, 237] : [26, 115, 232], fontSize: 8 },
+          styles: { fontSize: 8, cellPadding: 3 },
+          columnStyles: { 0: { cellWidth: 50 }, 5: { halign: "right", fontStyle: "bold" } },
+          margin: { left: 20, right: 20 },
+        });
+        y = doc.lastAutoTable.finalY + 2;
+      }
+      // Season subtotal
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      if (isM && seasonDon > 0 && seasonHT > 0) {
+        const ratio = ((seasonHT / seasonDon) * 100).toFixed(1);
+        doc.text(`Contreparties ${sid} : ${fmtE(seasonHT)} HT (${ratio}% du don)`, 190, y, { align: "right" });
+      } else {
+        doc.text(`Sous-total ${sid} : ${fmtE(seasonHT)} HT`, 190, y, { align: "right" });
+      }
+      doc.setFont("helvetica", "normal");
+      y += 6;
     });
-    y = doc.lastAutoTable.finalY + 6;
+  } else {
+    // Fallback: single table (old behavior)
+    const prods = (company.products || []).map(cp => {
+      const pr = allProducts.find(x => x.id === cp.productId);
+      if (!pr) return null;
+      const catPrice = getPrice(pr, currentSeason).price;
+      const remise = catPrice > 0 && cp.unitPrice < catPrice ? `-${Math.round((1 - cp.unitPrice / catPrice) * 100)}%` : "";
+      return [pr.name, fmtE(catPrice), remise, fmtE(cp.unitPrice), String(cp.qty), fmtE(lineHT(cp))];
+    }).filter(Boolean);
+    grandTotalHT = (company.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+    grandTotalDon = company.donAmount || 0;
+
+    if (prods.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        head: [["Produit", "Prix catalogue", "Remise", "Prix conclu", "Qté", "Total HT"]],
+        body: prods,
+        theme: "striped",
+        headStyles: { fillColor: isM ? [124, 58, 237] : [26, 115, 232], fontSize: 8 },
+        styles: { fontSize: 8, cellPadding: 3 },
+        columnStyles: { 0: { cellWidth: 50 }, 5: { halign: "right", fontStyle: "bold" } },
+        margin: { left: 20, right: 20 },
+      });
+      y = doc.lastAutoTable.finalY + 6;
+    }
   }
 
   // Totals
+  if (y > 250) { doc.addPage(); y = 25; }
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   if (isM) {
-    doc.text(`Montant du don : ${fmtE(company.donAmount || 0)}`, 190, y, { align: "right" });
+    doc.text(`Montant total du don : ${fmtE(grandTotalDon)}`, 190, y, { align: "right" });
     y += 5;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text(`Contreparties : ${fmtE(totalHT)} HT (${company.donAmount > 0 ? ((totalHT / company.donAmount) * 100).toFixed(1) : 0}% du don)`, 190, y, { align: "right" });
+    doc.text(`Contreparties totales : ${fmtE(grandTotalHT)} HT (${grandTotalDon > 0 ? ((grandTotalHT / grandTotalDon) * 100).toFixed(1) : 0}% du don)`, 190, y, { align: "right" });
     y += 8;
   } else {
-    doc.text(`Total HT : ${fmtE(totalHT)}`, 190, y, { align: "right" });
+    doc.text(`Total HT : ${fmtE(grandTotalHT)}`, 190, y, { align: "right" });
     y += 6;
   }
 
@@ -127,6 +203,7 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
   y += 10;
 
   // Signature
+  if (y > 240) { doc.addPage(); y = 25; }
   doc.setTextColor(0);
   doc.setDrawColor(200);
   doc.setLineWidth(0.3);
