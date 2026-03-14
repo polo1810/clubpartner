@@ -8,13 +8,17 @@ import { CompanyForm, CompanyDetail } from '../components/CompanyModals';
 export default function PartnersTab({ onOpenContract }) {
   const { partnersList, companies, setCompanies, seasons, currentSeason, companyContracts } = useApp();
   const [sectorF, setSectorF] = useState("Tous");
+  const [typeF, setTypeF] = useState("Tous");
+  const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editCo, setEditCo] = useState(null);
   const [viewCo, setViewCo] = useState(null);
 
   const sectors = [...new Set(partnersList.map(p => p.sector).filter(Boolean))];
   let filtered = partnersList;
+  if (search) { const q = search.toLowerCase(); filtered = filtered.filter(p => (p.company || "").toLowerCase().includes(q) || (p.contact || "").toLowerCase().includes(q) || (p.member || "").toLowerCase().includes(q)); }
   if (sectorF !== "Tous") filtered = filtered.filter(p => p.sector === sectorF);
+  if (typeF !== "Tous") filtered = filtered.filter(p => (p.dealType || "Partenariat") === typeF);
 
   const saveCo = (d) => {
     if (editCo) setCompanies(cs => cs.map(c => c.id === editCo.id ? { ...c, ...d } : c));
@@ -24,11 +28,13 @@ export default function PartnersTab({ onOpenContract }) {
 
   return (<>
     <div style={S.fx}><h2 style={{ fontSize: 16, fontWeight: 700 }}>🤝 Partenaires ({filtered.length})</h2>
-      <div style={{ display: "flex", gap: 4 }}>
-        <select style={{ ...S.sel, width: "auto" }} value={sectorF} onChange={e => setSectorF(e.target.value)}><option>Tous</option>{sectors.map(s => <option key={s}>{s}</option>)}</select>
-      </div>
     </div>
-    <div style={{ marginTop: 8 }}>{filtered.map(co => {
+    <div style={{ marginTop: 6, display: "flex", gap: 4, flexWrap: "wrap" }}>
+      <input style={{ ...S.inp, flex: 1, minWidth: 120 }} placeholder="🔍 Rechercher entreprise, contact, responsable..." value={search} onChange={e => setSearch(e.target.value)} />
+      <select style={{ ...S.sel, width: "auto" }} value={sectorF} onChange={e => setSectorF(e.target.value)}><option>Tous</option>{sectors.map(s => <option key={s}>{s}</option>)}</select>
+      <select style={{ ...S.sel, width: "auto" }} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
+    </div>
+    <div style={{ marginTop: 8 }}>{filtered.length === 0 ? <div style={{ textAlign: "center", padding: 30, color: Cl.txtL }}>Aucun partenaire trouvé</div> : filtered.map(co => {
       const myC = companyContracts(co.id);
       const hasSigned = myC.some(c => isSigned(c));
       return (
