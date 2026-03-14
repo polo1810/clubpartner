@@ -16,18 +16,37 @@ import AdminTab from './tabs/AdminTab';
 
 // --- Login Screen ---
 function LoginScreen() {
-  const { login, error } = useAuth();
+  const { login, loginWithPassword, signUp, error } = useAuth();
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState("password"); // "password" | "magic" | "signup" | "sent"
   const [sending, setSending] = useState(false);
 
-  const handleLogin = async () => {
+  const handlePassword = async () => {
+    if (!email.trim() || !password) return;
+    setSending(true);
+    await loginWithPassword(email.trim().toLowerCase(), password);
+    setSending(false);
+  };
+
+  const handleSignUp = async () => {
+    if (!email.trim() || !password || password.length < 6) return;
+    setSending(true);
+    const ok = await signUp(email.trim().toLowerCase(), password);
+    setSending(false);
+    if (ok) setMode("confirm");
+  };
+
+  const handleMagic = async () => {
     if (!email.trim()) return;
     setSending(true);
     const ok = await login(email.trim().toLowerCase());
     setSending(false);
-    if (ok) setSent(true);
+    if (ok) setMode("sent");
   };
+
+  const inputStyle = { ...S.inp, fontSize: 16, padding: "12px 14px", marginTop: 6, width: "100%", boxSizing: "border-box" };
+  const btnMain = { ...S.btn("primary"), width: "100%", marginTop: 12, padding: "12px", fontSize: 15, fontWeight: 700 };
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #1a73e8 0%, #6c3aed 100%)" }}>
@@ -38,21 +57,54 @@ function LoginScreen() {
           <p style={{ fontSize: 13, color: Cl.txtL }}>Gestion de partenariats sportifs</p>
         </div>
 
-        {sent ? (
+        {mode === "sent" ? (
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>📧</div>
             <h2 style={{ fontSize: 16, fontWeight: 700 }}>Vérifiez votre boîte mail</h2>
-            <p style={{ fontSize: 13, color: Cl.txtL, marginTop: 8 }}>Un lien de connexion a été envoyé à <strong>{email}</strong>. Cliquez dessus pour accéder à l'application.</p>
-            <button style={{ ...S.btn("ghost"), marginTop: 16 }} onClick={() => setSent(false)}>← Autre email</button>
+            <p style={{ fontSize: 13, color: Cl.txtL, marginTop: 8 }}>Un lien de connexion a été envoyé à <strong>{email}</strong>.</p>
+            <button style={{ ...S.btn("ghost"), marginTop: 16 }} onClick={() => setMode("password")}>← Retour</button>
+          </div>
+        ) : mode === "confirm" ? (
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+            <h2 style={{ fontSize: 16, fontWeight: 700 }}>Compte créé</h2>
+            <p style={{ fontSize: 13, color: Cl.txtL, marginTop: 8 }}>Vérifiez votre boîte mail pour confirmer, puis connectez-vous.</p>
+            <button style={{ ...S.btn("primary"), marginTop: 16 }} onClick={() => setMode("password")}>Se connecter</button>
+          </div>
+        ) : mode === "signup" ? (
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: Cl.txtL }}>Email</label>
+            <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="prenom@club.fr" autoFocus />
+            <label style={{ fontSize: 12, fontWeight: 600, color: Cl.txtL, marginTop: 10, display: "block" }}>Mot de passe (6 caractères min.)</label>
+            <input type="password" style={inputStyle} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••" onKeyDown={e => e.key === "Enter" && handleSignUp()} />
+            <button style={btnMain} onClick={handleSignUp} disabled={sending}>{sending ? "Création..." : "Créer mon compte"}</button>
+            {error && <div style={{ marginTop: 10, padding: 10, background: Cl.errL, borderRadius: 8, fontSize: 12, color: Cl.err }}>{error}</div>}
+            <div style={{ marginTop: 14, textAlign: "center" }}>
+              <button style={{ ...S.btn("ghost"), fontSize: 12 }} onClick={() => setMode("password")}>← Déjà un compte ? Se connecter</button>
+            </div>
+          </div>
+        ) : mode === "magic" ? (
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: Cl.txtL }}>Email</label>
+            <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="prenom@club.fr" onKeyDown={e => e.key === "Enter" && handleMagic()} autoFocus />
+            <button style={btnMain} onClick={handleMagic} disabled={sending}>{sending ? "Envoi..." : "📧 Recevoir le lien de connexion"}</button>
+            {error && <div style={{ marginTop: 10, padding: 10, background: Cl.errL, borderRadius: 8, fontSize: 12, color: Cl.err }}>{error}</div>}
+            <div style={{ marginTop: 14, textAlign: "center" }}>
+              <button style={{ ...S.btn("ghost"), fontSize: 12 }} onClick={() => setMode("password")}>← Connexion par mot de passe</button>
+            </div>
           </div>
         ) : (
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: Cl.txtL }}>Votre adresse email</label>
-            <input type="email" style={{ ...S.inp, fontSize: 16, padding: "12px 14px", marginTop: 6 }} value={email} onChange={e => setEmail(e.target.value)} placeholder="prenom@club.fr" onKeyDown={e => e.key === "Enter" && handleLogin()} autoFocus />
-            <button style={{ ...S.btn("primary"), width: "100%", marginTop: 12, padding: "12px", fontSize: 15, fontWeight: 700 }} onClick={handleLogin} disabled={sending}>
-              {sending ? "Envoi en cours..." : "📧 Recevoir le lien de connexion"}
-            </button>
+            <label style={{ fontSize: 12, fontWeight: 600, color: Cl.txtL }}>Email</label>
+            <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="prenom@club.fr" autoFocus />
+            <label style={{ fontSize: 12, fontWeight: 600, color: Cl.txtL, marginTop: 10, display: "block" }}>Mot de passe</label>
+            <input type="password" style={inputStyle} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••" onKeyDown={e => e.key === "Enter" && handlePassword()} />
+            <button style={btnMain} onClick={handlePassword} disabled={sending}>{sending ? "Connexion..." : "Se connecter"}</button>
             {error && <div style={{ marginTop: 10, padding: 10, background: Cl.errL, borderRadius: 8, fontSize: 12, color: Cl.err }}>{error}</div>}
+            <div style={{ marginTop: 14, textAlign: "center", display: "flex", flexDirection: "column", gap: 6 }}>
+              <button style={{ ...S.btn("ghost"), fontSize: 12 }} onClick={() => setMode("magic")}>🔗 Connexion par lien email</button>
+              <button style={{ ...S.btn("ghost"), fontSize: 12 }} onClick={() => setMode("signup")}>Première connexion ? Créer un compte</button>
+            </div>
           </div>
         )}
       </div>
