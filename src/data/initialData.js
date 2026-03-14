@@ -36,6 +36,10 @@ export const INIT_ACCOUNT_CODES = {
   categories: { "Signalétique": "70820000", "Print": "70830000", "Textile": "70840000", "Digital": "70851000", "Événement": "70843000" },
 };
 export const INVOICE_STATUSES = ["Émise", "Payée partiellement", "Payée", "Annulée"];
+export const INIT_SCRIPTS = {
+  "Partenariat": `**Introduction**\nBonjour [contact], je suis [nom] du [club].\nJe vous contacte car nous proposons des partenariats pour la saison [saison].\n\n**Présentation**\n• Expliquer les différentes formules de visibilité\n• Mentionner le nombre de spectateurs / matchs\n• Évoquer les retombées pour le partenaire\n\n**Questions à poser**\n• Avez-vous déjà fait du sponsoring sportif ?\n• Quel budget envisagez-vous ?\n• Quels supports vous intéressent ?\n\n**Conclusion**\n• Proposer un RDV pour présenter le dossier\n• Envoyer la plaquette par email\n• Remercier pour le temps accordé`,
+  "Mécénat": `**Introduction**\nBonjour [contact], je suis [nom] du [club].\nJe vous contacte concernant notre programme de mécénat pour la saison [saison].\n\n**Présentation**\n• Expliquer la mission sociale/éducative du club\n• Mentionner l'avantage fiscal (60% de réduction d'impôt)\n• Préciser la règle des 25% max de contreparties\n\n**Questions à poser**\n• Votre entreprise fait-elle déjà du mécénat ?\n• Connaissez-vous les avantages fiscaux ?\n• Quel montant de don envisageriez-vous ?\n\n**Conclusion**\n• Proposer un RDV pour détailler la convention\n• Envoyer la documentation mécénat\n• Remercier pour le temps accordé`,
+};
 export const statusBType = (s) => ({ "Nouveau": "new", "Pas répondu": "noreply", "Intéressé": "interested", "À rappeler": "callback", "RDV pris": "rdv", "Proposition envoyée": "proposition", "Renouvellement potentiel": "renewal", "Refusé": "refused", "Nouveau partenaire": "partner", "Renouvellement": "renewal" }[s] || "draft");
 
 // --- Constants ---
