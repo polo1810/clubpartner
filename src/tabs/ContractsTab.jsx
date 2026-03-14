@@ -3,7 +3,7 @@ import { useApp } from '../data/AppContext';
 import { S, Cl } from '../data/styles';
 import { uid, fmt, lineHT, lineTTC, isSigned, getPrice, getContractSeasonIds } from '../data/initialData';
 import { Badge, Modal, Field, MemberSelect, PhoneLink, ProductPicker } from '../components/index';
-import { generateContrat } from '../utils/pdfGenerator';
+import { generateContrat, generateFacturePDF } from '../utils/pdfGenerator';
 
 // --- Shared components ---
 function SeasonProductTable({ prods, products: allProducts }) {
@@ -239,7 +239,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
         {isSigned(contract) && coveredSeasons.map(sid => {
           const already = invoices.find(i => i.contractId === contract.id && i.season === sid);
           return already
-            ? <span key={sid} style={{ fontSize: 10, color: Cl.ok, alignSelf: "center" }}>✅ {already.number}</span>
+            ? <button key={sid} style={{ ...S.btnS("ghost"), fontSize: 10, color: Cl.ok, padding: "2px 6px" }} onClick={() => generateFacturePDF(clubInfo, co, already)} title="Télécharger la facture">✅ {already.number} 📄</button>
             : <button key={sid} style={S.btnS("primary")} onClick={() => generateInvoice(contract, sid)}>🧾 Facturer {sid}</button>;
         })}
       </div>}
