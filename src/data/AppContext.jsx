@@ -1,23 +1,44 @@
-import { createContext, useContext, useState, useMemo } from 'react';
+import { createContext, useContext, useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds, INIT_ACCOUNT_CODES, genAccountCode, invoiceNum, INIT_SCRIPTS } from '../data/initialData';
+import { useAuth } from './AuthContext';
 
 const Ctx = createContext();
 export const useApp = () => useContext(Ctx);
 
 export function AppProvider({ children }) {
-  const [companies, setCompanies] = useState(INIT_COMPANIES);
-  const [products, setProducts] = useState(INIT_PRODUCTS);
-  const [contracts, setContracts] = useState(INIT_CONTRACTS);
-  const [members, setMembers] = useState(INIT_MEMBERS);
-  const [seasons, setSeasons] = useState(INIT_SEASONS);
-  const [cats, setCats] = useState(INIT_CATS);
-  const [currentSeason, setCurrentSeason] = useState(INIT_CURRENT);
+  const auth = useAuth();
+  const cd = auth?.clubData; // JSON from Supabase (or null in local mode)
+
+  const [companies, setCompanies] = useState(cd?.companies || INIT_COMPANIES);
+  const [products, setProducts] = useState(cd?.products || INIT_PRODUCTS);
+  const [contracts, setContracts] = useState(cd?.contracts || INIT_CONTRACTS);
+  const [members, setMembers] = useState(cd?.members || INIT_MEMBERS);
+  const [seasons, setSeasons] = useState(cd?.seasons || INIT_SEASONS);
+  const [cats, setCats] = useState(cd?.cats || INIT_CATS);
+  const [currentSeason, setCurrentSeason] = useState(cd?.currentSeason || INIT_CURRENT);
   const [miniForm, setMiniForm] = useState(null);
-  const [clubInfo, setClubInfo] = useState(INIT_CLUB_INFO);
-  const [invoices, setInvoices] = useState([]);
-  const [accountCodes, setAccountCodes] = useState(INIT_ACCOUNT_CODES);
-  const [invoiceSeq, setInvoiceSeq] = useState(1);
-  const [scripts, setScripts] = useState(INIT_SCRIPTS);
+  const [clubInfo, setClubInfo] = useState(cd?.clubInfo || INIT_CLUB_INFO);
+  const [invoices, setInvoices] = useState(cd?.invoices || []);
+  const [accountCodes, setAccountCodes] = useState(cd?.accountCodes || INIT_ACCOUNT_CODES);
+  const [invoiceSeq, setInvoiceSeq] = useState(cd?.invoiceSeq || 1);
+  const [scripts, setScripts] = useState(cd?.scripts || INIT_SCRIPTS);
+  const [allObjectives, setAllObjectives] = useState(cd?.allObjectives || { "2025-2026": { partenariat: 50000, mecenat: 20000, members: {} } });
+
+  // --- Auto-save to Supabase (debounced) ---
+  const saveTimer = useRef(null);
+  const getFullState = useCallback(() => ({
+    companies, products, contracts, members, seasons, cats, currentSeason,
+    clubInfo, invoices, accountCodes, invoiceSeq, scripts, allObjectives,
+  }), [companies, products, contracts, members, seasons, cats, currentSeason, clubInfo, invoices, accountCodes, invoiceSeq, scripts, allObjectives]);
+
+  useEffect(() => {
+    if (auth?.isLocal || !auth?.saveClubData) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      auth.saveClubData(getFullState());
+    }, 1000); // Save 1s after last change
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [companies, products, contracts, members, seasons, cats, currentSeason, clubInfo, invoices, accountCodes, invoiceSeq, scripts, allObjectives]);
 
   const addMember = (n) => { if (n && !members.includes(n)) setMembers(ms => [...ms, n]); };
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -122,7 +143,6 @@ export function AppProvider({ children }) {
     }});
   };
 
-  const [allObjectives, setAllObjectives] = useState({ "2025-2026": { partenariat: 50000, mecenat: 20000, members: {} } });
   const objectives = allObjectives[currentSeason] || { partenariat: 0, mecenat: 0, members: {} };
   const setObjectives = (updater) => {
     setAllObjectives(prev => {

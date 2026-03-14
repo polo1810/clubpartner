@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { AuthProvider, useAuth } from './data/AuthContext';
 import { AppProvider, useApp } from './data/AppContext';
-import { S } from './data/styles';
+import { S, Cl } from './data/styles';
 import { toCSV, dlCSV, fmt, lineHT, getPrice } from './data/initialData';
 import { MiniForm, TeamModal, SettingsModal, Modal } from './components/index';
 import Dashboard from './tabs/Dashboard';
@@ -11,17 +12,85 @@ import ProductsTab from './tabs/ProductsTab';
 import AmortTab from './tabs/AmortTab';
 import ContractsTab from './tabs/ContractsTab';
 import InvoicesTab from './tabs/InvoicesTab';
+import AdminTab from './tabs/AdminTab';
 
-const tabs = [
-  { id: "dashboard", label: "📊 Bord" }, { id: "prospects", label: "🎯 Prospects" },
-  { id: "partners", label: "🤝 Partenaires" }, { id: "contracts", label: "📝 Contrats" },
-  { id: "invoices", label: "🧾 Factures" },
-  { id: "actions", label: "📋 Actions" }, { id: "products", label: "📦 Stocks" },
-  { id: "amortize", label: "💰 Amort." },
-];
+// --- Login Screen ---
+function LoginScreen() {
+  const { login, error } = useAuth();
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
 
+  const handleLogin = async () => {
+    if (!email.trim()) return;
+    setSending(true);
+    const ok = await login(email.trim().toLowerCase());
+    setSending(false);
+    if (ok) setSent(true);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #1a73e8 0%, #6c3aed 100%)" }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: 40, maxWidth: 400, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 40 }}>🏟️</div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: "8px 0 4px" }}>ClubPartner</h1>
+          <p style={{ fontSize: 13, color: Cl.txtL }}>Gestion de partenariats sportifs</p>
+        </div>
+
+        {sent ? (
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📧</div>
+            <h2 style={{ fontSize: 16, fontWeight: 700 }}>Vérifiez votre boîte mail</h2>
+            <p style={{ fontSize: 13, color: Cl.txtL, marginTop: 8 }}>Un lien de connexion a été envoyé à <strong>{email}</strong>. Cliquez dessus pour accéder à l'application.</p>
+            <button style={{ ...S.btn("ghost"), marginTop: 16 }} onClick={() => setSent(false)}>← Autre email</button>
+          </div>
+        ) : (
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: Cl.txtL }}>Votre adresse email</label>
+            <input type="email" style={{ ...S.inp, fontSize: 16, padding: "12px 14px", marginTop: 6 }} value={email} onChange={e => setEmail(e.target.value)} placeholder="prenom@club.fr" onKeyDown={e => e.key === "Enter" && handleLogin()} autoFocus />
+            <button style={{ ...S.btn("primary"), width: "100%", marginTop: 12, padding: "12px", fontSize: 15, fontWeight: 700 }} onClick={handleLogin} disabled={sending}>
+              {sending ? "Envoi en cours..." : "📧 Recevoir le lien de connexion"}
+            </button>
+            {error && <div style={{ marginTop: 10, padding: 10, background: Cl.errL, borderRadius: 8, fontSize: 12, color: Cl.err }}>{error}</div>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Loading Screen ---
+function LoadingScreen() {
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #1a73e8 0%, #6c3aed 100%)" }}>
+      <div style={{ textAlign: "center", color: "#fff" }}>
+        <div style={{ fontSize: 48 }}>🏟️</div>
+        <p style={{ marginTop: 12, fontSize: 16 }}>Chargement...</p>
+      </div>
+    </div>
+  );
+}
+
+// --- Access Denied ---
+function AccessDenied() {
+  const { error, logout } = useAuth();
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #1a73e8 0%, #6c3aed 100%)" }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: 40, maxWidth: 400, width: "90%", textAlign: "center" }}>
+        <div style={{ fontSize: 48 }}>🚫</div>
+        <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 12 }}>Accès refusé</h2>
+        <p style={{ fontSize: 13, color: Cl.txtL, marginTop: 8 }}>{error || "Votre email n'est rattaché à aucun club."}</p>
+        <button style={{ ...S.btn("ghost"), marginTop: 16 }} onClick={logout}>← Se déconnecter</button>
+      </div>
+    </div>
+  );
+}
+
+// --- Main App (after auth) ---
 function AppInner() {
   const ctx = useApp();
+  const auth = useAuth();
   const { miniForm, setMiniForm, members, setMembers, addMember, cats, setCats, seasons, currentSeason, setCurrentSeason, prospectsList, partnersList, products, contracts, stockSold, caByProd, contractHT } = ctx;
   const [tab, setTab] = useState("dashboard");
   const [showTeam, setShowTeam] = useState(false);
@@ -32,17 +101,37 @@ function AppInner() {
   const openContractDirect = (contract) => { setDirectContract(contract); setTab("contracts"); };
   const setTabAndView = (t) => { setDirectContract(null); setTab(t); };
 
+  // Role-based tabs
+  const allTabs = [
+    { id: "dashboard", label: "📊 Bord", roles: ["superadmin", "admin", "commercial", "readonly"] },
+    { id: "prospects", label: "🎯 Prospects", roles: ["superadmin", "admin", "commercial", "readonly"] },
+    { id: "partners", label: "🤝 Partenaires", roles: ["superadmin", "admin", "commercial", "readonly"] },
+    { id: "contracts", label: "📝 Contrats", roles: ["superadmin", "admin", "commercial", "readonly"] },
+    { id: "invoices", label: "🧾 Factures", roles: ["superadmin", "admin"] },
+    { id: "actions", label: "📋 Actions", roles: ["superadmin", "admin", "commercial", "readonly"] },
+    { id: "products", label: "📦 Stocks", roles: ["superadmin", "admin", "commercial", "readonly"] },
+    { id: "amortize", label: "💰 Amort.", roles: ["superadmin", "admin"] },
+    { id: "admin", label: "🔧 Admin", roles: ["superadmin"] },
+  ];
+  const visibleTabs = allTabs.filter(t => t.roles.includes(auth.role));
+  const memberName = auth.member?.name || auth.member?.email || "";
+
   return (
     <div style={S.app}>
       <div style={S.header}>
-        <div><div style={{ fontSize: 18, fontWeight: 700 }}>🏟️ ClubPartner</div><select value={currentSeason} onChange={e => setCurrentSeason(e.target.value)} style={{ fontSize: 11, background: "rgba(255,255,255,0.15)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, padding: "2px 6px", cursor: "pointer" }}>{seasons.map(s => <option key={s.id} value={s.id} style={{ color: "#000" }}>{s.name}</option>)}</select></div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>🏟️ ClubPartner</div>
+          <select value={currentSeason} onChange={e => setCurrentSeason(e.target.value)} style={{ fontSize: 11, background: "rgba(255,255,255,0.15)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, padding: "2px 6px", cursor: "pointer" }}>{seasons.map(s => <option key={s.id} value={s.id} style={{ color: "#000" }}>{s.name}</option>)}</select>
+        </div>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {!auth.isLocal && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", marginRight: 4 }}>{memberName}</span>}
           <button style={{ ...S.btn("ghost"), color: "#fff", borderColor: "rgba(255,255,255,0.3)", fontSize: 11 }} onClick={() => setShowTeam(true)}>👥</button>
-          <button style={{ ...S.btn("ghost"), color: "#fff", borderColor: "rgba(255,255,255,0.3)", fontSize: 11 }} onClick={() => setShowSettings(true)}>⚙️</button>
+          {auth.canSettings && <button style={{ ...S.btn("ghost"), color: "#fff", borderColor: "rgba(255,255,255,0.3)", fontSize: 11 }} onClick={() => setShowSettings(true)}>⚙️</button>}
           <button style={{ ...S.btn("ghost"), color: "#fff", borderColor: "rgba(255,255,255,0.3)", fontSize: 11 }} onClick={() => setShowExport(true)}>📤</button>
+          {!auth.isLocal && <button style={{ ...S.btn("ghost"), color: "#fff", borderColor: "rgba(255,255,255,0.3)", fontSize: 11 }} onClick={auth.logout}>🚪</button>}
         </div>
       </div>
-      <nav style={S.nav}>{tabs.map(t => <button key={t.id} style={S.navB(tab === t.id)} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}</nav>
+      <nav style={S.nav}>{visibleTabs.map(t => <button key={t.id} style={S.navB(tab === t.id)} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}</nav>
       <div style={S.main}>
         {tab === "dashboard" && <Dashboard />}
         {tab === "prospects" && <ProspectsTab />}
@@ -52,6 +141,7 @@ function AppInner() {
         {tab === "amortize" && <AmortTab />}
         {tab === "contracts" && <ContractsTab onOpenCompany={(co) => setTab(co.isPartner ? "partners" : "prospects")} directContract={directContract} onDirectContractClosed={() => setDirectContract(null)} />}
         {tab === "invoices" && <InvoicesTab />}
+        {tab === "admin" && <AdminTab />}
       </div>
       {showTeam && <TeamModal members={members} onAdd={addMember} onRemove={m => setMembers(ms => ms.filter(x => x !== m))} onClose={() => setShowTeam(false)} />}
       {showSettings && <SettingsModal cats={cats} setCats={setCats} seasons={seasons} setSeasons={ctx.setSeasons} currentSeason={currentSeason} clubInfo={ctx.clubInfo} setClubInfo={ctx.setClubInfo} accountCodes={ctx.accountCodes} setAccountCodes={ctx.setAccountCodes} scripts={ctx.scripts} setScripts={ctx.setScripts} onClose={() => setShowSettings(false)} />}
@@ -68,6 +158,28 @@ function AppInner() {
   );
 }
 
+// --- Auth Gate ---
+function AuthGate() {
+  const { user, loading, error, member, clubData, isLocal } = useAuth();
+
+  // Mode local (pas de Supabase configuré) → direct
+  if (isLocal) return <AppProvider><AppInner /></AppProvider>;
+
+  // Chargement
+  if (loading) return <LoadingScreen />;
+
+  // Pas connecté
+  if (!user) return <LoginScreen />;
+
+  // Connecté mais pas de club
+  if (error || !member) return <AccessDenied />;
+
+  // Connecté + club → charger l'appli
+  if (clubData !== null) return <AppProvider><AppInner /></AppProvider>;
+
+  return <LoadingScreen />;
+}
+
 export default function App() {
-  return <AppProvider><AppInner /></AppProvider>;
+  return <AuthProvider><AuthGate /></AuthProvider>;
 }
