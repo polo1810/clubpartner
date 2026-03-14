@@ -75,6 +75,24 @@ export function AuthProvider({ children }) {
     return !error;
   };
 
+  // Login with password
+  const loginWithPassword = async (email, password) => {
+    if (isLocal) return;
+    setError("");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setError(error.message === "Invalid login credentials" ? "Email ou mot de passe incorrect" : error.message);
+    return !error;
+  };
+
+  // Sign up with password (first time)
+  const signUp = async (email, password) => {
+    if (isLocal) return;
+    setError("");
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) setError(error.message);
+    return !error;
+  };
+
   // Logout
   const logout = async () => {
     if (isLocal) return;
@@ -91,7 +109,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user, member, clubData, clubInfo, loading, error, isLocal,
-    login, logout, saveClubData, loadUserData,
+    login, loginWithPassword, signUp, logout, saveClubData, loadUserData,
     role, canEdit, canInvoice, canSettings, isSuperAdmin,
   };
 
