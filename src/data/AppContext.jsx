@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useMemo } from 'react';
-import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds, INIT_ACCOUNT_CODES, genAccountCode, invoiceNum } from '../data/initialData';
+import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds, INIT_ACCOUNT_CODES, genAccountCode, invoiceNum, INIT_SCRIPTS } from '../data/initialData';
 
 const Ctx = createContext();
 export const useApp = () => useContext(Ctx);
@@ -17,12 +17,14 @@ export function AppProvider({ children }) {
   const [invoices, setInvoices] = useState([]);
   const [accountCodes, setAccountCodes] = useState(INIT_ACCOUNT_CODES);
   const [invoiceSeq, setInvoiceSeq] = useState(1);
+  const [scripts, setScripts] = useState(INIT_SCRIPTS);
 
   const addMember = (n) => { if (n && !members.includes(n)) setMembers(ms => [...ms, n]); };
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const prospectsList = useMemo(() => companies.filter(c => !c.isPartner && c.season === currentSeason), [companies, currentSeason]);
-  const partnersList = useMemo(() => companies.filter(c => c.isPartner && c.season === currentSeason), [companies, currentSeason]);
+  const companyInSeason = (c, sid) => c.season === sid || !!(c.seasonProducts?.[sid]?.length) || !!(c.seasonDonAmounts?.[sid]);
+  const prospectsList = useMemo(() => companies.filter(c => !c.isPartner && companyInSeason(c, currentSeason)), [companies, currentSeason]);
+  const partnersList = useMemo(() => companies.filter(c => c.isPartner && companyInSeason(c, currentSeason)), [companies, currentSeason]);
   // All companies (unfiltered) for lookups
   const allCompanies = companies;
   const getCompany = (id) => companies.find(c => c.id === id);
@@ -67,7 +69,7 @@ export function AppProvider({ children }) {
   const allActions = useMemo(() => {
     const acts = [];
     // Actions from companies of current season
-    const seasonCompanies = companies.filter(c => c.season === currentSeason);
+    const seasonCompanies = companies.filter(c => companyInSeason(c, currentSeason));
     seasonCompanies.forEach(co => { (co.actions || []).forEach(a => acts.push({ ...a, companyId: co.id, companyName: co.company, source: co.isPartner ? "partner" : "prospect" })); });
     // Actions from contracts covering current season
     seasonContracts.forEach(con => { const co = getCompany(con.companyId); (con.actions || []).forEach(a => acts.push({ ...a, companyId: con.companyId, companyName: co?.company || "?", contractId: con.id, source: "contract" })); });
@@ -219,7 +221,7 @@ export function AppProvider({ children }) {
     companies, setCompanies, products, setProducts, contracts, setContracts,
     members, setMembers, addMember, seasons, setSeasons, cats, setCats, currentSeason, setCurrentSeason,
     miniForm, setMiniForm, todayStr, clubInfo, setClubInfo,
-    invoices, setInvoices, seasonInvoices, generateInvoice, accountCodes, setAccountCodes,
+    invoices, setInvoices, seasonInvoices, generateInvoice, accountCodes, setAccountCodes, scripts, setScripts,
     prospectsList, partnersList, getCompany, companyContracts,
     contractHT, contractTTC, stockSold, stockProv, caByProd, caByType, totalCA, totalPaid, allActions, seasonContracts,
     objectives, setObjectives, caByMember,
