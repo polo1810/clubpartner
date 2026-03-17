@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { fmt, lineHT, getPrice, getContractSeasonIds } from '../data/initialData';
+import { fmt, lineHT, getPrice, getContractSeasonIds, numberToFrench } from '../data/initialData';
 
 const fmtN = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 const fmtE = (n) => fmtN(n) + " €";
@@ -515,4 +515,247 @@ export function generateFacturePDF(club, company, invoice) {
   doc.text(`${club.name} · SIRET ${club.siret || "___"} · TVA ${club.tvaNumber || "___"}`, 105, pageH - 10, { align: "center" });
 
   doc.save(`Facture_${(company?.company || invoice.companyName).replace(/\s/g, "_")}_${invoice.number.replace(/\//g, "-")}.pdf`);
+}
+
+export function generateCerfa(club, company, contract, invoice, season) {
+  const doc = new jsPDF();
+  const donAmount = contract.seasonDonAmounts?.[season] || contract.donAmount || 0;
+  const prods = contract.seasonProducts?.[season] || [];
+  const productsHT = prods.reduce((t, cp) => t + (cp.unitPrice || 0) * (cp.qty || 1), 0);
+  const cerfaNum = `CERFA-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+
+  // Parse address
+  const addr = club.address || "";
+  const addrMatch = addr.match(/^(.+?),?\s*(\d{5})\s+(.+)$/);
+  const clubRue = addrMatch ? addrMatch[1] : addr;
+  const clubCP = addrMatch ? addrMatch[2] : "";
+  const clubVille = addrMatch ? addrMatch[3] : "";
+
+  const coAddr = company.address || "";
+  const coMatch = coAddr.match(/^(.+?),?\s*(\d{5})\s+(.+)$/);
+  const coRue = coMatch ? coMatch[1] : coAddr;
+  const coCP = coMatch ? coMatch[2] : "";
+  const coVille = coMatch ? coMatch[3] : "";
+
+  const todayFr = new Date().toLocaleDateString("fr-FR");
+
+  // Helper
+  const title = (text, x, y) => { doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 150); doc.text(text, x, y); doc.setTextColor(0); };
+  const label = (text, x, y) => { doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.text(text, x, y); };
+  const value = (text, x, y, opts) => { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text(String(text || ""), x, y, opts); };
+  const check = (checked, x, y) => { doc.setDrawColor(0); doc.setLineWidth(0.3); doc.rect(x, y - 3, 3.5, 3.5); if (checked) { doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text("X", x + 0.7, y); } };
+
+  // ===================== PAGE 1 =====================
+  // Header
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100);
+  doc.text("RÉPUBLIQUE FRANÇAISE", 20, 15);
+  doc.setTextColor(0);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("2041-MEC-SD", 175, 12, { align: "right" });
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  doc.text("N° Cerfa : 16216*02", 175, 16, { align: "right" });
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("Reçu des dons et versements effectués par", 105, 22, { align: "center" });
+  doc.text("les entreprises au titre de l'article 238 bis du", 105, 27, { align: "center" });
+  doc.text("code général des impôts", 105, 32, { align: "center" });
+
+  // Numéro d'ordre
+  label("Numéro d'ordre du reçu :", 130, 38);
+  doc.setDrawColor(0); doc.rect(165, 34, 30, 6); value(cerfaNum, 167, 38.5);
+
+  // === ORGANISME BÉNÉFICIAIRE ===
+  let y = 48;
+  doc.setDrawColor(0, 0, 150); doc.setLineWidth(0.5);
+  doc.line(20, y - 2, 190, y - 2);
+  title("Organisme bénéficiaire des dons et versements", 20, y + 3);
+  y += 10;
+
+  label("Dénomination de l'organisme :", 20, y);
+  value(club.name || "", 75, y);
+  y += 6;
+
+  label("Numéro SIREN ou RNA :", 20, y);
+  value(club.siren || club.siret || "", 60, y);
+  y += 6;
+
+  label("Adresse :", 20, y);
+  y += 5;
+  label("Rue :", 20, y); value(clubRue, 30, y);
+  y += 5;
+  label("Code postal :", 20, y); value(clubCP, 45, y);
+  label("Commune :", 70, y); value(clubVille, 90, y);
+  y += 5;
+  label("Pays :", 20, y); value("France", 32, y);
+  y += 6;
+
+  label("Objet :", 20, y);
+  value(club.cerfaObjet || "Soutien aux activités sportives", 33, y);
+  y += 8;
+
+  label("Cochez la case qui vous concerne :", 20, y);
+  y += 6;
+
+  // Type d'organisme
+  const ct = club.cerfaType || "association_1901";
+  doc.setFontSize(7); doc.setFont("helvetica", "normal");
+
+  check(ct === "association_1901" || ct === "oeuvre_interet_general", 20, y);
+  doc.text("Œuvre ou organisme d'intérêt général ayant un caractère philanthropique, éducatif,", 26, y, { maxWidth: 160 });
+  y += 4;
+  doc.text("scientifique, social, humanitaire, sportif, familial, culturel...", 26, y);
+  y += 5;
+
+  check(ct === "association_1901", 28, y);
+  doc.text("Association loi 1901", 34, y);
+  y += 5;
+
+  check(ct === "association_rup", 28, y);
+  doc.text("Association ou fondation reconnue d'utilité publique", 34, y);
+  y += 5;
+
+  check(ct === "fondation_universitaire", 28, y);
+  doc.text("Fondation universitaire ou fondation partenariale", 34, y);
+  y += 5;
+
+  check(ct === "fondation_entreprise", 28, y);
+  doc.text("Fondation d'entreprise", 34, y);
+  y += 5;
+
+  check(ct === "musee", 28, y);
+  doc.text("Musée de France", 34, y);
+  y += 5;
+
+  check(ct === "aide_alimentaire", 28, y);
+  doc.text("Organismes fournissant gratuitement une aide alimentaire, des soins ou des produits de première nécessité", 34, y, { maxWidth: 150 });
+  y += 5;
+
+  check(ct === "fonds_dotation", 28, y);
+  doc.text("Fonds de dotation", 34, y);
+
+  // ===================== PAGE 2 =====================
+  doc.addPage();
+  y = 20;
+
+  // === ENTREPRISE DONATRICE ===
+  doc.setDrawColor(0, 0, 150); doc.setLineWidth(0.5);
+  doc.line(20, y - 2, 190, y - 2);
+  title("Entreprise donatrice", 20, y + 3);
+  y += 10;
+
+  label("Dénomination de l'entreprise :", 20, y);
+  value(company.company || "", 72, y);
+  y += 6;
+
+  label("Forme juridique :", 20, y);
+  value(company.sector || "", 52, y);
+  y += 6;
+
+  label("Numéro SIREN :", 20, y);
+  value(company.siret || "", 50, y);
+  y += 6;
+
+  label("Adresse :", 20, y);
+  y += 5;
+  label("Rue :", 20, y); value(coRue, 30, y);
+  y += 5;
+  label("Code postal :", 20, y); value(coCP, 45, y);
+  label("Commune :", 70, y); value(coVille, 90, y);
+  y += 10;
+
+  // === DONS EN NATURE (contreparties) ===
+  if (productsHT > 0) {
+    doc.setDrawColor(0, 0, 150); doc.setLineWidth(0.5);
+    doc.line(20, y - 2, 190, y - 2);
+    title("Dons en nature", 20, y + 3);
+    y += 10;
+
+    doc.setFontSize(7); doc.setFont("helvetica", "normal");
+    doc.text("L'organisme bénéficiaire reconnaît avoir reçu, au titre de la réduction d'impôt prévue à l'article", 20, y);
+    y += 4;
+    doc.text("238 bis du code général des impôts, des dons en nature pour une valeur en euros égale à :", 20, y);
+    y += 6;
+
+    doc.setFontSize(11); doc.setFont("helvetica", "bold");
+    doc.text(`${fmtE(productsHT)}`, 20, y);
+    y += 5;
+    doc.setFontSize(8); doc.setFont("helvetica", "normal");
+    doc.text(`Soit en toutes lettres : ${numberToFrench(productsHT)}`, 20, y, { maxWidth: 170 });
+    y += 8;
+
+    label("Description des biens et prestations :", 20, y);
+    y += 5;
+    doc.setFontSize(7); doc.setFont("helvetica", "normal");
+    prods.forEach(cp => {
+      doc.text(`• Qté ${cp.qty} × ${fmtE(cp.unitPrice)} = ${fmtE((cp.unitPrice || 0) * (cp.qty || 1))}`, 24, y);
+      y += 4;
+    });
+    y += 4;
+  }
+
+  // === VERSEMENTS ===
+  doc.setDrawColor(0, 0, 150); doc.setLineWidth(0.5);
+  doc.line(20, y - 2, 190, y - 2);
+  title("Dons et versements", 20, y + 3);
+  y += 10;
+
+  doc.setFontSize(7); doc.setFont("helvetica", "normal");
+  doc.text("L'organisme bénéficiaire reconnaît avoir reçu, au titre de la réduction d'impôt prévue à l'article", 20, y);
+  y += 4;
+  doc.text("238 bis du code général des impôts, des versements pour une valeur totale égale à :", 20, y);
+  y += 6;
+
+  doc.setFontSize(11); doc.setFont("helvetica", "bold");
+  doc.text(`${fmtE(donAmount)}`, 20, y);
+  y += 5;
+  doc.setFontSize(8); doc.setFont("helvetica", "normal");
+  doc.text(`Soit en toutes lettres : ${numberToFrench(donAmount)}`, 20, y, { maxWidth: 170 });
+  y += 10;
+
+  // Forme des versements
+  label("Forme des versements :", 20, y);
+  y += 5;
+  check(false, 20, y); doc.setFontSize(7); doc.text("Remise d'espèces", 26, y);
+  check(false, 60, y); doc.text("Chèque", 66, y);
+  check(true, 85, y); doc.text("Virement, prélèvement ou carte bancaire", 91, y);
+  check(false, 160, y); doc.text("Autre", 166, y);
+  y += 8;
+
+  // Montant total
+  doc.setDrawColor(0, 0, 150); doc.setLineWidth(0.3);
+  doc.line(20, y - 2, 190, y - 2);
+  y += 3;
+  label("Montant total des dons et versements reçus par l'organisme :", 20, y);
+  y += 6;
+  doc.setFontSize(12); doc.setFont("helvetica", "bold");
+  doc.text(`${fmtE(donAmount)}`, 20, y);
+  y += 5;
+  doc.setFontSize(8); doc.setFont("helvetica", "normal");
+  doc.text(`Soit en toutes lettres : ${numberToFrench(donAmount)}`, 20, y, { maxWidth: 170 });
+  y += 10;
+
+  // Dates
+  label("Date ou période au cours de laquelle les dons et versements ont été effectués :", 20, y);
+  y += 5;
+  value(`Saison ${season}`, 20, y);
+  y += 10;
+
+  // Signature
+  doc.setDrawColor(0); doc.setLineWidth(0.3);
+  doc.rect(110, y, 80, 30);
+  label("Date et signature", 115, y + 5);
+  value(`Le ${todayFr}`, 115, y + 12);
+  value(club.president || "", 115, y + 18);
+
+  // Footer
+  const pageH = doc.internal.pageSize.height;
+  doc.setFontSize(6); doc.setTextColor(150);
+  doc.text("CERFA 2041-MEC-SD · N° 16216*02 · Reçu au titre de l'article 238 bis du CGI", 105, pageH - 10, { align: "center" });
+
+  doc.save(`CERFA_Mecenat_${company.company.replace(/\s/g, "_")}_${season}_${cerfaNum}.pdf`);
 }
