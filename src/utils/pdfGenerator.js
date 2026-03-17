@@ -517,260 +517,124 @@ export function generateFacturePDF(club, company, invoice) {
   doc.save(`Facture_${(company?.company || invoice.companyName).replace(/\s/g, "_")}_${invoice.number.replace(/\//g, "-")}.pdf`);
 }
 
-export function generateCerfa(club, company, contract, invoice, season) {
-  const doc = new jsPDF();
+
+export async function generateCerfa(club, company, contract, invoice, season) {
+  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
+
   const donAmount = contract.seasonDonAmounts?.[season] || contract.donAmount || 0;
   const prods = contract.seasonProducts?.[season] || [];
   const productsHT = prods.reduce((t, cp) => t + (cp.unitPrice || 0) * (cp.qty || 1), 0);
-  const cerfaNum = `REC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+  const todayFr = new Date().toLocaleDateString("fr-FR");
+  const ct = club.cerfaType || "association_1901";
 
   // Parse addresses
   const addr = club.address || "";
   const am = addr.match(/^(.+?),?\s*(\d{5})\s+(.+)$/);
-  const clubRue = am ? am[1] : addr; const clubCP = am ? am[2] : ""; const clubVille = am ? am[3] : "";
+  const clubRue = am ? am[1] : addr;
+  const clubCP = am ? am[2] : "";
+  const clubVille = am ? am[3] : "";
   const coAddr = company.address || "";
-  const cm = coAddr.match(/^(.+?),?\s*(\d{5})\s+(.+)$/);
-  const coRue = cm ? cm[1] : coAddr; const coCP = cm ? cm[2] : ""; const coVille = cm ? cm[3] : "";
-  const todayFr = new Date().toLocaleDateString("fr-FR");
-  const ct = club.cerfaType || "association_1901";
+  const cmatch = coAddr.match(/^(.+?),?\s*(\d{5})\s+(.+)$/);
+  const coRue = cmatch ? cmatch[1] : coAddr;
+  const coCP = cmatch ? cmatch[2] : "";
+  const coVille = cmatch ? cmatch[3] : "";
 
-  // Styles
-  const W = 210; const ML = 15; const MR = 195;
-  const box = (y, h) => { doc.setDrawColor(0); doc.setLineWidth(0.3); doc.rect(ML, y, MR - ML, h); };
-  const hline = (y) => { doc.setDrawColor(0); doc.setLineWidth(0.3); doc.line(ML, y, MR, y); };
-  const cb = (checked, x, y) => { doc.setDrawColor(0); doc.setLineWidth(0.3); doc.rect(x, y, 3, 3); if (checked) { doc.line(x, y, x + 3, y + 3); doc.line(x + 3, y, x, y + 3); } };
-  const sm = (t, x, y, o) => { doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.text(t, x, y, o); };
-  const bd = (t, x, y, o) => { doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.text(t, x, y, o); };
-  const fill = (t, x, y) => { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 150); doc.text(String(t || ""), x, y); doc.setTextColor(0); };
-  const dotline = (x1, x2, y) => { doc.setDrawColor(180); doc.setLineWidth(0.1); doc.line(x1, y + 0.5, x2, y + 0.5); doc.setDrawColor(0); };
+  // Load the real CERFA template
+  const templateUrl = new URL('/cerfa-template.pdf', window.location.origin).href;
+  const templateBytes = await fetch(templateUrl).then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const blue = rgb(0, 0, 0.7);
 
-  // ============= PAGE 1 =============
+  const pages = pdfDoc.getPages();
+  const p1 = pages[0];
+  const p2 = pages[1];
+  const { height: H } = p1.getSize();
 
-  // Header top left
-  doc.setFontSize(6); doc.setFont("helvetica", "normal"); doc.setTextColor(0);
-  doc.text("RÉPUBLIQUE", ML, 10); doc.text("FRANÇAISE", ML, 13);
-  doc.setFontSize(5); doc.text("Liberté", ML, 16); doc.text("Égalité", ML, 18.5); doc.text("Fraternité", ML, 21);
+  // Write text (y = distance from top, converted to PDF bottom-left coords)
+  const write = (page, text, x, yFromTop, size, bold) => {
+    if (!text) return;
+    page.drawText(String(text), { x, y: H - yFromTop, size: size || 9, font: bold ? fontBold : font, color: blue });
+  };
+  // Draw X in a checkbox
+  const checkX = (page, x, yFromTop) => {
+    page.drawText("X", { x: x + 1, y: H - yFromTop, size: 10, font: fontBold, color: blue });
+  };
 
-  // Header center
-  doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-  doc.text("Reçu des dons et versements effectués par", 105, 11, { align: "center" });
-  doc.text("les entreprises au titre de l'article 238 bis du", 105, 15.5, { align: "center" });
-  doc.text("code général des impôts", 105, 20, { align: "center" });
+  // ============= PAGE 1 : Organisme beneficiaire =============
+  const cerfaNum = "REC-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random() * 9000) + 1000);
+  write(p1, cerfaNum, 468, 118, 8);
 
-  // Header top right
-  doc.setFontSize(9); doc.setFont("helvetica", "bold");
-  doc.text("2041-MEC-SD", MR, 10, { align: "right" });
-  doc.setFontSize(7); doc.setFont("helvetica", "normal");
-  doc.text("N° Cerfa : 16216*02", MR, 15, { align: "right" });
+  // Denomination
+  write(p1, club.name || "", 195, 177);
+  // SIREN
+  write(p1, club.siren || club.siret || "", 120, 197);
+  // Adresse
+  write(p1, clubRue, 70, 218, 8);
+  write(p1, clubCP, 73, 232, 8);
+  write(p1, clubVille, 175, 232, 8);
+  write(p1, "France", 53, 247, 8);
+  // Objet
+  write(p1, club.cerfaObjet || "Soutien aux activites sportives du club", 40, 267, 8);
 
-  // Numéro d'ordre box
-  doc.setFontSize(7); doc.text("Numéro d'ordre du reçu", 160, 22);
-  doc.rect(160, 23, 35, 6);
-  fill(cerfaNum, 162, 27.5);
+  // Checkboxes page 1
+  var isOeuvre = ["association_1901", "association_rup", "fondation_universitaire", "fondation_entreprise", "musee", "aide_alimentaire"].includes(ct);
+  if (isOeuvre) checkX(p1, 28, 296);
+  if (ct === "association_1901") checkX(p1, 114, 352);
+  if (ct === "association_rup") checkX(p1, 114, 365);
+  if (ct === "fondation_universitaire") checkX(p1, 114, 394);
+  if (ct === "fondation_entreprise") checkX(p1, 114, 410);
+  if (ct === "musee") checkX(p1, 114, 421);
+  if (ct === "aide_alimentaire") checkX(p1, 114, 432);
+  if (ct === "fonds_dotation") checkX(p1, 28, 720);
 
-  // ---- Section Organisme bénéficiaire ----
-  let y = 33;
-  box(y, 8);
-  doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 150);
-  doc.text("Organisme bénéficiaire des dons et versements", 105, y + 5.5, { align: "center" });
-  doc.setTextColor(0);
-  y += 11;
+  // ============= PAGE 2 : Entreprise donatrice + dons =============
+  // Entreprise
+  write(p2, company.company || "", 145, 111);
+  write(p2, company.formeJuridique || "", 105, 125, 8);
+  write(p2, company.siret || "", 97, 139, 8);
+  write(p2, coRue, 70, 162, 8);
+  write(p2, coCP, 73, 176, 8);
+  write(p2, coVille, 155, 176, 8);
 
-  bd("Dénomination de l'organisme :", ML + 2, y); dotline(68, MR - 2, y); fill(club.name || "", 70, y);
-  y += 5;
-  bd("Numéro SIREN ou RNA :", ML + 2, y); fill(club.siren || club.siret || "", 55, y);
-  y += 5;
-  bd("Adresse :", ML + 2, y);
-  y += 4;
-  sm("N°", ML + 2, y); dotline(20, 35, y); sm("Rue", 37, y); dotline(44, MR - 2, y); fill(clubRue, 45, y);
-  y += 4;
-  sm("Code postal", ML + 2, y); fill(clubCP, 32, y); dotline(30, 45, y); sm("Commune", 48, y); fill(clubVille, 65, y); dotline(63, MR - 2, y);
-  y += 4;
-  sm("Pays", ML + 2, y); fill("France", 25, y);
-  y += 5;
-
-  bd("Objet", ML + 2, y);
-  y += 4;
-  dotline(ML + 2, MR - 2, y); fill(club.cerfaObjet || "Soutien aux activités sportives du club", ML + 3, y);
-  y += 5;
-
-  // Cochez la case
-  doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 150);
-  doc.text("Cochez la case qui vous concerne :", ML + 2, y);
-  doc.setTextColor(0);
-  y += 5;
-
-  // Checkbox section
-  const isOeuvre = ["association_1901", "association_rup", "fondation_universitaire", "fondation_entreprise", "musee", "aide_alimentaire", "oeuvre_interet_general"].includes(ct);
-  cb(isOeuvre, ML + 2, y - 2.5);
-  doc.setFontSize(6.5); doc.setFont("helvetica", "normal");
-  doc.text("Œuvre ou organisme d'intérêt général ayant un caractère philanthropique, éducatif, scientifique, social,", ML + 8, y);
-  y += 3;
-  doc.text("humanitaire, sportif, familial, culturel ou concourant à l'égalité entre les femmes et les hommes, à la", ML + 8, y);
-  y += 3;
-  doc.text("mise en valeur du patrimoine artistique, à la défense de l'environnement naturel ou à la diffusion de la", ML + 8, y);
-  y += 3;
-  doc.text("culture, de la langue et des connaissances scientifiques françaises. Précisez si vous êtes :", ML + 8, y);
-  y += 4;
-
-  // Sub-checkboxes
-  const subcb = (checked, label, yp) => { doc.setFontSize(6); doc.text("○", ML + 10, yp); if (checked) { doc.setFont("helvetica", "bold"); doc.text("●", ML + 10, yp); doc.setFont("helvetica", "normal"); } doc.text(label, ML + 14, yp); };
-  subcb(ct === "association_1901", "Association loi 1901", y); y += 3.5;
-  subcb(ct === "association_rup", "Association ou fondation reconnue d'utilité publique par décret en date du ……/……/…… publié au", y); y += 3;
-  doc.text("Journal officiel du ……/……/…… ", ML + 14, y); y += 3.5;
-  subcb(ct === "fondation_universitaire", "Fondation universitaire ou fondation partenariale mentionnées respectivement aux articles L.719-12", y); y += 3;
-  doc.text("et L.719-13 du code de l'éducation", ML + 14, y); y += 3.5;
-  subcb(ct === "fondation_entreprise", "Fondation d'entreprise", y); y += 3.5;
-  subcb(ct === "musee", "Musée de France", y); y += 3.5;
-  subcb(ct === "aide_alimentaire", "Organismes sans but lucratif fournissant gratuitement une aide alimentaire, des soins médicaux ou", y); y += 3;
-  doc.text("des produits de première nécessité à des personnes en difficulté ou favorisant leur logement", ML + 14, y); y += 3.5;
-  subcb(false, "Autres (précisez) :", y); y += 4;
-
-  cb(false, ML + 2, y - 2.5);
-  doc.setFontSize(6.5);
-  doc.text("Association cultuelle ou établissement public des cultes reconnus d'Alsace-Moselle", ML + 8, y); y += 5;
-
-  cb(false, ML + 2, y - 2.5);
-  doc.text("Établissement d'enseignement supérieur ou d'enseignement artistique public ou privé, d'intérêt général,", ML + 8, y); y += 3;
-  doc.text("à but non lucratif", ML + 8, y); y += 4;
-
-  cb(false, ML + 2, y - 2.5);
-  doc.text("Société ou organisme public ou privé agréé par le ministre chargé du budget en vertu de l'article 4 de", ML + 8, y); y += 3;
-  doc.text("l'ordonnance n° 58-882 du 25 septembre 1958 relative à la fiscalité en matière de recherche scientifique", ML + 8, y); y += 3;
-  doc.text("et technique", ML + 8, y); y += 3;
-  sm("Date de l'agrément : ……/……/……", ML + 8, y); y += 5;
-
-  cb(false, ML + 2, y - 2.5);
-  doc.text("Organisme public ou privé dont la gestion est désintéressée et qui a pour activité principale la", ML + 8, y); y += 3;
-  doc.text("présentation au public d'œuvres dramatiques, lyriques, musicales, chorégraphiques,", ML + 8, y); y += 3;
-  doc.text("cinématographiques, audiovisuelles et de cirque ou l'organisation d'expositions d'art contemporain", ML + 8, y); y += 5;
-
-  cb(ct === "fonds_dotation", ML + 2, y - 2.5);
-  doc.text("Fonds de dotation", ML + 8, y);
-
-  // Footer page 1
-  doc.setFontSize(5); doc.setTextColor(130);
-  doc.text("1. Pour les associations inscrites d'Alsace-Moselle, numéro d'inscription au registre des associations.", ML, 284);
-  doc.text("2. Cochez la case qui vous concerne et précisez l'objet si nécessaire.", ML, 287);
-  doc.text("3. Collectivités locales, État, GIP, établissements publics, etc.", ML, 290);
-  doc.setTextColor(0);
-
-  // ============= PAGE 2 =============
-  doc.addPage();
-  y = 15;
-
-  // Section Entreprise donatrice
-  box(y, 7);
-  doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 150);
-  doc.text("Entreprise donatrice", 105, y + 5, { align: "center" });
-  doc.setTextColor(0);
-  y += 10;
-
-  bd("Dénomination de l'entreprise :", ML + 2, y); dotline(68, MR - 2, y); fill(company.company || "", 70, y);
-  y += 5;
-  bd("Forme juridique :", ML + 2, y); dotline(45, MR - 2, y); fill(company.formeJuridique || "", 47, y);
-  y += 5;
-  bd("Numéro SIREN :", ML + 2, y); dotline(40, 80, y); fill(company.siret || "", 42, y);
-  y += 5;
-  bd("Adresse :", ML + 2, y);
-  y += 4;
-  sm("N°", ML + 2, y); dotline(20, 35, y); sm("Rue", 37, y); dotline(44, MR - 2, y); fill(coRue, 45, y);
-  y += 4;
-  sm("Code postal", ML + 2, y); fill(coCP, 32, y); dotline(30, 45, y); sm("Commune", 48, y); fill(coVille, 65, y); dotline(63, MR - 2, y);
-  y += 8;
-
-  // Dons et versements
-  box(y, 7);
-  doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 150);
-  doc.text("Dons et versements effectués par l'entreprise", 105, y + 5, { align: "center" });
-  doc.setTextColor(0);
-  y += 11;
-
-  // Dons en nature
+  // Dons en nature (contreparties)
   if (productsHT > 0) {
-    doc.setFontSize(7); doc.setFont("helvetica", "normal");
-    doc.text("L'organisme bénéficiaire reconnaît avoir reçu, au titre de la réduction d'impôt prévue à l'article", ML + 2, y);
-    y += 3.5;
-    doc.text("238 bis du code général des impôts, des dons en nature pour une valeur en euros égale à :", ML + 2, y);
-    y += 5;
-    doc.setFontSize(10); doc.setFont("helvetica", "bold");
-    fill(`${fmtE(productsHT)}`, ML + 2, y);
-    y += 5;
-    sm("Indiquez la valeur totale des dons en nature en toutes lettres :", ML + 2, y);
-    fill(numberToFrench(productsHT), ML + 2, y + 4);
-    y += 9;
-
-    bd("Description exhaustive des biens et prestations reçus et acceptés :", ML + 2, y);
-    y += 4;
-    doc.setFontSize(7); doc.setFont("helvetica", "normal");
-    prods.forEach(cp => {
-      const name = cp.productId ? `Produit #${cp.productId}` : "Prestation";
-      doc.text(`• ${name} — Qté ${cp.qty} × ${fmtE(cp.unitPrice)} = ${fmtE((cp.unitPrice || 0) * (cp.qty || 1))}`, ML + 4, y);
-      y += 3.5;
+    write(p2, fmtN(productsHT), 40, 246, 10, true);
+    write(p2, numberToFrench(productsHT), 40, 264, 8);
+    var descY = 310;
+    prods.forEach(function(cp) {
+      var line = "Qte " + cp.qty + " x " + fmtE(cp.unitPrice) + " = " + fmtE((cp.unitPrice || 0) * (cp.qty || 1));
+      write(p2, line, 40, descY, 7);
+      descY += 12;
     });
-    y += 3;
-    hline(y); y += 4;
   }
 
   // Versements
-  doc.setFontSize(7); doc.setFont("helvetica", "normal");
-  doc.text("L'organisme bénéficiaire reconnaît avoir reçu, au titre de la réduction d'impôt prévue à l'article", ML + 2, y);
-  y += 3.5;
-  doc.text("238 bis du code général des impôts, des versements pour une valeur totale égale à :", ML + 2, y);
-  y += 5;
-  doc.setFontSize(10); doc.setFont("helvetica", "bold");
-  fill(`${fmtE(donAmount)}`, ML + 2, y);
-  y += 5;
-  sm("Indiquez le total des versements en toutes lettres :", ML + 2, y);
-  fill(numberToFrench(donAmount), ML + 2, y + 4);
-  y += 10;
+  write(p2, fmtN(donAmount), 40, 418, 10, true);
+  write(p2, numberToFrench(donAmount), 40, 436, 8);
 
-  // Forme des versements
-  bd("Forme des versements :", ML + 2, y); y += 5;
-  cb(false, ML + 4, y - 2.5); sm("Remise d'espèces", ML + 10, y);
-  cb(false, ML + 42, y - 2.5); sm("Chèque", ML + 48, y);
-  cb(true, ML + 64, y - 2.5); sm("Virement, prélèvement ou carte bancaire", ML + 70, y);
-  cb(false, ML + 135, y - 2.5); sm("Autre", ML + 141, y);
-  y += 8;
+  // Forme versements : cocher Virement
+  checkX(p2, 268, 470);
 
   // Montant total
-  hline(y); y += 4;
-  bd("Montant total des dons et versements reçus par l'organisme :", ML + 2, y);
-  y += 5;
-  doc.setFontSize(11); doc.setFont("helvetica", "bold");
-  fill(`${fmtE(donAmount)}`, ML + 2, y);
-  y += 5;
-  sm("Indiquez le montant total des dons et versements en toutes lettres :", ML + 2, y);
-  fill(numberToFrench(donAmount), ML + 2, y + 4);
-  y += 12;
+  write(p2, fmtN(donAmount), 40, 510, 10, true);
+  write(p2, numberToFrench(donAmount), 40, 528, 8);
 
   // Date des versements
-  hline(y); y += 4;
-  bd("Date ou période au cours de laquelle les dons et versements ont été effectués :", ML + 2, y);
-  y += 5;
-  sm("du ou le", ML + 2, y); dotline(ML + 14, ML + 34, y); sm("au", ML + 36, y); dotline(ML + 40, ML + 60, y);
-  fill(`Saison ${season}`, ML + 14, y);
-  y += 10;
+  write(p2, "Saison " + season, 90, 558, 8);
 
   // Date et signature
-  doc.rect(130, y, 60, 25);
-  bd("Date et signature", 133, y + 5);
-  fill(`Le ${todayFr}`, 133, y + 12);
-  fill(club.president || "", 133, y + 18);
+  write(p2, todayFr, 435, 570);
+  write(p2, club.president || "", 435, 585);
 
-  // Footnotes
-  doc.setFontSize(4.5); doc.setTextColor(130);
-  doc.text("5. L'organisme bénéficiaire des dons en nature reporte sur le reçu fiscal le montant indiqué par l'entreprise donatrice.", ML, 272);
-  doc.text("6. L'entreprise ne peut pas prétendre au bénéfice de la réduction d'impôt à raison des dons en nature refusés par l'organisme.", ML, 275);
-  doc.text("7. La description peut être établie par l'organisme bénéficiaire sur papier libre signé, daté et joint à la présente attestation.", ML, 278);
-  doc.text("8. L'organisme bénéficiaire des versements peut cocher une ou plusieurs cases.", ML, 281);
-  doc.text("9. L'organisme bénéficiaire peut établir un reçu unique pour plusieurs dons et versements effectués lors d'une période déterminée.", ML, 284);
-  doc.setTextColor(0);
-
-  // Footer
-  const pageH = doc.internal.pageSize.height;
-  doc.setFontSize(6); doc.setTextColor(150);
-  doc.text("CERFA 2041-MEC-SD · N° 16216*02 · Reçu au titre de l'article 238 bis du CGI", 105, pageH - 6, { align: "center" });
-
-  doc.save(`CERFA_Mecenat_${company.company.replace(/\s/g, "_")}_${season}_${cerfaNum}.pdf`);
+  // Save and download
+  var pdfBytes = await pdfDoc.save();
+  var blob = new Blob([pdfBytes], { type: "application/pdf" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "CERFA_Mecenat_" + company.company.replace(/\s/g, "_") + "_" + season + ".pdf";
+  a.click();
+  URL.revokeObjectURL(url);
 }
