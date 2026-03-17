@@ -3,7 +3,7 @@ import { useApp } from '../data/AppContext';
 import { S, Cl } from '../data/styles';
 import { fmt, INVOICE_STATUSES, toCSV, dlCSV } from '../data/initialData';
 import { Badge, Modal } from '../components/index';
-import { generateFacturePDF } from '../utils/pdfGenerator';
+import { generateFacturePDF, generateCerfa } from '../utils/pdfGenerator';
 
 function InvoiceDetail({ invoice, onClose }) {
   const { getCompany, contracts, invoices, setInvoices, clubInfo, accountCodes, products, openAddInvoiceAction } = useApp();
@@ -100,6 +100,9 @@ function InvoiceDetail({ invoice, onClose }) {
           const rows = entries.map(e => ({ Journal: e.journal, "Date d'opération": e.date, "Numéro de compte": e.compte, "Numéro de pièce": e.piece, Libellé: e.libelle, Débit: e.debit || "", Crédit: e.credit || "" }));
           dlCSV(`Ecritures_${invoice.number}.csv`, toCSV(rows));
         }}>📤 Export écritures CSV</button>
+        {con && (con.type === "Mécénat" || co?.dealType === "Mécénat") && (invoice.status === "Payée" || payments.every(p => p.status === "Payé")) && (
+          <button style={{ ...S.btn("primary"), background: Cl.pur }} onClick={() => generateCerfa(clubInfo, co, con, invoice, invoice.season)}>🏛️ Générer CERFA mécénat</button>
+        )}
       </div>
     </Modal>
   );
