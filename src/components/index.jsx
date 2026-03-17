@@ -109,6 +109,17 @@ export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeaso
       <Field label="N° TVA"><input style={S.inp} value={clubInfo.tvaNumber || ""} onChange={e => setClub("tvaNumber", e.target.value)} /></Field>
       <Field label="Président(e)"><input style={S.inp} value={clubInfo.president || ""} onChange={e => setClub("president", e.target.value)} /></Field>
       <Field label="Validité devis (jours)"><input type="number" style={S.inp} value={clubInfo.validiteDays || 30} onChange={e => setClub("validiteDays", +e.target.value)} /></Field>
+      <Field label="SIREN (pour CERFA)"><input style={S.inp} value={clubInfo.siren || ""} onChange={e => setClub("siren", e.target.value)} placeholder="123 456 789" /></Field>
+      <Field label="Objet CERFA"><input style={S.inp} value={clubInfo.cerfaObjet || ""} onChange={e => setClub("cerfaObjet", e.target.value)} placeholder="Soutien aux activités sportives..." /></Field>
+      <Field label="Type d'organisme (CERFA)"><select style={S.sel} value={clubInfo.cerfaType || "association_1901"} onChange={e => setClub("cerfaType", e.target.value)}>
+        <option value="association_1901">Association loi 1901</option>
+        <option value="association_rup">Association reconnue d'utilité publique</option>
+        <option value="fondation_universitaire">Fondation universitaire</option>
+        <option value="fondation_entreprise">Fondation d'entreprise</option>
+        <option value="musee">Musée de France</option>
+        <option value="aide_alimentaire">Organisme d'aide alimentaire/médicale</option>
+        <option value="fonds_dotation">Fonds de dotation</option>
+      </select></Field>
     </div>
 
     {/* Comptes comptables */}
