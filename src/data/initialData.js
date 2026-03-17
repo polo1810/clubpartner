@@ -91,7 +91,35 @@ export const INIT_CLUB_INFO = {
   phone: "02 41 00 00 00",
   email: "contact@clubcholet.fr",
   siret: "123 456 789 00012",
+  siren: "123 456 789",
   tvaNumber: "FR 12 345678900",
   president: "Michel Dupont",
   validiteDays: 30,
+  cerfaObjet: "Soutien aux activités sportives et éducatives du club",
+  cerfaType: "association_1901",
+};
+
+// --- Number to French words ---
+export const numberToFrench = (n) => {
+  const u = ["", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze", "treize", "quatorze", "quinze", "seize", "dix-sept", "dix-huit", "dix-neuf"];
+  const d = ["", "dix", "vingt", "trente", "quarante", "cinquante", "soixante", "soixante", "quatre-vingt", "quatre-vingt"];
+  if (n === 0) return "zéro";
+  const convert = (num) => {
+    if (num < 20) return u[num];
+    if (num < 100) {
+      const t = Math.floor(num / 10); const r = num % 10;
+      if (t === 7 || t === 9) return d[t] + (r === 1 && t === 7 ? "-et-" : "-") + u[r + 10];
+      if (t === 8 && r === 0) return "quatre-vingts";
+      return d[t] + (r === 1 && t < 8 ? "-et-un" : r > 0 ? "-" + u[r] : "");
+    }
+    if (num < 1000) { const c = Math.floor(num / 100); const r = num % 100; return (c === 1 ? "cent" : u[c] + "-cent") + (r === 0 && c > 1 ? "s" : r > 0 ? " " + convert(r) : ""); }
+    if (num < 1000000) { const m = Math.floor(num / 1000); const r = num % 1000; return (m === 1 ? "mille" : convert(m) + " mille") + (r > 0 ? " " + convert(r) : ""); }
+    const mi = Math.floor(num / 1000000); const r = num % 1000000;
+    return (mi === 1 ? "un million" : convert(mi) + " millions") + (r > 0 ? " " + convert(r) : "");
+  };
+  const euros = Math.floor(n);
+  const cents = Math.round((n - euros) * 100);
+  let result = convert(euros) + " euro" + (euros > 1 ? "s" : "");
+  if (cents > 0) result += " et " + convert(cents) + " centime" + (cents > 1 ? "s" : "");
+  return result;
 };
