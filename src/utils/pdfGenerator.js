@@ -519,66 +519,47 @@ export function generateFacturePDF(club, company, invoice) {
 
 
 // =====================================================
-// CERFA MECENAT - Coordonnees ajustees
+// CERFA MECENAT - Coordonnees ajustees via positionneur
 // x = distance depuis la gauche, y = distance depuis le HAUT
-// Modifiez les chiffres ci-dessous pour repositionner
 // =====================================================
 const CERFA_COORDS = {
-  // --- PAGE 1 : Organisme beneficiaire ---
-  numero_recu:           { x: 463, y: 129, size: 8 },
-  denomination:          { x: 212, y: 176, size: 9 },
-  siren:                 { x: 174, y: 200, size: 9 },
-  adresse_numero:        { x: 57,  y: 224, size: 8 },
-  adresse_rue:           { x: 175, y: 222, size: 8 },
-  adresse_cp:            { x: 116, y: 237, size: 8 },
-  adresse_commune:       { x: 238, y: 237, size: 8 },
-  adresse_pays:          { x: 70,  y: 249, size: 8 },
-  objet:                 { x: 81,  y: 262, size: 8 },
-  // Checkboxes page 1
-  check_oeuvre:           { x: 35,  y: 376, size: 10 },
-  check_asso_1901:        { x: 56,  y: 338, size: 10 },
-  check_asso_rup:         { x: 114, y: 365, size: 10 },
-  check_fondation_uni:    { x: 114, y: 394, size: 10 },
-  check_fondation_ent:    { x: 114, y: 410, size: 10 },
-  check_musee:            { x: 114, y: 421, size: 10 },
-  check_aide_alim:        { x: 114, y: 432, size: 10 },
-  check_fonds_dot:        { x: 28,  y: 720, size: 10 },
-
-  // --- PAGE 2 : Entreprise donatrice ---
-  ent_denomination:       { x: 201, y: 197, size: 9 },
-  ent_forme_juridique:    { x: 130, y: 210, size: 8 },
-  ent_siren:              { x: 122, y: 224, size: 8 },
-  ent_adresse_numero:     { x: 59,  y: 248, size: 8 },
-  ent_adresse_rue:        { x: 190, y: 247, size: 8 },
-  ent_adresse_cp:         { x: 103, y: 260, size: 8 },
-  ent_adresse_commune:    { x: 236, y: 262, size: 8 },
-
-  // Dons en nature (contreparties)
-  nature_montant:         { x: 32,  y: 328, size: 10 },
-  nature_lettres:         { x: 346, y: 340, size: 8 },
-  nature_description:     { x: 281, y: 379, size: 7, lineHeight: 12 },
-
-  // Versements
-  versement_montant:      { x: 35,  y: 465, size: 10 },
-  versement_lettres:      { x: 296, y: 476, size: 8 },
-
-  // Forme versements
-  check_especes:          { x: 36,  y: 515, size: 10 },
-  check_cheque:           { x: 140, y: 515, size: 10 },
-  check_virement:         { x: 254, y: 515, size: 10 },
-  check_autre:            { x: 440, y: 515, size: 10 },
-
-  // Montant total
-  total_montant:          { x: 35,  y: 539, size: 10 },
-  total_lettres:          { x: 373, y: 552, size: 8 },
-
-  // Date et periode
-  date_periode:           { x: 94,  y: 596, size: 9 },
-  date_periode_fin:       { x: 220, y: 596, size: 9 },
-
-  // Signature
-  date_signature:         { x: 353, y: 623, size: 9 },
-  nom_signature:          { x: 336, y: 636, size: 9 },
+  // --- PAGE 1 ---
+  numero_recu:           { page: 1, x: 463, y: 129, size: 8 },
+  denomination:          { page: 1, x: 201, y: 184, size: 9 },
+  siren:                 { page: 1, x: 166, y: 207, size: 9 },
+  adresse_numero:        { page: 1, x: 66, y: 230, size: 8 },
+  adresse_rue:           { page: 1, x: 153, y: 233, size: 8 },
+  adresse_cp:            { page: 1, x: 111, y: 245, size: 8 },
+  adresse_commune:       { page: 1, x: 242, y: 244, size: 8 },
+  adresse_pays:          { page: 1, x: 68, y: 255, size: 8 },
+  objet:                 { page: 1, x: 79, y: 269, size: 8 },
+  check_oeuvre:           { page: 1, x: 31, y: 383, size: 10 },
+  check_asso_1901:        { page: 1, x: 56, y: 338, size: 10 },
+  check_asso_rup:         { page: 1, x: 114, y: 365, size: 10 },
+  check_fondation_uni:    { page: 1, x: 114, y: 394, size: 10 },
+  check_fondation_ent:    { page: 1, x: 114, y: 410, size: 10 },
+  check_musee:            { page: 1, x: 114, y: 421, size: 10 },
+  check_aide_alim:        { page: 1, x: 114, y: 432, size: 10 },
+  check_fonds_dot:        { page: 1, x: 28, y: 720, size: 10 },
+  // --- PAGE 2 ---
+  ent_denomination:       { page: 2, x: 197, y: 205, size: 9 },
+  ent_forme_juridique:    { page: 2, x: 126, y: 216, size: 8 },
+  ent_siren:              { page: 2, x: 124, y: 230, size: 8 },
+  ent_adresse_numero:     { page: 2, x: 60, y: 253, size: 8 },
+  ent_adresse_rue:        { page: 2, x: 173, y: 253, size: 8 },
+  ent_adresse_cp:         { page: 2, x: 99, y: 267, size: 8 },
+  ent_adresse_commune:    { page: 2, x: 236, y: 267, size: 8 },
+  nature_montant:         { page: 2, x: 35, y: 336, size: 10 },
+  nature_lettres:         { page: 2, x: 28, y: 359, size: 8 },
+  nature_description:     { page: 2, x: 275, y: 383, size: 7, lineHeight: 12 },
+  versement_montant:      { page: 2, x: 35, y: 475, size: 10 },
+  versement_lettres:      { page: 2, x: 294, y: 483, size: 8 },
+  check_virement:         { page: 2, x: 246, y: 523, size: 10 },
+  total_montant:          { page: 2, x: 35, y: 546, size: 10 },
+  total_lettres:          { page: 2, x: 371, y: 556, size: 8 },
+  date_periode:           { page: 2, x: 101, y: 609, size: 8 },
+  date_signature:         { page: 2, x: 349, y: 631, size: 9 },
+  nom_signature:          { page: 2, x: 336, y: 659, size: 9 },
 };
 
 export async function generateCerfa(club, company, contract, invoice, season) {
@@ -594,7 +575,7 @@ export async function generateCerfa(club, company, contract, invoice, season) {
   var todayFr = new Date().toLocaleDateString("fr-FR");
   var ct = club.cerfaType || "association_1901";
 
-  // Parse club address : "12 avenue du Stade, 49300 Cholet" or "12 avenue du Stade 49300 Cholet"
+  // Parse club address
   var addr = club.address || "";
   var am = addr.match(/^(\d+)?\s*(.+?),?\s*(\d{5})\s+(.+)$/);
   var clubNum = am ? am[1] || "" : "";
@@ -623,9 +604,10 @@ export async function generateCerfa(club, company, contract, invoice, season) {
   var p2 = pages[1];
   var H = p1.getSize().height;
 
-  // Write text (y from top -> converted to PDF bottom-left)
-  var write = function(page, text, coords, bold) {
+  // Write text using coords (y from top -> PDF bottom-left)
+  var write = function(text, coords, bold) {
     if (!text) return;
+    var page = coords.page === 2 ? p2 : p1;
     page.drawText(String(text), {
       x: coords.x,
       y: H - coords.y,
@@ -636,7 +618,8 @@ export async function generateCerfa(club, company, contract, invoice, season) {
   };
 
   // Draw X in checkbox
-  var checkX = function(page, coords) {
+  var checkX = function(coords) {
+    var page = coords.page === 2 ? p2 : p1;
     page.drawText("X", {
       x: coords.x + 1,
       y: H - coords.y,
@@ -648,65 +631,65 @@ export async function generateCerfa(club, company, contract, invoice, season) {
 
   // ============= PAGE 1 : Organisme beneficiaire =============
   var cerfaNum = "REC-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random() * 9000) + 1000);
-  write(p1, cerfaNum, C.numero_recu);
-  write(p1, club.name || "", C.denomination);
-  write(p1, club.siren || club.siret || "", C.siren);
-  write(p1, clubNum, C.adresse_numero);
-  write(p1, clubRue, C.adresse_rue);
-  write(p1, clubCP, C.adresse_cp);
-  write(p1, clubVille, C.adresse_commune);
-  write(p1, "France", C.adresse_pays);
-  write(p1, club.cerfaObjet || "Soutien aux activites sportives du club", C.objet);
+  write(cerfaNum, C.numero_recu);
+  write(club.name || "", C.denomination);
+  write(club.siren || club.siret || "", C.siren);
+  write(clubNum, C.adresse_numero);
+  write(clubRue, C.adresse_rue);
+  write(clubCP, C.adresse_cp);
+  write(clubVille, C.adresse_commune);
+  write("France", C.adresse_pays);
+  write(club.cerfaObjet || "Soutien aux activites sportives du club", C.objet);
 
   // Checkboxes page 1
   var isOeuvre = ["association_1901", "association_rup", "fondation_universitaire", "fondation_entreprise", "musee", "aide_alimentaire"].includes(ct);
-  if (isOeuvre) checkX(p1, C.check_oeuvre);
-  if (ct === "association_1901") checkX(p1, C.check_asso_1901);
-  if (ct === "association_rup") checkX(p1, C.check_asso_rup);
-  if (ct === "fondation_universitaire") checkX(p1, C.check_fondation_uni);
-  if (ct === "fondation_entreprise") checkX(p1, C.check_fondation_ent);
-  if (ct === "musee") checkX(p1, C.check_musee);
-  if (ct === "aide_alimentaire") checkX(p1, C.check_aide_alim);
-  if (ct === "fonds_dotation") checkX(p1, C.check_fonds_dot);
+  if (isOeuvre) checkX(C.check_oeuvre);
+  if (ct === "association_1901") checkX(C.check_asso_1901);
+  if (ct === "association_rup") checkX(C.check_asso_rup);
+  if (ct === "fondation_universitaire") checkX(C.check_fondation_uni);
+  if (ct === "fondation_entreprise") checkX(C.check_fondation_ent);
+  if (ct === "musee") checkX(C.check_musee);
+  if (ct === "aide_alimentaire") checkX(C.check_aide_alim);
+  if (ct === "fonds_dotation") checkX(C.check_fonds_dot);
 
   // ============= PAGE 2 : Entreprise + Dons =============
-  write(p2, company.company || "", C.ent_denomination);
-  write(p2, company.formeJuridique || "", C.ent_forme_juridique);
-  write(p2, company.siret || "", C.ent_siren);
-  write(p2, coNum, C.ent_adresse_numero);
-  write(p2, coRue, C.ent_adresse_rue);
-  write(p2, coCP, C.ent_adresse_cp);
-  write(p2, coVille, C.ent_adresse_commune);
+  write(company.company || "", C.ent_denomination);
+  write(company.formeJuridique || "", C.ent_forme_juridique);
+  write(company.siret || "", C.ent_siren);
+  write(coNum, C.ent_adresse_numero);
+  write(coRue, C.ent_adresse_rue);
+  write(coCP, C.ent_adresse_cp);
+  write(coVille, C.ent_adresse_commune);
 
   // Dons en nature (contreparties)
   if (productsHT > 0) {
-    write(p2, fmtN(productsHT), C.nature_montant, true);
-    write(p2, numberToFrench(productsHT), C.nature_lettres);
+    write(fmtN(productsHT), C.nature_montant, true);
+    write(numberToFrench(productsHT), C.nature_lettres);
     var descY = C.nature_description.y;
     prods.forEach(function(cp) {
       var line = "Qte " + cp.qty + " x " + fmtE(cp.unitPrice) + " = " + fmtE((cp.unitPrice || 0) * (cp.qty || 1));
-      write(p2, line, { x: C.nature_description.x, y: descY, size: C.nature_description.size });
+      write(line, { page: 2, x: C.nature_description.x, y: descY, size: C.nature_description.size });
       descY += C.nature_description.lineHeight;
     });
   }
 
   // Versements
-  write(p2, fmtN(donAmount), C.versement_montant, true);
-  write(p2, numberToFrench(donAmount), C.versement_lettres);
+  write(fmtN(donAmount), C.versement_montant, true);
+  write(numberToFrench(donAmount), C.versement_lettres);
 
-  // Forme versements : cocher Virement par defaut
-  checkX(p2, C.check_virement);
+  // Forme versements : cocher Virement
+  checkX(C.check_virement);
 
   // Montant total
-  write(p2, fmtN(donAmount), C.total_montant, true);
-  write(p2, numberToFrench(donAmount), C.total_lettres);
+  write(fmtN(donAmount), C.total_montant, true);
+  write(numberToFrench(donAmount), C.total_lettres);
 
   // Date periode
-  write(p2, "Saison " + season, C.date_periode);
+  write("Saison " + season, C.date_periode);
 
   // Signature
-  write(p2, todayFr, C.date_signature);
-  write(p2, club.president || "", C.nom_signature);
+  write(todayFr, C.date_signature);
+  write(club.president || "", C.nom_signature);
 
   // Download
   var pdfBytes = await pdfDoc.save();
