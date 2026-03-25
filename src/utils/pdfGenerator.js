@@ -263,218 +263,159 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
   doc.save(`Devis_${company.company.replace(/\s/g, "_")}_${num}.pdf`);
 }
 
-export function generateContrat(club, company, contract, allProducts, seasons, currentSeason) {
+export function generateContrat(club, company, contract, allProducts, seasons, currentSeason, contractTemplates, exclusiviteText) {
   const doc = new jsPDF();
   const isM = contract.type === "Mécénat" || company.dealType === "Mécénat";
   const num = contratNum();
   const donAmount = contract.donAmount || company.donAmount || 0;
+  const hasSP = contract.seasonProducts && Object.keys(contract.seasonProducts).length > 0;
+  const coveredSeasons = getContractSeasonIds(contract, seasons);
+  const startS = seasons.find(s => s.id === contract.startSeason);
+  const endSeason = seasons[seasons.indexOf(startS) + contract.seasons - 1]?.name || contract.startSeason;
+  const grandTotalHT = hasSP
+    ? Object.values(contract.seasonProducts).reduce((t, ps) => t + ps.reduce((s, cp) => s + lineHT(cp), 0), 0)
+    : (company.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+  const ratio = donAmount > 0 ? ((grandTotalHT / donAmount) * 100).toFixed(1) : "0";
+
+  // Get template
+  const defaultTemplates = { "Partenariat": "", "Mécénat": "" };
+  const templates = contractTemplates || defaultTemplates;
+  const rawTemplate = templates[isM ? "Mécénat" : "Partenariat"] || "";
+
+  // Exclusivité
+  const exclText = contract.exclusivite ? (exclusiviteText || "") : "";
+
+  // Replace placeholders
+  let text = rawTemplate
+    .replace(/\[club\]/gi, club.name || "___")
+    .replace(/\[president\]/gi, club.president || "___")
+    .replace(/\[entreprise\]/gi, company.company || "___")
+    .replace(/\[signataire\]/gi, contract.signataire || company.contact || "___")
+    .replace(/\[saison_debut\]/gi, contract.startSeason || "___")
+    .replace(/\[saison_fin\]/gi, endSeason)
+    .replace(/\[nb_saisons\]/gi, String(contract.seasons || 1))
+    .replace(/\[montant_total\]/gi, fmtE(grandTotalHT))
+    .replace(/\[montant_don\]/gi, fmtE(donAmount))
+    .replace(/\[ratio_contreparties\]/gi, ratio)
+    .replace(/\[objet_social\]/gi, club.objetSocial ? `Objet social : ${club.objetSocial}` : "")
+    .replace(/\[clause_exclusivite\]/gi, exclText)
+    .replace(/\[tableau_produits\]/gi, "%%TABLEAU%%")
+    .replace(/\[echeancier\]/gi, "%%ECHEANCIER%%");
 
   // Header
   let y = addHeader(doc, club, isM ? "Convention de mécénat" : "Contrat de partenariat", num);
   y = addCompanyBlock(doc, company, y);
 
-  // Parties
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("ENTRE LES SOUSSIGNÉS", 105, y, { align: "center" });
-  y += 8;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text(`${club.name}, représenté(e) par ${club.president || "___"}, en qualité de Président(e),`, 20, y);
-  y += 5;
-  doc.text(`ci-après dénommé(e) "le Club",`, 20, y);
-  y += 7;
-  doc.text("ET", 105, y, { align: "center" });
-  y += 7;
-  doc.text(`${company.company}, représenté(e) par ${contract.signataire || company.contact || "___"},`, 20, y);
-  y += 5;
-  doc.text(`ci-après dénommé(e) "${isM ? "le Mécène" : "le Partenaire"}",`, 20, y);
-  y += 10;
-
-  // Article 1 - Objet
-  doc.setFont("helvetica", "bold");
-  doc.text("Article 1 — Objet", 20, y);
-  y += 5;
-  doc.setFont("helvetica", "normal");
+  // Render template text
+  const lines = text.split("\n");
   doc.setFontSize(8);
-  if (isM) {
-    doc.text(`Le Mécène s'engage à verser au Club un don de ${fmtE(donAmount)} dans le cadre d'une convention de mécénat.`, 20, y, { maxWidth: 170 });
-    y += 8;
-    const hasSPObj = contract.seasonProducts && Object.keys(contract.seasonProducts).length > 0;
-    const totalHTObjet = hasSPObj
-      ? Object.values(contract.seasonProducts).reduce((total, prods) => total + prods.reduce((t, cp) => t + lineHT(cp), 0), 0)
-      : (company.products || []).reduce((t, cp) => t + lineHT(cp), 0);
-    if (totalHTObjet > 0) {
-      doc.text(`En contrepartie, le Club s'engage à fournir les prestations ci-dessous, d'une valeur de ${fmtE(totalHTObjet)} HT`, 20, y, { maxWidth: 170 });
-      y += 4;
-      doc.text(`(soit ${donAmount > 0 ? ((totalHTObjet / donAmount) * 100).toFixed(1) : 0}% du don, conformément à la règle des 25% maximum).`, 20, y, { maxWidth: 170 });
-      y += 6;
+  doc.setFont("helvetica", "normal");
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    if (y > 270) { doc.addPage(); y = 20; }
+
+    // Special: product table placeholder
+    if (line === "%%TABLEAU%%") {
+      if (hasSP) {
+        coveredSeasons.forEach(sid => {
+          const seasonProds = (contract.seasonProducts[sid] || []);
+          const rows = seasonProds.map(cp => {
+            const pr = allProducts.find(x => x.id === cp.productId);
+            if (!pr) return null;
+            return [pr.name, String(cp.qty), fmtE(cp.unitPrice), fmtE(lineHT(cp))];
+          }).filter(Boolean);
+          const seasonHT = seasonProds.reduce((t, cp) => t + lineHT(cp), 0);
+
+          if (y > 240) { doc.addPage(); y = 20; }
+          doc.setFontSize(9); doc.setFont("helvetica", "bold");
+          const tc = club.themeColor || "#1a73e8";
+          const r = parseInt(tc.slice(1,3),16), g = parseInt(tc.slice(3,5),16), b = parseInt(tc.slice(5,7),16);
+          doc.setTextColor(r, g, b);
+          doc.text(`Saison ${sid}`, 20, y); doc.setTextColor(0); y += 6;
+
+          if (rows.length > 0) {
+            autoTable(doc, {
+              startY: y,
+              head: [["Prestation", "Qté", "Prix unitaire HT", "Total HT"]],
+              body: rows, theme: "striped",
+              headStyles: { fillColor: isM ? [124, 58, 237] : [r, g, b], fontSize: 8 },
+              styles: { fontSize: 8, cellPadding: 3 },
+              columnStyles: { 3: { halign: "right", fontStyle: "bold" } },
+              margin: { left: 20, right: 20 },
+            });
+            y = doc.lastAutoTable.finalY + 2;
+          }
+          doc.setFontSize(8); doc.setFont("helvetica", "bold");
+          doc.text(`Sous-total ${sid} : ${fmtE(seasonHT)} HT`, 190, y, { align: "right" });
+          doc.setFont("helvetica", "normal"); y += 6;
+        });
+      }
+      continue;
     }
-  } else {
-    doc.text(`Le Partenaire s'engage à soutenir le Club selon les modalités définies ci-après, en échange des contreparties listées.`, 20, y, { maxWidth: 170 });
-    y += 8;
-  }
 
-  // Article 2 - Durée
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("Article 2 — Durée", 20, y);
-  y += 5;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  const startS = seasons.find(s => s.id === contract.startSeason);
-  doc.text(`Le présent contrat est conclu pour ${contract.seasons} saison(s), de ${contract.startSeason}${contract.seasons > 1 ? ` à ${seasons[seasons.indexOf(startS) + contract.seasons - 1]?.name || "___"}` : ""}.`, 20, y, { maxWidth: 170 });
-  y += 8;
-
-  // Article 3 - Prestations (per season)
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text(isM ? "Article 3 — Contreparties" : "Article 3 — Prestations", 20, y);
-  y += 3;
-
-  const hasSP = contract.seasonProducts && Object.keys(contract.seasonProducts).length > 0;
-  const coveredSeasons = getContractSeasonIds(contract, seasons);
-  let grandTotalHT = 0;
-
-  if (hasSP) {
-    // One table per season
-    coveredSeasons.forEach(sid => {
-      const seasonProds = (contract.seasonProducts[sid] || []);
-      const rows = seasonProds.map(cp => {
-        const pr = allProducts.find(x => x.id === cp.productId);
-        if (!pr) return null;
-        return [pr.name, String(cp.qty), fmtE(cp.unitPrice), fmtE(lineHT(cp))];
-      }).filter(Boolean);
-      const seasonHT = seasonProds.reduce((t, cp) => t + lineHT(cp), 0);
-      grandTotalHT += seasonHT;
-
-      if (y > 240) { doc.addPage(); y = 25; }
-
-      // Season subtitle
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(26, 115, 232);
-      doc.text(`Saison ${sid}`, 20, y + 4);
-      doc.setTextColor(0);
-      y += 2;
-
-      if (rows.length > 0) {
+    // Special: echeancier placeholder
+    if (line === "%%ECHEANCIER%%") {
+      if ((contract.payments || []).length > 0) {
+        doc.setFontSize(8); doc.text("Échéancier de paiement :", 20, y); y += 2;
         autoTable(doc, {
           startY: y,
-          head: [["Prestation", "Qté", "Prix unitaire HT", "Total HT"]],
-          body: rows,
+          head: [["Échéance", "Montant", "Date"]],
+          body: contract.payments.map(p => [p.label, fmtE(p.amount), p.dueDate || "À définir"]),
           theme: "striped",
-          headStyles: { fillColor: isM ? [124, 58, 237] : [26, 115, 232], fontSize: 8 },
+          headStyles: { fillColor: [100, 100, 100], fontSize: 8 },
           styles: { fontSize: 8, cellPadding: 3 },
-          columnStyles: { 3: { halign: "right", fontStyle: "bold" } },
           margin: { left: 20, right: 20 },
         });
-        y = doc.lastAutoTable.finalY + 2;
+        y = doc.lastAutoTable.finalY + 6;
       }
-      // Season subtotal
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.text(`Sous-total ${sid} : ${fmtE(seasonHT)} HT`, 190, y, { align: "right" });
-      doc.setFont("helvetica", "normal");
-      y += 6;
-    });
-  } else {
-    // Fallback: old contract without seasonProducts
-    const prods = (company.products || []).map(cp => {
-      const pr = allProducts.find(x => x.id === cp.productId);
-      if (!pr) return null;
-      return [pr.name, String(cp.qty), fmtE(cp.unitPrice), fmtE(lineHT(cp))];
-    }).filter(Boolean);
-    grandTotalHT = (company.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+      continue;
+    }
 
-    if (prods.length > 0) {
-      autoTable(doc, {
-        startY: y,
-        head: [["Prestation", "Qté", "Prix unitaire HT", "Total HT"]],
-        body: prods,
-        theme: "striped",
-        headStyles: { fillColor: isM ? [124, 58, 237] : [26, 115, 232], fontSize: 8 },
-        styles: { fontSize: 8, cellPadding: 3 },
-        columnStyles: { 3: { halign: "right", fontStyle: "bold" } },
-        margin: { left: 20, right: 20 },
+    // Bold line (starts with **)
+    const isBold = line.startsWith("**") && line.endsWith("**");
+    if (isBold) {
+      const cleanLine = line.replace(/\*\*/g, "");
+      y += 3;
+      doc.setFontSize(10); doc.setFont("helvetica", "bold");
+      doc.text(cleanLine, 20, y, { maxWidth: 170 });
+      y += 6;
+      doc.setFontSize(8); doc.setFont("helvetica", "normal");
+    } else if (line === "") {
+      y += 3;
+    } else {
+      doc.setFontSize(8); doc.setFont("helvetica", "normal");
+      const textLines = doc.splitTextToSize(line, 170);
+      textLines.forEach(tl => {
+        if (y > 275) { doc.addPage(); y = 20; }
+        doc.text(tl, 20, y);
+        y += 4;
       });
-      y = doc.lastAutoTable.finalY + 6;
     }
   }
 
-  // Article 4 - Montant
-  if (y > 240) { doc.addPage(); y = 25; }
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("Article 4 — Conditions financières", 20, y);
+  // Signature block
+  if (y > 220) { doc.addPage(); y = 20; }
   y += 5;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  if (isM) {
-    doc.text(`Montant du don : ${fmtE(donAmount)}`, 20, y);
-  } else {
-    doc.text(`Montant total toutes saisons : ${fmtE(grandTotalHT)} HT`, 20, y);
-  }
-  y += 6;
-
-  // Payments
-  if ((contract.payments || []).length > 0) {
-    doc.text("Échéancier de paiement :", 20, y);
-    y += 2;
-    autoTable(doc, {
-      startY: y,
-      head: [["Échéance", "Montant", "Date"]],
-      body: contract.payments.map(p => [p.label, fmtE(p.amount), p.dueDate || "À définir"]),
-      theme: "striped",
-      headStyles: { fillColor: [100, 100, 100], fontSize: 8 },
-      styles: { fontSize: 8, cellPadding: 3 },
-      margin: { left: 20, right: 20 },
-    });
-    y = doc.lastAutoTable.finalY + 8;
-  }
-
-  // Check if we need a new page
-  if (y > 230) { doc.addPage(); y = 25; }
-
-  // Article 5 - Obligations
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("Article 5 — Obligations", 20, y);
-  y += 5;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text(`Le Club s'engage à fournir l'ensemble des prestations prévues à l'article 3.`, 20, y, { maxWidth: 170 });
-  y += 5;
-  doc.text(`${isM ? "Le Mécène" : "Le Partenaire"} s'engage à régler les sommes prévues selon l'échéancier convenu.`, 20, y, { maxWidth: 170 });
-  y += 12;
-
-  // Signature
-  if (y > 230) { doc.addPage(); y = 25; }
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9); doc.setFont("helvetica", "normal");
   doc.text(`Fait en deux exemplaires originaux, à _________________, le _________________`, 105, y, { align: "center" });
   y += 10;
-
-  doc.setDrawColor(200);
-  doc.setLineWidth(0.3);
-  doc.rect(20, y, 80, 40);
-  doc.rect(110, y, 80, 40);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
+  doc.setDrawColor(200); doc.setLineWidth(0.3);
+  doc.rect(20, y, 80, 40); doc.rect(110, y, 80, 40);
+  doc.setFontSize(8); doc.setFont("helvetica", "bold");
   doc.text("Pour le Club", 60, y + 6, { align: "center" });
   doc.text(`Pour ${isM ? "le Mécène" : "le Partenaire"}`, 150, y + 6, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.text(club.president || "___", 60, y + 12, { align: "center" });
   doc.text(contract.signataire || company.contact || "___", 150, y + 12, { align: "center" });
-  doc.setFontSize(7);
-  doc.setTextColor(150);
+  doc.setFontSize(7); doc.setTextColor(150);
   doc.text("Signature et cachet", 60, y + 20, { align: "center" });
   doc.text("Signature et cachet", 150, y + 20, { align: "center" });
 
   // Footer
   const pageH = doc.internal.pageSize.height;
-  doc.setFontSize(6);
-  doc.setTextColor(150);
+  doc.setFontSize(6); doc.setTextColor(150);
   doc.text(`${club.name} · SIRET ${club.siret || "___"} · TVA ${club.tvaNumber || "___"}`, 105, pageH - 10, { align: "center" });
 
   doc.save(`Contrat_${company.company.replace(/\s/g, "_")}_${num}.pdf`);
