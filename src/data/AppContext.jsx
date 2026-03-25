@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds, INIT_ACCOUNT_CODES, genAccountCode, invoiceNum, INIT_SCRIPTS } from '../data/initialData';
+import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds, INIT_ACCOUNT_CODES, genAccountCode, invoiceNum, cerfaDocNum, INIT_SCRIPTS } from '../data/initialData';
 import { useAuth } from './AuthContext';
 
 const Ctx = createContext();
@@ -236,12 +236,35 @@ export function AppProvider({ children }) {
     return inv;
   };
 
+  // Generate CERFA record (for mécénat - no invoice, just a tracking record)
+  const generateCerfaRecord = (contract, season) => {
+    const co = getCompany(contract.companyId);
+    if (!co) return null;
+    const donAmount = contract.seasonDonAmounts?.[season] || contract.donAmount || 0;
+    const dateStr = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const seq = invoiceSeq;
+    setInvoiceSeq(s => s + 1);
+    const rec = {
+      id: uid(), number: cerfaDocNum(dateStr, seq),
+      contractId: contract.id, companyId: co.id, companyName: co.company,
+      date: todayStr, dateStr, season,
+      type: "cerfa",
+      donAmount,
+      totalHT: 0, totalTVA: 0, totalTTC: donAmount,
+      lines: [],
+      status: "CERFA émis",
+    };
+    setInvoices(is => [...is, rec]);
+    setContracts(cs => cs.map(c => c.id === contract.id ? { ...c, status: c.status === "Signé" ? "Facturé" : c.status } : c));
+    return rec;
+  };
+
 
   const value = {
     companies, setCompanies, products, setProducts, contracts, setContracts,
     members, setMembers, addMember, seasons, setSeasons, cats, setCats, currentSeason, setCurrentSeason,
     miniForm, setMiniForm, todayStr, clubInfo, setClubInfo,
-    invoices, setInvoices, seasonInvoices, generateInvoice, accountCodes, setAccountCodes, scripts, setScripts,
+    invoices, setInvoices, seasonInvoices, generateInvoice, generateCerfaRecord, accountCodes, setAccountCodes, scripts, setScripts,
     prospectsList, partnersList, getCompany, companyContracts,
     contractHT, contractTTC, stockSold, stockProv, caByProd, caByType, totalCA, totalPaid, allActions, seasonContracts,
     objectives, setObjectives, caByMember,
