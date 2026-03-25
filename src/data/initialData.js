@@ -44,6 +44,82 @@ export const INIT_SCRIPTS = {
   "Partenariat": `**Introduction**\nBonjour [contact], je suis [nom] du [club].\nJe vous contacte car nous proposons des partenariats pour la saison [saison].\n\n**Présentation**\n• Expliquer les différentes formules de visibilité\n• Mentionner le nombre de spectateurs / matchs\n• Évoquer les retombées pour le partenaire\n\n**Questions à poser**\n• Avez-vous déjà fait du sponsoring sportif ?\n• Quel budget envisagez-vous ?\n• Quels supports vous intéressent ?\n\n**Conclusion**\n• Proposer un RDV pour présenter le dossier\n• Envoyer la plaquette par email\n• Remercier pour le temps accordé`,
   "Mécénat": `**Introduction**\nBonjour [contact], je suis [nom] du [club].\nJe vous contacte concernant notre programme de mécénat pour la saison [saison].\n\n**Présentation**\n• Expliquer la mission sociale/éducative du club\n• Mentionner l'avantage fiscal (60% de réduction d'impôt)\n• Préciser la règle des 25% max de contreparties\n\n**Questions à poser**\n• Votre entreprise fait-elle déjà du mécénat ?\n• Connaissez-vous les avantages fiscaux ?\n• Quel montant de don envisageriez-vous ?\n\n**Conclusion**\n• Proposer un RDV pour détailler la convention\n• Envoyer la documentation mécénat\n• Remercier pour le temps accordé`,
 };
+export const INIT_CONTRACT_TEMPLATES = {
+  "Partenariat": `**ENTRE LES SOUSSIGNÉS**
+
+[club], représenté(e) par [president], en qualité de Président(e),
+ci-après dénommé(e) "le Club",
+
+ET
+
+[entreprise], représenté(e) par [signataire],
+ci-après dénommé(e) "le Partenaire",
+
+**Article 1 — Objet**
+Le Partenaire s'engage à soutenir le Club selon les modalités définies ci-après, en échange des contreparties listées.
+
+**Article 2 — Durée**
+Le présent contrat est conclu pour [nb_saisons] saison(s), de [saison_debut] à [saison_fin].
+
+**Article 3 — Prestations**
+[tableau_produits]
+
+**Article 4 — Conditions financières**
+Montant total : [montant_total] HT.
+[echeancier]
+
+**Article 5 — Obligations**
+Le Club s'engage à fournir l'ensemble des prestations prévues à l'article 3.
+Le Partenaire s'engage à régler les sommes prévues selon l'échéancier convenu.
+
+[clause_exclusivite]
+
+**Article 6 — Résiliation**
+En cas de manquement par l'une des parties à ses obligations, l'autre partie pourra résilier le contrat par lettre recommandée avec accusé de réception, après mise en demeure restée sans effet pendant 30 jours.
+
+**Article 7 — Droit applicable**
+Le présent contrat est soumis au droit français. Tout litige sera soumis aux tribunaux compétents.
+
+Fait en deux exemplaires originaux.`,
+
+  "Mécénat": `**ENTRE LES SOUSSIGNÉS**
+
+[club], représenté(e) par [president], en qualité de Président(e),
+[objet_social]
+ci-après dénommé(e) "le Club",
+
+ET
+
+[entreprise], représenté(e) par [signataire],
+ci-après dénommé(e) "le Mécène",
+
+**Article 1 — Objet**
+Le Mécène s'engage à verser au Club un don de [montant_don] dans le cadre d'une convention de mécénat, conformément à l'article 238 bis du Code Général des Impôts.
+
+**Article 2 — Durée**
+La présente convention est conclue pour [nb_saisons] saison(s), de [saison_debut] à [saison_fin].
+
+**Article 3 — Contreparties**
+[tableau_produits]
+Les contreparties représentent [ratio_contreparties]% du montant du don, conformément à la limite de 25% prévue par la loi.
+
+**Article 4 — Avantage fiscal**
+Le Mécène bénéficiera d'une réduction d'impôt égale à 60% du montant du don, dans la limite de 0,5% du chiffre d'affaires HT, conformément à l'article 238 bis du CGI.
+Un reçu fiscal (CERFA) sera délivré par le Club.
+
+**Article 5 — Obligations**
+Le Club s'engage à utiliser les fonds conformément à son objet social et à fournir les contreparties prévues.
+Le Mécène s'engage à régler les sommes prévues selon l'échéancier convenu.
+
+[clause_exclusivite]
+
+**Article 6 — Résiliation**
+En cas de manquement par l'une des parties à ses obligations, l'autre partie pourra résilier la convention par lettre recommandée avec accusé de réception.
+
+Fait en deux exemplaires originaux.`,
+};
+export const DEFAULT_EXCLUSIVITE = `**Clause d'exclusivité**
+Le Club s'engage à ne pas contracter de partenariat avec une entreprise directement concurrente du Partenaire sur le même secteur d'activité pendant la durée du présent contrat, sauf accord écrit préalable du Partenaire.`;
 export const statusBType = (s) => ({ "Nouveau": "new", "Pas répondu": "noreply", "Intéressé": "interested", "À rappeler": "callback", "RDV pris": "rdv", "Proposition envoyée": "proposition", "Renouvellement potentiel": "renewal", "Refusé": "refused", "Nouveau partenaire": "partner", "Renouvellement": "renewal" }[s] || "draft");
 
 // --- Constants ---
