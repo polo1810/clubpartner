@@ -31,6 +31,10 @@ export const invoiceNum = (date, seq) => {
   const d = date || new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
   return `FA-${d}-${String(seq).padStart(5, "0")}`;
 };
+export const cerfaDocNum = (date, seq) => {
+  const d = date || new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return `CERFA-${d}-${String(seq).padStart(5, "0")}`;
+};
 export const INIT_ACCOUNT_CODES = {
   tva: { 20: "44571000", 10: "44571000", 5.5: "44571000" },
   categories: { "Signalétique": "70820000", "Print": "70830000", "Textile": "70840000", "Digital": "70851000", "Événement": "70843000" },
