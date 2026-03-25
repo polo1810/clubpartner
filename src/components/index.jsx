@@ -92,7 +92,7 @@ export const ProductFormModal = ({ onClose, onAdd, cats, seasons, currentSeason 
   <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}><button style={S.btn("ghost")} onClick={onClose}>Annuler</button><button style={S.btn("primary")} onClick={() => { const prices = {}; Object.entries(sp).forEach(([k, v]) => { if (v.price || v.cost || v.amort) prices[k] = v; }); onAdd({ ...f, prices, totalCost: f.totalCost }); }}>Ajouter</button></div></Modal>);
 };
 
-export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeason, clubInfo, setClubInfo, accountCodes, setAccountCodes, scripts, setScripts, onClose }) => {
+export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeason, clubInfo, setClubInfo, accountCodes, setAccountCodes, scripts, setScripts, contractTemplates, setContractTemplates, exclusiviteText, setExclusiviteText, onClose }) => {
   const [newCat, setNewCat] = useState("");
   const [newSeason, setNewSeason] = useState({ name: "", startDate: "", endDate: "" });
   const updateSeason = (id, key, value) => setSeasons(ss => ss.map(s => s.id === id ? { ...s, [key]: value } : s));
@@ -218,5 +218,21 @@ export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeaso
       </div>
     ))}
     <div style={{ marginTop: 4, fontSize: 10, color: Cl.txtL }}>Utilisez **texte** pour le gras, • pour les puces. Les placeholders [contact], [nom], [club], [saison] seront remplacés automatiquement.</div>
+
+    {/* Modèles de contrat */}
+    <div style={{ ...S.cT, marginTop: 20 }}>📝 Modèles de contrat</div>
+    {["Partenariat", "Mécénat"].map(type => (
+      <div key={type} style={{ marginTop: 8 }}>
+        <label style={{ ...S.lbl, fontWeight: 700 }}>{type === "Partenariat" ? "🤝" : "💜"} Contrat {type}</label>
+        <textarea style={{ ...S.inp, minHeight: 200, resize: "vertical", fontFamily: "inherit", fontSize: 11, lineHeight: 1.6 }} value={contractTemplates?.[type] || ""} onChange={e => setContractTemplates(ct => ({ ...ct, [type]: e.target.value }))} />
+      </div>
+    ))}
+    <div style={{ marginTop: 8 }}>
+      <label style={{ ...S.lbl, fontWeight: 700 }}>🔒 Clause d'exclusivité (utilisée quand cochée sur le contrat)</label>
+      <textarea style={{ ...S.inp, minHeight: 60, resize: "vertical", fontFamily: "inherit", fontSize: 11, lineHeight: 1.6 }} value={exclusiviteText || ""} onChange={e => setExclusiviteText(e.target.value)} />
+    </div>
+    <div style={{ marginTop: 4, fontSize: 10, color: Cl.txtL }}>
+      Placeholders disponibles : [club], [president], [entreprise], [signataire], [saison_debut], [saison_fin], [nb_saisons], [montant_total], [montant_don], [ratio_contreparties], [objet_social], [tableau_produits], [echeancier], [clause_exclusivite]
+    </div>
   </Modal>);
 };
