@@ -110,6 +110,14 @@ export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeaso
       <Field label="Email"><input style={S.inp} value={clubInfo.email || ""} onChange={e => setClub("email", e.target.value)} /></Field>
       <Field label="SIRET"><input style={S.inp} value={clubInfo.siret || ""} onChange={e => setClub("siret", e.target.value)} /></Field>
       <Field label="N° TVA"><input style={S.inp} value={clubInfo.tvaNumber || ""} onChange={e => setClub("tvaNumber", e.target.value)} /></Field>
+      <Field label="Soumis à la TVA">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button style={S.chip(clubInfo.soumisTVA !== false)} onClick={() => setClub("soumisTVA", true)}>✅ Oui</button>
+          <button style={S.chip(clubInfo.soumisTVA === false)} onClick={() => setClub("soumisTVA", false)}>❌ Non</button>
+          {clubInfo.soumisTVA === false && <span style={{ fontSize: 10, color: Cl.txtL }}>TVA non applicable — art. 293 B du CGI</span>}
+        </div>
+      </Field>
+      <Field label="Objet social"><input style={S.inp} value={clubInfo.objetSocial || ""} onChange={e => setClub("objetSocial", e.target.value)} placeholder="Promotion et développement de la pratique sportive..." /></Field>
       <Field label="Président(e)"><input style={S.inp} value={clubInfo.president || ""} onChange={e => setClub("president", e.target.value)} /></Field>
       <Field label="Validité devis (jours)"><input type="number" style={S.inp} value={clubInfo.validiteDays || 30} onChange={e => setClub("validiteDays", +e.target.value)} /></Field>
       <Field label="Logo du club">
