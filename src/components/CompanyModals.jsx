@@ -171,10 +171,10 @@ export function CompanyForm({ data, onSave, onClose }) {
 
 export function CompanyDetail({ company, onClose, onOpenContract }) {
   const { companies, setCompanies, products, todayStr, convertToPartner, openAddAction, companyContracts, cats, currentSeason, seasons, setMiniForm, members, addMember, clubInfo } = useApp();
-  const [co, setCo_] = useState(company);
+  const co = companies.find(c => c.id === company.id) || company;
   const [noteText, setNoteText] = useState("");
   const [editingProducts, setEditingProducts] = useState(false);
-  const setCo = (u) => { setCo_(u); setCompanies(cs => cs.map(x => x.id === u.id ? u : x)); };
+  const setCo = (u) => { setCompanies(cs => cs.map(x => x.id === u.id ? u : x)); };
   const myContracts = companyContracts(co.id);
   const lastNote = (co.notes || []).sort((a, b) => b.date.localeCompare(a.date))[0];
   const isM = co.dealType === "Mécénat";
