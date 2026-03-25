@@ -102,13 +102,38 @@ export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeaso
     <div style={S.cT}>🏟️ Informations du club / association</div>
     <div style={S.g2}>
       <Field label="Nom du club"><input style={S.inp} value={clubInfo.name || ""} onChange={e => setClub("name", e.target.value)} /></Field>
-      <Field label="Adresse"><input style={S.inp} value={clubInfo.address || ""} onChange={e => setClub("address", e.target.value)} /></Field>
+      <Field label="Adresse N°"><input style={S.inp} value={clubInfo.adresseNum || ""} onChange={e => setClub("adresseNum", e.target.value)} placeholder="12" /></Field>
+      <Field label="Rue"><input style={S.inp} value={clubInfo.adresseRue || ""} onChange={e => setClub("adresseRue", e.target.value)} placeholder="avenue du Stade" /></Field>
+      <Field label="Code postal"><input style={S.inp} value={clubInfo.adresseCP || ""} onChange={e => setClub("adresseCP", e.target.value)} placeholder="49300" /></Field>
+      <Field label="Commune"><input style={S.inp} value={clubInfo.adresseCommune || ""} onChange={e => setClub("adresseCommune", e.target.value)} placeholder="Cholet" /></Field>
       <Field label="Téléphone"><input style={S.inp} value={clubInfo.phone || ""} onChange={e => setClub("phone", e.target.value)} /></Field>
       <Field label="Email"><input style={S.inp} value={clubInfo.email || ""} onChange={e => setClub("email", e.target.value)} /></Field>
       <Field label="SIRET"><input style={S.inp} value={clubInfo.siret || ""} onChange={e => setClub("siret", e.target.value)} /></Field>
       <Field label="N° TVA"><input style={S.inp} value={clubInfo.tvaNumber || ""} onChange={e => setClub("tvaNumber", e.target.value)} /></Field>
       <Field label="Président(e)"><input style={S.inp} value={clubInfo.president || ""} onChange={e => setClub("president", e.target.value)} /></Field>
       <Field label="Validité devis (jours)"><input type="number" style={S.inp} value={clubInfo.validiteDays || 30} onChange={e => setClub("validiteDays", +e.target.value)} /></Field>
+      <Field label="Logo du club">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {clubInfo.logo && <img src={clubInfo.logo} alt="Logo" style={{ height: 40, borderRadius: 4, border: `1px solid ${Cl.brd}` }} />}
+          <label style={{ ...S.btnS("primary"), cursor: "pointer", display: "inline-block" }}>
+            {clubInfo.logo ? "Changer" : "📷 Charger"}
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
+              const file = e.target.files[0]; if (!file) return;
+              const reader = new FileReader();
+              reader.onload = (ev) => setClub("logo", ev.target.result);
+              reader.readAsDataURL(file);
+            }} />
+          </label>
+          {clubInfo.logo && <button style={S.btnS("ghost")} onClick={() => setClub("logo", "")}>✕</button>}
+        </div>
+      </Field>
+      <Field label="Couleur du thème">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="color" value={clubInfo.themeColor || "#1a73e8"} onChange={e => setClub("themeColor", e.target.value)} style={{ width: 40, height: 32, border: "none", cursor: "pointer", borderRadius: 4 }} />
+          <input style={{ ...S.inp, width: 90, fontFamily: "monospace" }} value={clubInfo.themeColor || "#1a73e8"} onChange={e => setClub("themeColor", e.target.value)} />
+          {clubInfo.themeColor && clubInfo.themeColor !== "#1a73e8" && <button style={S.btnS("ghost")} onClick={() => setClub("themeColor", "#1a73e8")}>Reset</button>}
+        </div>
+      </Field>
       <Field label="SIREN (pour CERFA)"><input style={S.inp} value={clubInfo.siren || ""} onChange={e => setClub("siren", e.target.value)} placeholder="123 456 789" /></Field>
       <Field label="Objet CERFA"><input style={S.inp} value={clubInfo.cerfaObjet || ""} onChange={e => setClub("cerfaObjet", e.target.value)} placeholder="Soutien aux activités sportives..." /></Field>
       <Field label="Type d'organisme (CERFA)"><select style={S.sel} value={clubInfo.cerfaType || "association_1901"} onChange={e => setClub("cerfaType", e.target.value)}>
