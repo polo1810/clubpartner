@@ -21,8 +21,8 @@ export function AppProvider({ children }) {
   const [invoices, setInvoices] = useState(cd?.invoices || []);
   const [accountCodes, setAccountCodes] = useState(cd?.accountCodes || INIT_ACCOUNT_CODES);
   const [invoiceSeq, setInvoiceSeq] = useState(cd?.invoiceSeq || 1);
-  const [scripts, setScripts] = useState(cd?.scripts || INIT_SCRIPTS);
-  const [contractTemplates, setContractTemplates] = useState(cd?.contractTemplates || INIT_CONTRACT_TEMPLATES);
+  const [scripts, setScripts] = useState((cd?.scripts && cd.scripts["Partenariat"]) ? cd.scripts : INIT_SCRIPTS);
+  const [contractTemplates, setContractTemplates] = useState((cd?.contractTemplates && cd.contractTemplates["Partenariat"]) ? cd.contractTemplates : INIT_CONTRACT_TEMPLATES);
   const [exclusiviteText, setExclusiviteText] = useState(cd?.exclusiviteText || DEFAULT_EXCLUSIVITE);
   const [allObjectives, setAllObjectives] = useState(cd?.allObjectives || { "2025-2026": { partenariat: 50000, mecenat: 20000, members: {} } });
 
