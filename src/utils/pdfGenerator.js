@@ -9,19 +9,25 @@ const devisNum = () => `DEV-${new Date().getFullYear()}-${String(Math.floor(Math
 const contratNum = () => `CTR-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
 
 function addHeader(doc, club, title, num, customDate) {
+  // Logo (if available)
+  let logoOffset = 0;
+  if (club.logo) {
+    try { doc.addImage(club.logo, "AUTO", 20, 12, 18, 18); logoOffset = 22; } catch(e) { /* ignore if logo fails */ }
+  }
+
   // Club info (left)
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text(club.name || "Club", 20, 25);
+  doc.text(club.name || "Club", 20 + logoOffset, 25);
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
   let y = 32;
-  if (club.address) { doc.text(club.address, 20, y); y += 4; }
-  if (club.phone) { doc.text("Tél : " + club.phone, 20, y); y += 4; }
-  if (club.email) { doc.text(club.email, 20, y); y += 4; }
-  if (club.siret) { doc.text("SIRET : " + club.siret, 20, y); y += 4; }
-  if (club.tvaNumber) { doc.text("TVA : " + club.tvaNumber, 20, y); y += 4; }
+  if (club.adresseRue || club.address) { const addr = club.adresseRue ? `${club.adresseNum ? club.adresseNum + " " : ""}${club.adresseRue}, ${club.adresseCP || ""} ${club.adresseCommune || ""}` : club.address; doc.text(addr, 20 + logoOffset, y); y += 4; }
+  if (club.phone) { doc.text("Tél : " + club.phone, 20 + logoOffset, y); y += 4; }
+  if (club.email) { doc.text(club.email, 20 + logoOffset, y); y += 4; }
+  if (club.siret) { doc.text("SIRET : " + club.siret, 20 + logoOffset, y); y += 4; }
+  if (club.tvaNumber) { doc.text("TVA : " + club.tvaNumber, 20 + logoOffset, y); y += 4; }
 
   // Title + num + date (right)
   doc.setTextColor(0);
@@ -33,8 +39,10 @@ function addHeader(doc, club, title, num, customDate) {
   doc.text(`N° ${num}`, 190, 32, { align: "right" });
   doc.text(`Date : ${customDate || today()}`, 190, 37, { align: "right" });
 
-  // Line
-  doc.setDrawColor(30, 115, 232);
+  // Line (use theme color if available)
+  const tc = club.themeColor || "#1a73e8";
+  const r = parseInt(tc.slice(1,3), 16); const g = parseInt(tc.slice(3,5), 16); const b = parseInt(tc.slice(5,7), 16);
+  doc.setDrawColor(r, g, b);
   doc.setLineWidth(0.8);
   doc.line(20, y + 4, 190, y + 4);
   return y + 10;
@@ -55,7 +63,7 @@ function addCompanyBlock(doc, co, startY) {
   doc.setFontSize(8);
   let dy = y + 12;
   if (co.contact) { doc.text(co.contact, 112, dy); dy += 4; }
-  if (co.address) { doc.text(co.address, 112, dy); dy += 4; }
+  if (co.adresseRue || co.address) { const addr = co.adresseRue ? `${co.adresseNum ? co.adresseNum + " " : ""}${co.adresseRue}, ${co.adresseCP || ""} ${co.adresseCommune || ""}` : co.address; doc.text(addr, 112, dy); dy += 4; }
   if (co.siret) { doc.text("SIRET : " + co.siret, 112, dy); dy += 4; }
   return y + 36;
 }
@@ -575,21 +583,17 @@ export async function generateCerfa(club, company, contract, invoice, season) {
   var todayFr = new Date().toLocaleDateString("fr-FR");
   var ct = club.cerfaType || "association_1901";
 
-  // Parse club address
-  var addr = club.address || "";
-  var am = addr.match(/^(\d+)?\s*(.+?),?\s*(\d{5})\s+(.+)$/);
-  var clubNum = am ? am[1] || "" : "";
-  var clubRue = am ? am[2] : addr;
-  var clubCP = am ? am[3] : "";
-  var clubVille = am ? am[4] : "";
+  // Club address (split fields, fallback to old address field)
+  var clubNum = club.adresseNum || "";
+  var clubRue = club.adresseRue || club.address || "";
+  var clubCP = club.adresseCP || "";
+  var clubVille = club.adresseCommune || "";
 
-  // Parse company address
-  var coAddr = company.address || "";
-  var cmatch = coAddr.match(/^(\d+)?\s*(.+?),?\s*(\d{5})\s+(.+)$/);
-  var coNum = cmatch ? cmatch[1] || "" : "";
-  var coRue = cmatch ? cmatch[2] : coAddr;
-  var coCP = cmatch ? cmatch[3] : "";
-  var coVille = cmatch ? cmatch[4] : "";
+  // Company address (split fields, fallback to old address field)
+  var coNum = company.adresseNum || "";
+  var coRue = company.adresseRue || company.address || "";
+  var coCP = company.adresseCP || "";
+  var coVille = company.adresseCommune || "";
 
   // Load template
   var templateUrl = new URL('/cerfa-template.pdf', window.location.origin).href;
