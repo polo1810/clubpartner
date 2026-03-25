@@ -57,7 +57,7 @@ function SeasonProductEditor({ seasonId, prods, setProds, allProducts, cats, cur
 // --- Contract Form ---
 function ContractForm({ initial, onClose }) {
   const { companies, partnersList, products, members, addMember, seasons, currentSeason, contracts, setContracts, getCompany, cats } = useApp();
-  const def = { companyId: partnersList[0]?.id || companies[0]?.id, type: "Partenariat", member: members[0], signataire: "", seasons: 1, startSeason: currentSeason, status: "En attente", donAmount: 0, payments: [], actions: [], seasonProducts: {}, seasonDonAmounts: {} };
+  const def = { companyId: partnersList[0]?.id || companies[0]?.id, type: "Partenariat", member: members[0], signataire: "", seasons: 1, startSeason: currentSeason, status: "En attente", donAmount: 0, exclusivite: false, payments: [], actions: [], seasonProducts: {}, seasonDonAmounts: {} };
   const [f, setF] = useState(() => {
     const base = { ...def, ...initial };
     if (!initial?.id) { const co = partnersList[0]; if (co) { base.type = co.dealType || "Partenariat"; base.donAmount = co.donAmount || 0; } }
@@ -142,6 +142,12 @@ function ContractForm({ initial, onClose }) {
         <Field label="Nb saisons"><select style={S.sel} value={f.seasons} onChange={e => onSeasonsChange(+e.target.value)}><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option></select></Field>
         <Field label="Début"><select style={S.sel} value={f.startSeason} onChange={e => onStartChange(e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select></Field>
         <Field label="Statut"><select style={S.sel} value={f.status} onChange={e => setF({ ...f, status: e.target.value })}>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select></Field>
+        <Field label="Clause d'exclusivité">
+          <div style={{ display: "flex", gap: 6 }}>
+            <button style={S.chip(f.exclusivite)} onClick={() => setF({ ...f, exclusivite: true })}>✅ Oui</button>
+            <button style={S.chip(!f.exclusivite)} onClick={() => setF({ ...f, exclusivite: false })}>❌ Non</button>
+          </div>
+        </Field>
       </div>
 
       {/* Per-season */}
@@ -182,7 +188,7 @@ function ContractForm({ initial, onClose }) {
 
 // --- Contract Detail ---
 function ContractDetail({ contract, onClose, onOpenCompany }) {
-  const { getCompany, products, contracts, setContracts, openAddContractAction, clubInfo, seasons, currentSeason, contractHT, contractTTC, generateInvoice, generateCerfaRecord, invoices } = useApp();
+  const { getCompany, products, contracts, setContracts, openAddContractAction, clubInfo, seasons, currentSeason, contractHT, contractTTC, generateInvoice, generateCerfaRecord, invoices, contractTemplates, exclusiviteText } = useApp();
   const co = getCompany(contract.companyId);
   const isM = contract.type === "Mécénat" || co?.dealType === "Mécénat";
   const coveredSeasons = getContractSeasonIds(contract, seasons);
@@ -211,6 +217,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
         <div><span style={S.lbl}>Type</span><Badge type={isM ? "mecenat" : "partenariat"}>{isM ? "Mécénat" : "Partenariat"}</Badge></div>
         <div><span style={S.lbl}>Responsable</span>{contract.member}</div>
         <div><span style={S.lbl}>Saisons</span>{contract.seasons} ({coveredSeasons.join(", ")})</div>
+        <div><span style={S.lbl}>Exclusivité</span>{contract.exclusivite ? <span style={{ color: Cl.ok, fontWeight: 700 }}>✅ Oui</span> : <span style={{ color: Cl.txtL }}>Non</span>}</div>
       </div>
 
       {isM && <div style={{ ...S.card, marginTop: 10, border: `2px solid ${Cl.pur}`, background: Cl.purL }}>
@@ -235,7 +242,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
 
       {co && <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
         <button style={S.btnS("primary")} onClick={() => { if (onOpenCompany) onOpenCompany(co); onClose(); }}>👁️ Fiche {co.company}</button>
-        <button style={S.btnS("ghost")} onClick={() => generateContrat(clubInfo, co, contract, products, seasons, currentSeason)}>📄 Contrat PDF</button>
+        <button style={S.btnS("ghost")} onClick={() => generateContrat(clubInfo, co, contract, products, seasons, currentSeason, contractTemplates, exclusiviteText)}>📄 Contrat PDF</button>
         {isSigned(contract) && coveredSeasons.map(sid => {
           const already = invoices.find(i => i.contractId === contract.id && i.season === sid);
           if (isM) {
