@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds, INIT_ACCOUNT_CODES, genAccountCode, invoiceNum, cerfaDocNum, INIT_SCRIPTS } from '../data/initialData';
+import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds, INIT_ACCOUNT_CODES, genAccountCode, invoiceNum, cerfaDocNum, INIT_SCRIPTS, INIT_CONTRACT_TEMPLATES, DEFAULT_EXCLUSIVITE } from '../data/initialData';
 import { useAuth } from './AuthContext';
 
 const Ctx = createContext();
@@ -22,14 +22,16 @@ export function AppProvider({ children }) {
   const [accountCodes, setAccountCodes] = useState(cd?.accountCodes || INIT_ACCOUNT_CODES);
   const [invoiceSeq, setInvoiceSeq] = useState(cd?.invoiceSeq || 1);
   const [scripts, setScripts] = useState(cd?.scripts || INIT_SCRIPTS);
+  const [contractTemplates, setContractTemplates] = useState(cd?.contractTemplates || INIT_CONTRACT_TEMPLATES);
+  const [exclusiviteText, setExclusiviteText] = useState(cd?.exclusiviteText || DEFAULT_EXCLUSIVITE);
   const [allObjectives, setAllObjectives] = useState(cd?.allObjectives || { "2025-2026": { partenariat: 50000, mecenat: 20000, members: {} } });
 
   // --- Auto-save to Supabase (debounced) ---
   const saveTimer = useRef(null);
   const getFullState = useCallback(() => ({
     companies, products, contracts, members, seasons, cats, currentSeason,
-    clubInfo, invoices, accountCodes, invoiceSeq, scripts, allObjectives,
-  }), [companies, products, contracts, members, seasons, cats, currentSeason, clubInfo, invoices, accountCodes, invoiceSeq, scripts, allObjectives]);
+    clubInfo, invoices, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives,
+  }), [companies, products, contracts, members, seasons, cats, currentSeason, clubInfo, invoices, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
 
   useEffect(() => {
     if (auth?.isLocal || !auth?.saveClubData) return;
@@ -38,7 +40,7 @@ export function AppProvider({ children }) {
       auth.saveClubData(getFullState());
     }, 1000); // Save 1s after last change
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [companies, products, contracts, members, seasons, cats, currentSeason, clubInfo, invoices, accountCodes, invoiceSeq, scripts, allObjectives]);
+  }, [companies, products, contracts, members, seasons, cats, currentSeason, clubInfo, invoices, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
 
   const addMember = (n) => { if (n && !members.includes(n)) setMembers(ms => [...ms, n]); };
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -265,7 +267,7 @@ export function AppProvider({ children }) {
     companies, setCompanies, products, setProducts, contracts, setContracts,
     members, setMembers, addMember, seasons, setSeasons, cats, setCats, currentSeason, setCurrentSeason,
     miniForm, setMiniForm, todayStr, clubInfo, setClubInfo,
-    invoices, setInvoices, seasonInvoices, generateInvoice, generateCerfaRecord, accountCodes, setAccountCodes, scripts, setScripts,
+    invoices, setInvoices, seasonInvoices, generateInvoice, generateCerfaRecord, accountCodes, setAccountCodes, scripts, setScripts, contractTemplates, setContractTemplates, exclusiviteText, setExclusiviteText,
     prospectsList, partnersList, getCompany, companyContracts,
     contractHT, contractTTC, stockSold, stockProv, caByProd, caByType, totalCA, totalPaid, allActions, seasonContracts,
     objectives, setObjectives, caByMember,
