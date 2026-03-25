@@ -167,13 +167,18 @@ function AppInner() {
   ];
   const visibleTabs = allTabs.filter(t => t.roles.includes(auth.role));
   const memberName = auth.member?.name || auth.member?.email || "";
+  const tc = ctx.clubInfo?.themeColor || "#1a73e8";
+  const logo = ctx.clubInfo?.logo;
 
   return (
     <div style={S.app}>
-      <div style={S.header}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>🏟️ ClubPartner</div>
-          <select value={currentSeason} onChange={e => setCurrentSeason(e.target.value)} style={{ fontSize: 11, background: "rgba(255,255,255,0.15)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, padding: "2px 6px", cursor: "pointer" }}>{seasons.map(s => <option key={s.id} value={s.id} style={{ color: "#000" }}>{s.name}</option>)}</select>
+      <div style={{ ...S.header, background: `linear-gradient(135deg, ${tc} 0%, ${tc}dd 100%)` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {logo ? <img src={logo} alt="Logo" style={{ height: 36, borderRadius: 6, background: "#fff", padding: 2 }} /> : <span style={{ fontSize: 24 }}>🏟️</span>}
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{ctx.clubInfo?.name || "ClubPartner"}</div>
+            <select value={currentSeason} onChange={e => setCurrentSeason(e.target.value)} style={{ fontSize: 11, background: "rgba(255,255,255,0.15)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, padding: "2px 6px", cursor: "pointer" }}>{seasons.map(s => <option key={s.id} value={s.id} style={{ color: "#000" }}>{s.name}</option>)}</select>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {!auth.isLocal && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", marginRight: 4 }}>{memberName}</span>}
@@ -183,7 +188,7 @@ function AppInner() {
           {!auth.isLocal && <button style={{ ...S.btn("ghost"), color: "#fff", borderColor: "rgba(255,255,255,0.3)", fontSize: 11 }} onClick={auth.logout}>🚪</button>}
         </div>
       </div>
-      <nav style={S.nav}>{visibleTabs.map(t => <button key={t.id} style={S.navB(tab === t.id)} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}</nav>
+      <nav style={{ ...S.nav, background: `${tc}ee` }}>{visibleTabs.map(t => <button key={t.id} style={S.navB(tab === t.id)} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}</nav>
       <div style={S.main}>
         {tab === "dashboard" && <Dashboard />}
         {tab === "prospects" && <ProspectsTab />}
