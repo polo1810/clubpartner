@@ -3,7 +3,7 @@ import { useApp } from '../data/AppContext';
 import { S, Cl } from '../data/styles';
 import { uid, fmt, lineHT, lineTTC, isSigned, getPrice, getContractSeasonIds } from '../data/initialData';
 import { Badge, Modal, Field, MemberSelect, PhoneLink, ProductPicker } from '../components/index';
-import { generateContrat, generateFacturePDF } from '../utils/pdfGenerator';
+import { generateContrat, generateFacturePDF, generateCerfa } from '../utils/pdfGenerator';
 
 // --- Shared components ---
 function SeasonProductTable({ prods, products: allProducts }) {
@@ -182,7 +182,7 @@ function ContractForm({ initial, onClose }) {
 
 // --- Contract Detail ---
 function ContractDetail({ contract, onClose, onOpenCompany }) {
-  const { getCompany, products, contracts, setContracts, openAddContractAction, clubInfo, seasons, currentSeason, contractHT, contractTTC, generateInvoice, invoices } = useApp();
+  const { getCompany, products, contracts, setContracts, openAddContractAction, clubInfo, seasons, currentSeason, contractHT, contractTTC, generateInvoice, generateCerfaRecord, invoices } = useApp();
   const co = getCompany(contract.companyId);
   const isM = contract.type === "Mécénat" || co?.dealType === "Mécénat";
   const coveredSeasons = getContractSeasonIds(contract, seasons);
@@ -238,9 +238,17 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
         <button style={S.btnS("ghost")} onClick={() => generateContrat(clubInfo, co, contract, products, seasons, currentSeason)}>📄 Contrat PDF</button>
         {isSigned(contract) && coveredSeasons.map(sid => {
           const already = invoices.find(i => i.contractId === contract.id && i.season === sid);
-          return already
-            ? <button key={sid} style={{ ...S.btnS("ghost"), fontSize: 10, color: Cl.ok, padding: "2px 6px" }} onClick={() => generateFacturePDF(clubInfo, co, already)} title="Télécharger la facture">✅ {already.number} 📄</button>
-            : <button key={sid} style={S.btnS("primary")} onClick={() => generateInvoice(contract, sid)}>🧾 Facturer {sid}</button>;
+          if (isM) {
+            // Mécénat : CERFA directement
+            return already
+              ? <button key={sid} style={{ ...S.btnS("ghost"), fontSize: 10, color: Cl.pur, padding: "2px 6px" }} onClick={() => generateCerfa(clubInfo, co, contract, already, sid)} title="Télécharger le CERFA">🏛️ {already.number} 📄</button>
+              : <button key={sid} style={{ ...S.btnS("primary"), background: Cl.pur }} onClick={async () => { const rec = generateCerfaRecord(contract, sid); if (rec) await generateCerfa(clubInfo, co, contract, rec, sid); }}>🏛️ CERFA {sid}</button>;
+          } else {
+            // Partenariat : facture classique
+            return already
+              ? <button key={sid} style={{ ...S.btnS("ghost"), fontSize: 10, color: Cl.ok, padding: "2px 6px" }} onClick={() => generateFacturePDF(clubInfo, co, already)} title="Télécharger la facture">✅ {already.number} 📄</button>
+              : <button key={sid} style={S.btnS("primary")} onClick={() => generateInvoice(contract, sid)}>🧾 Facturer {sid}</button>;
+          }
         })}
       </div>}
 
