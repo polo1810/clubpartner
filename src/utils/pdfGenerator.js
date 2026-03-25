@@ -103,6 +103,7 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
 
   let grandTotalHT = 0;
   let grandTotalDon = 0;
+  let grandTotalTVA = 0;
 
   if (hasSP && displaySeasons.length > 0) {
     // One table per season
@@ -117,34 +118,45 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
         return [pr.name, fmtE(catPrice), remise, fmtE(cp.unitPrice), String(cp.qty), fmtE(lineHT(cp))];
       }).filter(Boolean);
       const seasonHT = seasonProds.reduce((t, cp) => t + lineHT(cp), 0);
+      const seasonTVA = club.soumisTVA !== false ? seasonProds.reduce((t, cp) => { const pr = allProducts.find(x => x.id === cp.productId); return t + lineHT(cp) * ((pr?.tva || 20) / 100); }, 0) : 0;
       grandTotalHT += seasonHT;
       grandTotalDon += seasonDon;
+      grandTotalTVA += seasonTVA;
 
       if (y > 240) { doc.addPage(); y = 25; }
 
-      // Season subtitle
-      doc.setFontSize(9);
+      // Season subtitle — enough space before table
+      doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(isM ? 124 : 26, isM ? 58 : 115, isM ? 237 : 232);
-      doc.text(`Saison ${sid}`, 20, y + 4);
+      doc.text(`Saison ${sid}`, 20, y);
       if (isM && seasonDon > 0) {
-        doc.text(`Don : ${fmtE(seasonDon)}`, 190, y + 4, { align: "right" });
+        doc.text(`Don : ${fmtE(seasonDon)}`, 190, y, { align: "right" });
       }
       doc.setTextColor(0);
-      y += 2;
+      y += 6;
 
       if (rows.length > 0) {
+        const showTVA = club.soumisTVA !== false;
+        const head = showTVA ? [["Produit", "Prix catalogue", "Remise", "Prix HT", "Qté", "Total HT", "TVA", "Total TTC"]] : [["Produit", "Prix catalogue", "Remise", "Prix conclu", "Qté", "Total HT"]];
+        const bodyRows = showTVA ? seasonProds.map(cp => {
+          const pr = allProducts.find(x => x.id === cp.productId); if (!pr) return null;
+          const catPrice = getPrice(pr, sid).price || getPrice(pr, currentSeason).price;
+          const remise = catPrice > 0 && cp.unitPrice < catPrice ? `-${Math.round((1 - cp.unitPrice / catPrice) * 100)}%` : "";
+          const ht = lineHT(cp); const tva = pr.tva || 20; const ttc = Math.round(ht * (1 + tva / 100) * 100) / 100;
+          return [pr.name, fmtE(catPrice), remise, fmtE(cp.unitPrice), String(cp.qty), fmtE(ht), `${tva}%`, fmtE(ttc)];
+        }).filter(Boolean) : rows;
         autoTable(doc, {
           startY: y,
-          head: [["Produit", "Prix catalogue", "Remise", "Prix conclu", "Qté", "Total HT"]],
-          body: rows,
+          head: head,
+          body: bodyRows,
           theme: "striped",
           headStyles: { fillColor: isM ? [124, 58, 237] : [26, 115, 232], fontSize: 8 },
           styles: { fontSize: 8, cellPadding: 3 },
-          columnStyles: { 0: { cellWidth: 50 }, 5: { halign: "right", fontStyle: "bold" } },
+          columnStyles: showTVA ? { 0: { cellWidth: 40 }, 5: { halign: "right" }, 7: { halign: "right", fontStyle: "bold" } } : { 0: { cellWidth: 50 }, 5: { halign: "right", fontStyle: "bold" } },
           margin: { left: 20, right: 20 },
         });
-        y = doc.lastAutoTable.finalY + 2;
+        y = doc.lastAutoTable.finalY + 4;
       }
       // Season subtotal
       doc.setFontSize(8);
@@ -187,6 +199,7 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
 
   // Totals
   if (y > 250) { doc.addPage(); y = 25; }
+  const showTVA = club.soumisTVA !== false;
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   if (isM) {
@@ -198,7 +211,19 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
     y += 8;
   } else {
     doc.text(`Total HT : ${fmtE(grandTotalHT)}`, 190, y, { align: "right" });
-    y += 6;
+    y += 5;
+    if (showTVA) {
+      doc.setFontSize(9); doc.setFont("helvetica", "normal");
+      doc.text(`TVA : ${fmtE(Math.round(grandTotalTVA * 100) / 100)}`, 190, y, { align: "right" });
+      y += 5;
+      doc.setFontSize(11); doc.setFont("helvetica", "bold");
+      doc.text(`Total TTC : ${fmtE(Math.round((grandTotalHT + grandTotalTVA) * 100) / 100)}`, 190, y, { align: "right" });
+      y += 6;
+    } else {
+      doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(100);
+      doc.text("TVA non applicable — article 293 B du CGI", 190, y, { align: "right" });
+      doc.setTextColor(0); y += 6;
+    }
   }
 
   // Validité
@@ -457,6 +482,7 @@ export function generateContrat(club, company, contract, allProducts, seasons, c
 
 export function generateFacturePDF(club, company, invoice) {
   const doc = new jsPDF();
+  const showTVA = club.soumisTVA !== false;
 
   // Header
   let y = addHeader(doc, club, "Facture", invoice.number, invoice.dateStr);
@@ -469,33 +495,55 @@ export function generateFacturePDF(club, company, invoice) {
   y += 8;
 
   // Lines table
-  const rows = invoice.lines.map(l => [l.name, String(l.qty), fmtE(l.unitPrice), fmtE(l.totalHT), `${l.tvaRate}%`, fmtE(l.tvaAmount)]);
-
-  autoTable(doc, {
-    startY: y,
-    head: [["Prestation", "Qté", "Prix unitaire HT", "Total HT", "TVA %", "TVA"]],
-    body: rows,
-    theme: "striped",
-    headStyles: { fillColor: [26, 115, 232], fontSize: 8 },
-    styles: { fontSize: 8, cellPadding: 3 },
-    columnStyles: { 3: { halign: "right", fontStyle: "bold" }, 5: { halign: "right" } },
-    margin: { left: 20, right: 20 },
-  });
+  if (showTVA) {
+    const rows = invoice.lines.map(l => [l.name, String(l.qty), fmtE(l.unitPrice), fmtE(l.totalHT), `${l.tvaRate}%`, fmtE(l.tvaAmount)]);
+    autoTable(doc, {
+      startY: y,
+      head: [["Prestation", "Qté", "Prix unitaire HT", "Total HT", "TVA %", "TVA"]],
+      body: rows,
+      theme: "striped",
+      headStyles: { fillColor: [26, 115, 232], fontSize: 8 },
+      styles: { fontSize: 8, cellPadding: 3 },
+      columnStyles: { 3: { halign: "right", fontStyle: "bold" }, 5: { halign: "right" } },
+      margin: { left: 20, right: 20 },
+    });
+  } else {
+    const rows = invoice.lines.map(l => [l.name, String(l.qty), fmtE(l.unitPrice), fmtE(l.totalHT)]);
+    autoTable(doc, {
+      startY: y,
+      head: [["Prestation", "Qté", "Prix unitaire", "Total"]],
+      body: rows,
+      theme: "striped",
+      headStyles: { fillColor: [26, 115, 232], fontSize: 8 },
+      styles: { fontSize: 8, cellPadding: 3 },
+      columnStyles: { 3: { halign: "right", fontStyle: "bold" } },
+      margin: { left: 20, right: 20 },
+    });
+  }
   y = doc.lastAutoTable.finalY + 8;
 
   // Totals
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text(`Total HT : ${fmtE(invoice.totalHT)}`, 190, y, { align: "right" });
-  y += 5;
-  doc.text(`TVA : ${fmtE(invoice.totalTVA)}`, 190, y, { align: "right" });
-  y += 6;
-  doc.setFontSize(12);
-  doc.setDrawColor(26, 115, 232);
-  doc.setLineWidth(0.5);
-  doc.line(130, y - 1, 190, y - 1);
-  doc.text(`Total TTC : ${fmtE(invoice.totalTTC)}`, 190, y + 4, { align: "right" });
-  y += 14;
+  if (showTVA) {
+    doc.text(`Total HT : ${fmtE(invoice.totalHT)}`, 190, y, { align: "right" });
+    y += 5;
+    doc.text(`TVA : ${fmtE(invoice.totalTVA)}`, 190, y, { align: "right" });
+    y += 6;
+    doc.setFontSize(12);
+    doc.setDrawColor(26, 115, 232);
+    doc.setLineWidth(0.5);
+    doc.line(130, y - 1, 190, y - 1);
+    doc.text(`Total TTC : ${fmtE(invoice.totalTTC)}`, 190, y + 4, { align: "right" });
+    y += 14;
+  } else {
+    doc.text(`Total : ${fmtE(invoice.totalHT)}`, 190, y, { align: "right" });
+    y += 5;
+    doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(100);
+    doc.text("TVA non applicable — article 293 B du CGI", 190, y, { align: "right" });
+    doc.setTextColor(0);
+    y += 10;
+  }
 
   // Payment info
   doc.setFontSize(8);
