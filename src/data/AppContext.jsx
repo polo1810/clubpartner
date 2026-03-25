@@ -208,12 +208,13 @@ export function AppProvider({ children }) {
     if (!co) return null;
     const sp = contract.seasonProducts || {};
     const prods = sp[season] || co.products || [];
+    const isTVA = clubInfo.soumisTVA !== false;
     const lines = prods.map(cp => {
       const pr = products.find(x => x.id === cp.productId);
       if (!pr) return null;
       const ht = lineHT(cp);
-      const tvaRate = pr.tva || 20;
-      const tvaAmount = Math.round(ht * tvaRate / 100 * 100) / 100;
+      const tvaRate = isTVA ? (pr.tva || 20) : 0;
+      const tvaAmount = isTVA ? Math.round(ht * tvaRate / 100 * 100) / 100 : 0;
       return { productId: cp.productId, name: pr.name, category: pr.category, qty: cp.qty, unitPrice: cp.unitPrice, totalHT: ht, tvaRate, tvaAmount };
     }).filter(Boolean);
     const totalHT = lines.reduce((t, l) => t + l.totalHT, 0);
