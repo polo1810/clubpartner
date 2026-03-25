@@ -41,7 +41,7 @@ function hasAnyProduct(sp) {
 export function CompanyForm({ data, onSave, onClose }) {
   const { products, members, addMember, seasons, cats, currentSeason } = useApp();
   const isP = data?.isPartner;
-  const [f, setF] = useState(data || { company: "", sector: "", contact: "", phone: "", email: "", address: "", siret: "", tvaNumber: "", accountCode: "", season: currentSeason, isPartner: false, dealType: "Partenariat", donAmount: 0, prospectStatus: "Nouveau", partnerStatus: "", callbackDate: "", rdvDate: "", member: members[0], products: [], seasonProducts: {}, seasonDonAmounts: {} });
+  const [f, setF] = useState(data || { company: "", sector: "", contact: "", phone: "", email: "", adresseNum: "", adresseRue: "", adresseCP: "", adresseCommune: "", formeJuridique: "", siret: "", tvaNumber: "", accountCode: "", season: currentSeason, isPartner: false, dealType: "Partenariat", donAmount: 0, prospectStatus: "Nouveau", partnerStatus: "", callbackDate: "", rdvDate: "", member: members[0], products: [], seasonProducts: {}, seasonDonAmounts: {} });
   const set = (k, v) => setF({ ...f, [k]: v });
 
   // Season products state
@@ -102,7 +102,11 @@ export function CompanyForm({ data, onSave, onClose }) {
         <Field label="Contact"><input style={S.inp} value={f.contact} onChange={e => set("contact", e.target.value)} /></Field>
         <Field label="Téléphone"><input style={S.inp} value={f.phone} onChange={e => set("phone", e.target.value)} /></Field>
         <Field label="Email"><input style={S.inp} value={f.email} onChange={e => set("email", e.target.value)} /></Field>
-        <Field label="Adresse"><input style={S.inp} value={f.address} onChange={e => set("address", e.target.value)} /></Field>
+        <Field label="Adresse N°"><input style={S.inp} value={f.adresseNum || ""} onChange={e => set("adresseNum", e.target.value)} placeholder="12" /></Field>
+        <Field label="Rue"><input style={S.inp} value={f.adresseRue || ""} onChange={e => set("adresseRue", e.target.value)} placeholder="avenue du Stade" /></Field>
+        <Field label="Code postal"><input style={S.inp} value={f.adresseCP || ""} onChange={e => set("adresseCP", e.target.value)} placeholder="49300" /></Field>
+        <Field label="Commune"><input style={S.inp} value={f.adresseCommune || ""} onChange={e => set("adresseCommune", e.target.value)} placeholder="Cholet" /></Field>
+        <Field label="Forme juridique"><input style={S.inp} value={f.formeJuridique || ""} onChange={e => set("formeJuridique", e.target.value)} placeholder="SAS, SARL, SA..." /></Field>
         <Field label="SIRET"><input style={S.inp} value={f.siret || ""} onChange={e => set("siret", e.target.value)} placeholder="Optionnel" /></Field>
         <Field label="N° TVA"><input style={S.inp} value={f.tvaNumber || ""} onChange={e => set("tvaNumber", e.target.value)} placeholder="Optionnel" /></Field>
         <Field label="Compte comptable"><input style={{ ...S.inp, fontFamily: "monospace" }} value={f.accountCode || genAccountCode(f.company)} onChange={e => set("accountCode", e.target.value)} /></Field>
@@ -222,16 +226,26 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
   return (
     <Modal title={co.company} onClose={onClose}>
       <div style={S.g2}>
-        <div><span style={S.lbl}>Contact</span><strong>{co.contact}</strong></div>
-        <div><span style={S.lbl}>Secteur</span>{co.sector}</div>
-        <div><span style={S.lbl}>Téléphone</span><PhoneLink phone={co.phone} /></div>
-        <div><span style={S.lbl}>Email</span><EmailLink email={co.email} /></div>
-        <div><span style={S.lbl}>Responsable</span><strong>{co.member}</strong></div>
+        <div><span style={S.lbl}>Entreprise</span><input style={S.inp} value={co.company || ""} onChange={e => setCo({ ...co, company: e.target.value })} /></div>
+        <div><span style={S.lbl}>Contact</span><input style={S.inp} value={co.contact || ""} onChange={e => setCo({ ...co, contact: e.target.value })} /></div>
+        <div><span style={S.lbl}>Secteur</span><input style={S.inp} value={co.sector || ""} onChange={e => setCo({ ...co, sector: e.target.value })} /></div>
+        <div><span style={S.lbl}>Téléphone</span><input style={S.inp} value={co.phone || ""} onChange={e => setCo({ ...co, phone: e.target.value })} /></div>
+        <div><span style={S.lbl}>Email</span><input style={S.inp} value={co.email || ""} onChange={e => setCo({ ...co, email: e.target.value })} /></div>
+        <div><span style={S.lbl}>Forme juridique</span><input style={S.inp} value={co.formeJuridique || ""} onChange={e => setCo({ ...co, formeJuridique: e.target.value })} placeholder="SAS, SARL..." /></div>
+        <div><span style={S.lbl}>Adresse N°</span><input style={S.inp} value={co.adresseNum || ""} onChange={e => setCo({ ...co, adresseNum: e.target.value })} placeholder="12" /></div>
+        <div><span style={S.lbl}>Rue</span><input style={S.inp} value={co.adresseRue || ""} onChange={e => setCo({ ...co, adresseRue: e.target.value })} placeholder="avenue du Stade" /></div>
+        <div><span style={S.lbl}>Code postal</span><input style={S.inp} value={co.adresseCP || ""} onChange={e => setCo({ ...co, adresseCP: e.target.value })} placeholder="49300" /></div>
+        <div><span style={S.lbl}>Commune</span><input style={S.inp} value={co.adresseCommune || ""} onChange={e => setCo({ ...co, adresseCommune: e.target.value })} placeholder="Cholet" /></div>
+        <div><span style={S.lbl}>SIRET</span><input style={S.inp} value={co.siret || ""} onChange={e => setCo({ ...co, siret: e.target.value })} /></div>
+        <div><span style={S.lbl}>N° TVA</span><input style={S.inp} value={co.tvaNumber || ""} onChange={e => setCo({ ...co, tvaNumber: e.target.value })} /></div>
+        <div><span style={S.lbl}>Compte comptable</span><input style={{ ...S.inp, fontFamily: "monospace" }} value={co.accountCode || ""} onChange={e => setCo({ ...co, accountCode: e.target.value })} /></div>
+        <div><span style={S.lbl}>Responsable</span><MemberSelect value={co.member} onChange={v => setCo({ ...co, member: v })} members={members} onAdd={addMember} /></div>
         <div><span style={S.lbl}>Saison(s)</span>{(() => { const as = seasons.map(s=>s.id).filter(sid => coSP[sid]?.length > 0 || (coSDA[sid] || 0) > 0); return as.length > 0 ? as.map(s => <Badge key={s} type="draft">{s}</Badge>) : <Badge type="draft">{co.season}</Badge>; })()}</div>
-        {co.siret && <div><span style={S.lbl}>SIRET</span>{co.siret}</div>}
         <div><span style={S.lbl}>Dernier contact</span>{lastNote?.date || "—"}</div>
-        <div><span style={S.lbl}>Type</span><Badge type={isM ? "mecenat" : "partenariat"}>{co.dealType || "Partenariat"}</Badge>{isM && totDon > 0 && <span style={{ fontSize: 11, marginLeft: 4 }}>Don total: {fmt(totDon)}</span>}</div>
-        <div><span style={S.lbl}>Statut</span><Badge type={statusBType(co.isPartner ? co.partnerStatus : co.prospectStatus)}>{co.isPartner ? co.partnerStatus : co.prospectStatus}</Badge></div>
+        <div><span style={S.lbl}>Statut</span>{co.isPartner
+          ? <select style={S.sel} value={co.partnerStatus || ""} onChange={e => setCo({ ...co, partnerStatus: e.target.value })}>{PARTNER_STATUSES.map(s => <option key={s}>{s}</option>)}</select>
+          : <select style={S.sel} value={co.prospectStatus || ""} onChange={e => setCo({ ...co, prospectStatus: e.target.value })}>{P_STATUSES.map(s => <option key={s}>{s}</option>)}</select>
+        }</div>
       </div>
 
       {/* Type selector */}
