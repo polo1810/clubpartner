@@ -95,14 +95,15 @@ function InvoiceDetail({ invoice, onClose }) {
 
       {/* Buttons */}
       <div style={{ marginTop: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
-        <button style={S.btn("primary")} onClick={() => generateFacturePDF(clubInfo, co, invoice)}>📄 Télécharger la facture PDF</button>
-        <button style={S.btn("ghost")} onClick={() => {
-          const rows = entries.map(e => ({ Journal: e.journal, "Date d'opération": e.date, "Numéro de compte": e.compte, "Numéro de pièce": e.piece, Libellé: e.libelle, Débit: e.debit || "", Crédit: e.credit || "" }));
-          dlCSV(`Ecritures_${invoice.number}.csv`, toCSV(rows));
-        }}>📤 Export écritures CSV</button>
-        {con && (con.type === "Mécénat" || co?.dealType === "Mécénat") && (invoice.status === "Payée" || payments.every(p => p.status === "Payé")) && (
-          <button style={{ ...S.btn("primary"), background: Cl.pur }} onClick={() => generateCerfa(clubInfo, co, con, invoice, invoice.season)}>🏛️ Générer CERFA mécénat</button>
-        )}
+        {invoice.type === "cerfa" ? (<>
+          <button style={{ ...S.btn("primary"), background: Cl.pur }} onClick={() => generateCerfa(clubInfo, co, con, invoice, invoice.season)}>🏛️ Télécharger le CERFA mécénat</button>
+        </>) : (<>
+          <button style={S.btn("primary")} onClick={() => generateFacturePDF(clubInfo, co, invoice)}>📄 Télécharger la facture PDF</button>
+          <button style={S.btn("ghost")} onClick={() => {
+            const rows = entries.map(e => ({ Journal: e.journal, "Date d'opération": e.date, "Numéro de compte": e.compte, "Numéro de pièce": e.piece, Libellé: e.libelle, Débit: e.debit || "", Crédit: e.credit || "" }));
+            dlCSV(`Ecritures_${invoice.number}.csv`, toCSV(rows));
+          }}>📤 Export écritures CSV</button>
+        </>)}
       </div>
     </Modal>
   );
@@ -115,7 +116,7 @@ export default function InvoicesTab() {
   // Build all entries for Excel export
   const buildAllEntries = () => {
     const allEntries = [];
-    seasonInvoices.forEach(inv => {
+    seasonInvoices.filter(inv => inv.type !== "cerfa").forEach(inv => {
       const lib = `${inv.companyName} - ${inv.number}`;
       allEntries.push({ Journal: "VT", "Date d'opération": inv.dateStr, "Numéro de compte": inv.accountCode, "Numéro de pièce": inv.number, Libellé: lib, Débit: inv.totalTTC, Crédit: 0, "Créée par": "", "Modifiée par": "", "Type écriture": "vente_ecriture", "Génération automatique": "True", "Moyen de paiement": "", "Lien du document": "" });
       const byTva = {};
@@ -134,15 +135,15 @@ export default function InvoicesTab() {
     return allEntries;
   };
 
-  const totalHT = seasonInvoices.reduce((t, i) => t + i.totalHT, 0);
-  const totalTTC = seasonInvoices.reduce((t, i) => t + i.totalTTC, 0);
-  const nbPaid = seasonInvoices.filter(i => i.status === "Payée").length;
+  const totalHT = seasonInvoices.filter(i => i.type !== "cerfa").reduce((t, i) => t + i.totalHT, 0);
+  const totalTTC = seasonInvoices.reduce((t, i) => t + (i.type === "cerfa" ? (i.donAmount || 0) : i.totalTTC), 0);
+  const nbPaid = seasonInvoices.filter(i => i.type !== "cerfa" && i.status === "Payée").length;
 
   return (<>
     <div style={S.fx}>
-      <h2 style={{ fontSize: 16, fontWeight: 700 }}>🧾 Factures</h2>
+      <h2 style={{ fontSize: 16, fontWeight: 700 }}>🧾 Factures & CERFA</h2>
       <div style={{ display: "flex", gap: 4 }}>
-        {seasonInvoices.length > 0 && <>
+        {seasonInvoices.filter(i => i.type !== "cerfa").length > 0 && <>
           <button style={S.btn("ghost")} onClick={() => dlCSV(`Ecritures_comptables_${currentSeason}.csv`, toCSV(buildAllEntries()))}>📤 Export écritures</button>
         </>}
       </div>
@@ -150,34 +151,38 @@ export default function InvoicesTab() {
 
     {/* Stats */}
     {seasonInvoices.length > 0 && <div style={{ ...S.card, ...S.g4 }}>
-      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.pri }}>{seasonInvoices.length}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Factures</div></div>
+      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.pri }}>{seasonInvoices.filter(i => i.type !== "cerfa").length}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Factures</div></div>
+      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.pur }}>{seasonInvoices.filter(i => i.type === "cerfa").length}</div><div style={{ fontSize: 10, color: Cl.txtL }}>CERFA</div></div>
       <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.ok }}>{nbPaid}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Payées</div></div>
-      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800 }}>{fmt(totalHT)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Total HT</div></div>
-      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.pri }}>{fmt(totalTTC)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Total TTC</div></div>
+      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.pri }}>{fmt(totalTTC)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Total</div></div>
     </div>}
 
     {/* List */}
     <div style={{ marginTop: 8 }}>
       {seasonInvoices.length === 0 ? <div style={{ textAlign: "center", padding: 30, color: Cl.txtL }}>Aucune facture pour cette saison. Générez-les depuis les contrats signés.</div>
       : seasonInvoices.map(inv => {
+        const isCerfa = inv.type === "cerfa";
         const con = contracts.find(c => c.id === inv.contractId);
         const payments = con?.payments || [];
         const paid = payments.filter(p => p.status === "Payé").reduce((s, p) => s + p.amount, 0);
         const late = payments.some(p => p.status === "En retard");
         return (
-          <div key={inv.id} style={{ ...S.card, cursor: "pointer", borderLeft: `4px solid ${inv.status === "Payée" ? Cl.ok : late ? Cl.err : inv.status === "Annulée" ? Cl.txtL : Cl.warn}` }} onClick={() => setViewInv(inv)}>
+          <div key={inv.id} style={{ ...S.card, cursor: "pointer", borderLeft: `4px solid ${isCerfa ? Cl.pur : inv.status === "Payée" ? Cl.ok : late ? Cl.err : inv.status === "Annulée" ? Cl.txtL : Cl.warn}` }} onClick={() => setViewInv(inv)}>
             <div style={S.fx}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <strong style={{ fontFamily: "monospace", fontSize: 12 }}>{inv.number}</strong>
+                <strong style={{ fontFamily: "monospace", fontSize: 12, color: isCerfa ? Cl.pur : "inherit" }}>{inv.number}</strong>
                 <strong>{inv.companyName}</strong>
-                <Badge type={inv.status === "Payée" ? "signed" : inv.status === "Annulée" ? "draft" : late ? "danger" : "pending"}>{late && inv.status !== "Payée" ? "⚠️ Retard" : inv.status}</Badge>
+                {isCerfa
+                  ? <Badge type="mecenat">🏛️ CERFA</Badge>
+                  : <Badge type={inv.status === "Payée" ? "signed" : inv.status === "Annulée" ? "draft" : late ? "danger" : "pending"}>{late && inv.status !== "Payée" ? "⚠️ Retard" : inv.status}</Badge>
+                }
               </div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: Cl.pri }}>{fmt(inv.totalTTC)}</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: isCerfa ? Cl.pur : Cl.pri }}>{isCerfa ? `Don: ${fmt(inv.donAmount || inv.totalTTC)}` : fmt(inv.totalTTC)}</div>
             </div>
             <div style={{ marginTop: 3, fontSize: 11, color: Cl.txtL, display: "flex", gap: 10 }}>
               <span>📅 {inv.dateStr}</span>
-              <span>📦 {inv.lines.length} ligne{inv.lines.length > 1 ? "s" : ""}</span>
-              {payments.length > 0 && <span>💳 {fmt(paid)} / {fmt(inv.totalTTC)}</span>}
+              {!isCerfa && <span>📦 {inv.lines.length} ligne{inv.lines.length > 1 ? "s" : ""}</span>}
+              {!isCerfa && payments.length > 0 && <span>💳 {fmt(paid)} / {fmt(inv.totalTTC)}</span>}
             </div>
           </div>
         );
