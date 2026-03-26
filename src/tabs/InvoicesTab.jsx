@@ -112,6 +112,9 @@ function InvoiceDetail({ invoice, onClose }) {
 export default function InvoicesTab() {
   const { seasonInvoices, invoices, setInvoices, getCompany, contracts, clubInfo, accountCodes, currentSeason } = useApp();
   const [viewInv, setViewInv] = useState(null);
+  const [search, setSearch] = useState("");
+  const [statusF, setStatusF] = useState("Tous");
+  const [typeF, setTypeF] = useState("Tous");
 
   // Build all entries for Excel export
   const buildAllEntries = () => {
@@ -135,9 +138,25 @@ export default function InvoicesTab() {
     return allEntries;
   };
 
-  const totalHT = seasonInvoices.filter(i => i.type !== "cerfa").reduce((t, i) => t + i.totalHT, 0);
-  const totalTTC = seasonInvoices.reduce((t, i) => t + (i.type === "cerfa" ? (i.donAmount || 0) : i.totalTTC), 0);
-  const nbPaid = seasonInvoices.filter(i => i.type !== "cerfa" && i.status === "Payée").length;
+  // Filtered list
+  let filtered = seasonInvoices;
+  if (search) { const q = search.toLowerCase(); filtered = filtered.filter(i => (i.companyName || "").toLowerCase().includes(q) || (i.number || "").toLowerCase().includes(q)); }
+  if (statusF !== "Tous") {
+    if (statusF === "CERFA") filtered = filtered.filter(i => i.type === "cerfa");
+    else filtered = filtered.filter(i => i.type !== "cerfa" && i.status === statusF);
+  }
+  if (typeF !== "Tous") {
+    filtered = filtered.filter(i => {
+      const con = contracts.find(c => c.id === i.contractId);
+      if (typeF === "Partenariat") return i.type !== "cerfa" && con?.type !== "Mécénat";
+      if (typeF === "Mécénat") return i.type === "cerfa" || con?.type === "Mécénat";
+      return true;
+    });
+  }
+
+  const totalHT = filtered.filter(i => i.type !== "cerfa").reduce((t, i) => t + i.totalHT, 0);
+  const totalTTC = filtered.reduce((t, i) => t + (i.type === "cerfa" ? (i.donAmount || 0) : i.totalTTC), 0);
+  const nbPaid = filtered.filter(i => i.type !== "cerfa" && i.status === "Payée").length;
 
   return (<>
     <div style={S.fx}>
@@ -148,19 +167,24 @@ export default function InvoicesTab() {
         </>}
       </div>
     </div>
+    <div style={{ marginTop: 6, display: "flex", gap: 4, flexWrap: "wrap" }}>
+      <input style={{ ...S.inp, flex: 1, minWidth: 120 }} placeholder="🔍 Rechercher entreprise, n° facture..." value={search} onChange={e => setSearch(e.target.value)} />
+      <select style={{ ...S.sel, width: "auto" }} value={statusF} onChange={e => setStatusF(e.target.value)}><option>Tous</option><option>Émise</option><option>Payée</option><option>Annulée</option><option>CERFA</option></select>
+      <select style={{ ...S.sel, width: "auto" }} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
+    </div>
 
     {/* Stats */}
-    {seasonInvoices.length > 0 && <div style={{ ...S.card, ...S.g4 }}>
-      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.pri }}>{seasonInvoices.filter(i => i.type !== "cerfa").length}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Factures</div></div>
-      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.pur }}>{seasonInvoices.filter(i => i.type === "cerfa").length}</div><div style={{ fontSize: 10, color: Cl.txtL }}>CERFA</div></div>
+    {filtered.length > 0 && <div style={{ ...S.card, ...S.g4 }}>
+      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.pri }}>{filtered.filter(i => i.type !== "cerfa").length}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Factures</div></div>
+      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.pur }}>{filtered.filter(i => i.type === "cerfa").length}</div><div style={{ fontSize: 10, color: Cl.txtL }}>CERFA</div></div>
       <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.ok }}>{nbPaid}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Payées</div></div>
       <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.pri }}>{fmt(totalTTC)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Total</div></div>
     </div>}
 
     {/* List */}
     <div style={{ marginTop: 8 }}>
-      {seasonInvoices.length === 0 ? <div style={{ textAlign: "center", padding: 30, color: Cl.txtL }}>Aucune facture pour cette saison. Générez-les depuis les contrats signés.</div>
-      : seasonInvoices.map(inv => {
+      {filtered.length === 0 ? <div style={{ textAlign: "center", padding: 30, color: Cl.txtL }}>Aucune facture trouvée</div>
+      : filtered.map(inv => {
         const isCerfa = inv.type === "cerfa";
         const con = contracts.find(c => c.id === inv.contractId);
         const payments = con?.payments || [];
