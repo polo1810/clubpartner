@@ -415,8 +415,10 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         ))}
       </div>}
 
-      {co.isPartner && <div style={{ marginTop: 16, textAlign: "center" }}>
+      {co.isPartner ? <div style={{ marginTop: 16, textAlign: "center" }}>
         <button style={{ ...S.btn("ghost"), fontSize: 12, color: Cl.err }} onClick={() => { setCo({ ...co, isPartner: false, partnerStatus: "", prospectStatus: "Nouveau" }); onClose(); }}>↩️ Repasser en prospect</button>
+      </div> : <div style={{ marginTop: 16, textAlign: "center" }}>
+        <button style={{ ...S.btn("primary"), fontSize: 12 }} onClick={() => { convertToPartner(co.id); onClose(); }}>🤝 Convertir en partenaire</button>
       </div>}
 
       {/* Delete section */}
