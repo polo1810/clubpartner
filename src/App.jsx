@@ -184,10 +184,10 @@ function AppInner() {
         </div>
         <div style={S.hdrRight}>
           {!auth.isLocal && <span style={S.hdrUser}>{memberName}</span>}
-          <button style={S.hdrBtn} onClick={() => setShowTeam(true)}>👥</button>
-          {auth.canSettings && <button style={S.hdrBtn} onClick={() => setShowSettings(true)}>⚙️</button>}
-          <button style={S.hdrBtn} onClick={() => setShowExport(true)}>📤</button>
-          {!auth.isLocal && <button style={S.hdrBtn} onClick={auth.logout}>🚪</button>}
+          <button style={S.hdrBtn} onClick={() => setShowTeam(true)}>Équipe</button>
+          {auth.canSettings && <button style={S.hdrBtn} onClick={() => setShowSettings(true)}>Paramètres</button>}
+          <button style={S.hdrBtn} onClick={() => setShowExport(true)}>Export</button>
+          {!auth.isLocal && <button style={S.hdrBtn} onClick={auth.logout}>Déconnexion</button>}
         </div>
       </div>
       <nav style={S.nav}>
