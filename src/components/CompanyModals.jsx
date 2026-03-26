@@ -220,6 +220,20 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
 
   return (
     <Modal title={co.company} onClose={onClose}>
+      {/* Bandeau contextuel — action la plus probable */}
+      {!co.isPartner && co.prospectStatus === "Intéressé" && <div style={S.banner(Cl.okL, Cl.ok, Cl.ok)}>
+        <span style={S.bannerText("#085041")}>Ce prospect est intéressé — prêt à convertir ?</span>
+        <button style={S.bannerBtn(Cl.ok, "#fff")} onClick={() => { convertToPartner(co.id); onClose(); }}>Convertir en partenaire</button>
+      </div>}
+      {!co.isPartner && co.prospectStatus === "À rappeler" && <div style={S.banner(Cl.warnL, Cl.warn, Cl.warn)}>
+        <span style={S.bannerText("#854F0B")}>À rappeler{co.callbackDate ? ` — prévu le ${co.callbackDate}` : ""}</span>
+        <a href={`tel:${(co.phone || "").replace(/\s/g, "")}`} style={{ ...S.bannerBtn("#c2710c", "#fff"), textDecoration: "none" }}>📞 Appeler maintenant</a>
+      </div>}
+      {co.isPartner && myContracts.length === 0 && <div style={S.banner(Cl.priL, Cl.pri, Cl.pri)}>
+        <span style={S.bannerText(Cl.priD)}>Partenaire sans contrat</span>
+        <span style={{ fontSize: 12, color: Cl.txtL }}>Créez un contrat depuis l'onglet Contrats</span>
+      </div>}
+      <div style={{ padding: co.isPartner || (!co.isPartner && (co.prospectStatus === "Intéressé" || co.prospectStatus === "À rappeler")) ? "16px 0 0" : 0 }}>
       <div style={S.g2}>
         <div><span style={S.lbl}>Entreprise</span><input style={S.inp} value={co.company || ""} onChange={e => setCo({ ...co, company: e.target.value })} /></div>
         <div><span style={S.lbl}>Contact</span><input style={S.inp} value={co.contact || ""} onChange={e => setCo({ ...co, contact: e.target.value })} /></div>
@@ -370,8 +384,9 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
       </div>
 
       {/* Devis PDF */}
-      {(hasAnyProduct(coSP) || totDon > 0) && <div style={{ marginTop: 12 }}>
-        <button style={{ ...S.btn("ghost"), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={() => generateDevis(clubInfo, co, co.products, products, currentSeason, [], seasons)}>📄 Télécharger le devis / proposition</button>
+      {(hasAnyProduct(coSP) || totDon > 0) && <div style={S.docZone}>
+        <div style={S.docZoneTitle}>Documents</div>
+        <button style={S.btnDoc} onClick={() => generateDevis(clubInfo, co, co.products, products, currentSeason, [], seasons)}>📄 Télécharger le devis / proposition</button>
       </div>}
 
       <div style={{ marginTop: 14 }}>
@@ -474,6 +489,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
           )}
         </div>;
       })()}
+      </div>
     </Modal>
   );
 }
