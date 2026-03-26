@@ -30,17 +30,20 @@ export default function ActionsTab() {
   ACTION_TYPES.forEach(t => { grouped[t] = filtered.filter(a => a.category === t); });
 
   return (<>
-    <div style={S.fx}><h2 style={S.pageH}>📋 Actions ({filtered.length})</h2>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        <select style={{ ...S.filterSel, fontWeight: 700 }} value={periodF} onChange={e => setPeriodF(e.target.value)}>
-          <option value="jour">Aujourd'hui</option><option value="semaine">Semaine</option><option value="mois">Mois</option><option value="saison">Saison</option><option value="tout">Tout</option>
-        </select>
-        {periodF === "saison" && <select style={S.filterSel} value={seasonF} onChange={e => setSeasonF(e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select>}
-        <select style={S.filterSel} value={catF} onChange={e => setCatF(e.target.value)}><option>Tous</option>{ACTION_TYPES.map(t => <option key={t}>{t}</option>)}</select>
-        <select style={S.filterSel} value={memberF} onChange={e => setMemberF(e.target.value)}><option>Tous</option>{members.map(m => <option key={m}>{m}</option>)}</select>
-      </div>
+    {/* Titre — même pattern que toutes les pages */}
+    <div style={S.fx}><h2 style={S.pageH}>Actions ({filtered.length})</h2></div>
+    {/* Filtres — même filterBar que Prospects/Partners/Contrats */}
+    <div style={S.filterBar}>
+      <select style={{ ...S.filterSel, fontWeight: 600 }} value={periodF} onChange={e => setPeriodF(e.target.value)}>
+        <option value="jour">Aujourd'hui</option><option value="semaine">Semaine</option><option value="mois">Mois</option><option value="saison">Saison</option><option value="tout">Tout</option>
+      </select>
+      {periodF === "saison" && <select style={S.filterSel} value={seasonF} onChange={e => setSeasonF(e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select>}
+      <select style={S.filterSel} value={catF} onChange={e => setCatF(e.target.value)}><option>Tous</option>{ACTION_TYPES.map(t => <option key={t}>{t}</option>)}</select>
+      <select style={S.filterSel} value={memberF} onChange={e => setMemberF(e.target.value)}><option>Tous</option>{members.map(m => <option key={m}>{m}</option>)}</select>
     </div>
-    {filtered.length === 0 ? <div style={S.empty}>🎉 Aucune action</div>
+    {/* Liste — même espacement marginTop: 10 */}
+    <div style={{ marginTop: 10 }}>
+    {filtered.length === 0 ? <div style={S.empty}>Aucune action pour cette période</div>
       : (catF !== "Tous" ? [catF] : ACTION_TYPES).map(cat => {
         const items = grouped[cat] || [];
         if (!items.length) return null;
@@ -59,5 +62,6 @@ export default function ActionsTab() {
           ))}
         </div>);
       })}
+    </div>
   </>);
 }
