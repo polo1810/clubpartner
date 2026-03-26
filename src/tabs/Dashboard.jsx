@@ -23,10 +23,10 @@ export default function Dashboard() {
   return (<>
     {/* Stats rapides */}
     <div style={{ ...S.card, ...S.g4 }}>
-      <div style={S.stat}><div style={{ fontSize: 18 }}>🎯</div><div style={{ fontSize: 24, fontWeight: 800, color: Cl.pri }}>{prospectsList.length}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Prospects</div></div>
-      <div style={S.stat}><div style={{ fontSize: 18 }}>🤝</div><div style={{ fontSize: 24, fontWeight: 800, color: Cl.ok }}>{partnersList.length}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Partenaires</div></div>
-      <div style={S.stat}><div style={{ fontSize: 18 }}>📋</div><div style={{ fontSize: 24, fontWeight: 800, color: Cl.warn }}>{allActions.filter(a => a.date === todayStr && !a.done).length}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Actions aujourd'hui</div></div>
-      <div style={S.stat}><div style={{ fontSize: 18 }}>💰</div><div style={{ fontSize: 24, fontWeight: 800, color: Cl.ok }}>{fmt(totalCA)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>CA HT total</div></div>
+      <div style={S.stat}><div style={S.statI}>🎯</div><div style={S.statV(Cl.pri)}>{prospectsList.length}</div><div style={S.statL}>Prospects</div></div>
+      <div style={S.stat}><div style={S.statI}>🤝</div><div style={S.statV(Cl.ok)}>{partnersList.length}</div><div style={S.statL}>Partenaires</div></div>
+      <div style={S.stat}><div style={S.statI}>📋</div><div style={S.statV(Cl.warn)}>{allActions.filter(a => a.date === todayStr && !a.done).length}</div><div style={S.statL}>Actions aujourd'hui</div></div>
+      <div style={S.stat}><div style={S.statI}>💰</div><div style={S.statV(Cl.ok)}>{fmt(totalCA)}</div><div style={S.statL}>CA HT total</div></div>
     </div>
 
     {/* Objectifs saison */}
@@ -41,31 +41,31 @@ export default function Dashboard() {
           <div><label style={S.lbl}>Objectif Partenariat (€)</label><input type="number" style={S.inp} value={objectives.partenariat || 0} onChange={e => setObjectives(o => ({ ...o, partenariat: Math.max(0, +e.target.value) }))} /></div>
           <div><label style={S.lbl}>Objectif Mécénat (€)</label><input type="number" style={S.inp} value={objectives.mecenat || 0} onChange={e => setObjectives(o => ({ ...o, mecenat: Math.max(0, +e.target.value) }))} /></div>
         </div>
-        <div style={{ marginTop: 8, fontSize: 12, color: Cl.txtL }}>Total : <strong>{fmt(objTotal)}</strong></div>
+        <div style={{ marginTop: 8, fontSize: 13, color: Cl.txtL }}>Total : <strong>{fmt(objTotal)}</strong></div>
       </div>}
 
       {/* Barres objectifs globaux */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-            <span style={{ fontWeight: 600, color: Cl.pri }}>🤝 Partenariat</span>
-            <span><strong>{fmt(caByType["Partenariat"] || 0)}</strong> / {fmt(objectives.partenariat || 0)} <span style={{ fontWeight: 700, color: pctP >= 100 ? Cl.ok : pctP >= 50 ? Cl.warn : Cl.err }}>{pctP.toFixed(0)}%</span></span>
+          <div style={S.fx}>
+            <span style={{ fontWeight: 600, color: Cl.pri, fontSize: 13 }}>🤝 Partenariat</span>
+            <span style={{ fontSize: 13 }}><strong>{fmt(caByType["Partenariat"] || 0)}</strong> / {fmt(objectives.partenariat || 0)} <span style={{ fontWeight: 700, color: pctP >= 100 ? Cl.ok : pctP >= 50 ? Cl.warn : Cl.err }}>{pctP.toFixed(0)}%</span></span>
           </div>
           <div style={{ ...S.barBox, height: 10 }}><div style={S.bar(pctP, pctP >= 100 ? Cl.ok : Cl.pri)} /></div>
         </div>
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-            <span style={{ fontWeight: 600, color: Cl.pur }}>💜 Mécénat</span>
-            <span><strong>{fmt(caByType["Mécénat"] || 0)}</strong> / {fmt(objectives.mecenat || 0)} <span style={{ fontWeight: 700, color: pctM >= 100 ? Cl.ok : pctM >= 50 ? Cl.warn : Cl.err }}>{pctM.toFixed(0)}%</span></span>
+          <div style={S.fx}>
+            <span style={{ fontWeight: 600, color: Cl.pur, fontSize: 13 }}>💜 Mécénat</span>
+            <span style={{ fontSize: 13 }}><strong>{fmt(caByType["Mécénat"] || 0)}</strong> / {fmt(objectives.mecenat || 0)} <span style={{ fontWeight: 700, color: pctM >= 100 ? Cl.ok : pctM >= 50 ? Cl.warn : Cl.err }}>{pctM.toFixed(0)}%</span></span>
           </div>
           <div style={{ ...S.barBox, height: 10 }}><div style={S.bar(pctM, pctM >= 100 ? Cl.ok : Cl.pur)} /></div>
         </div>
-        <div style={{ borderTop: `2px solid ${Cl.brd}`, paddingTop: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-            <span style={{ fontWeight: 700 }}>📊 TOTAL</span>
-            <span><strong style={{ fontSize: 16 }}>{fmt(realTotal)}</strong> / {fmt(objTotal)} <span style={{ fontWeight: 800, fontSize: 14, color: pctT >= 100 ? Cl.ok : pctT >= 50 ? Cl.warn : Cl.err }}>{pctT.toFixed(0)}%</span></span>
+        <div style={{ borderTop: `2px solid ${Cl.brd}`, paddingTop: 10 }}>
+          <div style={S.fx}>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>📊 TOTAL</span>
+            <span><strong style={{ fontSize: 18 }}>{fmt(realTotal)}</strong> / {fmt(objTotal)} <span style={{ fontWeight: 800, fontSize: 15, color: pctT >= 100 ? Cl.ok : pctT >= 50 ? Cl.warn : Cl.err }}>{pctT.toFixed(0)}%</span></span>
           </div>
-          <div style={{ ...S.barBox, height: 12 }}><div style={S.bar(pctT, pctT >= 100 ? Cl.ok : pctT >= 50 ? Cl.warn : Cl.err)} /></div>
+          <div style={{ ...S.barBox, height: 14 }}><div style={S.bar(pctT, pctT >= 100 ? Cl.ok : pctT >= 50 ? Cl.warn : Cl.err)} /></div>
         </div>
       </div>
     </div>
@@ -74,7 +74,7 @@ export default function Dashboard() {
     <div style={S.card}>
       <div style={S.fx}>
         <div style={S.cT}>👤 Contribution par membre</div>
-        {editObj && <span style={{ fontSize: 10, color: Cl.txtL }}>Définir les objectifs individuels ↓</span>}
+        {editObj && <span style={{ fontSize: 11, color: Cl.txtL }}>Définir les objectifs individuels ↓</span>}
       </div>
       <table style={S.tbl}>
         <thead><tr><th style={S.th}>Membre</th><th style={S.th}>Partenariat</th><th style={S.th}>Mécénat</th><th style={S.th}>Total réalisé</th>{editObj && <th style={S.th}>Objectif</th>}<th style={S.thR}>Atteinte</th></tr></thead>
@@ -88,12 +88,12 @@ export default function Dashboard() {
               <td style={S.td}>{d.partenariat > 0 ? <span style={{ color: Cl.pri, fontWeight: 600 }}>{fmt(d.partenariat)}</span> : <span style={{ color: Cl.txtL }}>—</span>}</td>
               <td style={S.td}>{d.mecenat > 0 ? <span style={{ color: Cl.pur, fontWeight: 600 }}>{fmt(d.mecenat)}</span> : <span style={{ color: Cl.txtL }}>—</span>}</td>
               <td style={S.td}><strong>{fmt(d.total)}</strong></td>
-              {editObj && <td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 80, fontSize: 11 }} value={obj} onChange={e => setMemberObj(m, +e.target.value)} /></td>}
+              {editObj && <td style={S.td}><input type="number" min="0" style={S.inpW(80)} value={obj} onChange={e => setMemberObj(m, +e.target.value)} /></td>}
               <td style={S.tdR}>
                 {obj > 0 ? (<>
                   <strong style={{ color: pct >= 100 ? Cl.ok : pct >= 50 ? Cl.warn : Cl.err }}>{pct.toFixed(0)}%</strong>
-                  <div style={{ ...S.barBox, width: 60, display: "inline-block", marginLeft: 6, verticalAlign: "middle" }}><div style={S.bar(pct, pct >= 100 ? Cl.ok : pct >= 50 ? Cl.warn : Cl.err)} /></div>
-                </>) : <span style={{ color: Cl.txtL, fontSize: 10 }}>Pas d'objectif</span>}
+                  <div style={{ ...S.barBox, width: 60, display: "inline-block", marginLeft: 8, verticalAlign: "middle" }}><div style={S.bar(pct, pct >= 100 ? Cl.ok : pct >= 50 ? Cl.warn : Cl.err)} /></div>
+                </>) : <span style={{ color: Cl.txtL, fontSize: 11 }}>Pas d'objectif</span>}
               </td>
             </tr>
           );
@@ -109,31 +109,29 @@ export default function Dashboard() {
     {/* Répartition par type */}
     <div style={S.card}><div style={S.cT}>📊 Répartition Partenariat / Mécénat</div>
       <div style={S.g2}>
-        <div style={{ ...S.card, border: `2px solid ${Cl.pri}`, marginBottom: 0 }}>
-          <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, fontWeight: 700, color: Cl.pri, marginBottom: 4 }}>🤝 PARTENARIAT</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: Cl.pri }}>{fmt(caByType["Partenariat"] || 0)}</div>
-            <div style={{ fontSize: 10, color: Cl.txtL, marginTop: 4 }}>{nbPartP} partenaire{nbPartP > 1 ? "s" : ""} · {nbProsP} prospect{nbProsP > 1 ? "s" : ""}</div>
-          </div>
+        <div style={S.typeCard(Cl.pri)}>
+          <div style={S.typeTitle(Cl.pri)}>🤝 PARTENARIAT</div>
+          <div style={S.typeVal(Cl.pri)}>{fmt(caByType["Partenariat"] || 0)}</div>
+          <div style={S.typeSub}>{nbPartP} partenaire{nbPartP > 1 ? "s" : ""} · {nbProsP} prospect{nbProsP > 1 ? "s" : ""}</div>
         </div>
-        <div style={{ ...S.card, border: `2px solid ${Cl.pur}`, marginBottom: 0 }}>
-          <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, fontWeight: 700, color: Cl.pur, marginBottom: 4 }}>💜 MÉCÉNAT</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: Cl.pur }}>{fmt(caByType["Mécénat"] || 0)}</div>
-            <div style={{ fontSize: 10, color: Cl.txtL, marginTop: 4 }}>{nbPartM} partenaire{nbPartM > 1 ? "s" : ""} · {nbProsM} prospect{nbProsM > 1 ? "s" : ""}</div>
-          </div>
+        <div style={S.typeCard(Cl.pur)}>
+          <div style={S.typeTitle(Cl.pur)}>💜 MÉCÉNAT</div>
+          <div style={S.typeVal(Cl.pur)}>{fmt(caByType["Mécénat"] || 0)}</div>
+          <div style={S.typeSub}>{nbPartM} partenaire{nbPartM > 1 ? "s" : ""} · {nbProsM} prospect{nbProsM > 1 ? "s" : ""}</div>
         </div>
       </div>
-      {totalCA > 0 && <div style={{ ...S.barBox, height: 12, marginTop: 10, display: "flex", borderRadius: 6, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${((caByType["Partenariat"] || 0) / totalCA) * 100}%`, background: Cl.pri, borderRadius: 0 }} />
-        <div style={{ height: "100%", width: `${((caByType["Mécénat"] || 0) / totalCA) * 100}%`, background: Cl.pur, borderRadius: 0 }} />
+      {totalCA > 0 && <div style={S.stackBar}>
+        <div style={S.stackSeg(((caByType["Partenariat"] || 0) / totalCA) * 100, Cl.pri)} />
+        <div style={S.stackSeg(((caByType["Mécénat"] || 0) / totalCA) * 100, Cl.pur)} />
       </div>}
     </div>
 
     {/* Encaissements */}
     <div style={S.card}><div style={S.cT}>🏦 Encaissements</div>
       <div style={S.g3}>
-        <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.ok }}>{fmt(totalPaid)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Encaissé</div></div>
-        <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.warn }}>{fmt(totalDue - totalPaid)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Reste</div></div>
-        <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.txtL }}>{fmt(totalDue)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Total TTC</div></div>
+        <div style={S.stat}><div style={S.statV(Cl.ok)}>{fmt(totalPaid)}</div><div style={S.statL}>Encaissé</div></div>
+        <div style={S.stat}><div style={S.statV(Cl.warn)}>{fmt(totalDue - totalPaid)}</div><div style={S.statL}>Reste</div></div>
+        <div style={S.stat}><div style={S.statV(Cl.txtL)}>{fmt(totalDue)}</div><div style={S.statL}>Total TTC</div></div>
       </div>
       {totalDue > 0 && <div style={S.barBox}><div style={S.bar((totalPaid / totalDue) * 100, Cl.ok)} /></div>}
     </div>
