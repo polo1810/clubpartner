@@ -8,19 +8,19 @@ import { generateContrat, generateFacturePDF, generateCerfa } from '../utils/pdf
 
 // --- Shared components ---
 function SeasonProductTable({ prods, products: allProducts }) {
-  if (!prods || prods.length === 0) return <p style={{ fontSize: 11, color: Cl.txtL }}>Aucun produit pour cette saison</p>;
+  if (!prods || prods.length === 0) return <p style={{ fontSize: 12, color: Cl.txtL }}>Aucun produit pour cette saison</p>;
   const tot = prods.reduce((t, cp) => t + lineHT(cp), 0);
   return (<>
     <table style={S.tbl}><thead><tr><th style={S.th}>Produit</th><th style={S.th}>Prix</th><th style={S.th}>Qté</th><th style={S.thR}>HT</th></tr></thead>
       <tbody>{prods.map(cp => { const pr = allProducts.find(x => x.id === cp.productId); if (!pr) return null; return (<tr key={cp.productId}><td style={S.td}>{pr.name}</td><td style={S.td}>{fmt(cp.unitPrice)}</td><td style={S.td}>{cp.qty}</td><td style={S.tdR}>{fmt(lineHT(cp))}</td></tr>); })}</tbody>
     </table>
-    <div style={{ textAlign: "right", marginTop: 4, fontSize: 13, fontWeight: 700, color: Cl.pri }}>Sous-total : {fmt(tot)} HT</div>
+    <div style={S.subT}>Sous-total : {fmt(tot)} HT</div>
   </>);
 }
 
 function SeasonTabs({ seasonIds, active, onChange }) {
   return (
-    <div style={{ display: "flex", gap: 3, marginBottom: 8, flexWrap: "wrap" }}>
+    <div style={S.seasonTabs}>
       {seasonIds.map(sid => (
         <button key={sid} style={{ ...S.btnS(active === sid ? "primary" : "ghost"), fontWeight: active === sid ? 700 : 400 }} onClick={() => onChange(sid)}>📅 {sid}</button>
       ))}
@@ -37,7 +37,7 @@ function SeasonProductEditor({ seasonId, prods, setProds, allProducts, cats, cur
   const totalHT = prods.reduce((t, sp) => t + lineHT(sp), 0);
   return (<div>
     <ProductPicker products={allProducts} selected={prods} onToggle={togP} cats={cats} currentSeason={seasonId} />
-    {prods.length > 0 && <table style={{ ...S.tbl, marginTop: 8 }}>
+    {prods.length > 0 && <table style={{ ...S.tbl, marginTop: 10 }}>
       <thead><tr><th style={S.th}>Produit</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th><th style={S.th}></th></tr></thead>
       <tbody>{prods.map(sp => {
         const pr = allProducts.find(x => x.id === sp.productId);
@@ -45,13 +45,13 @@ function SeasonProductEditor({ seasonId, prods, setProds, allProducts, cats, cur
         return (<tr key={sp.productId}>
           <td style={S.td}>{pr.name}</td>
           <td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 80, fontWeight: 700 }} value={sp.unitPrice} onChange={e => setProds(prods.map(x => x.productId === sp.productId ? { ...x, unitPrice: Math.max(0, +e.target.value) } : x))} /></td>
-          <td style={S.td}><input type="number" min="1" style={{ ...S.inp, width: 50 }} value={sp.qty} onChange={e => setProds(prods.map(x => x.productId === sp.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td>
+          <td style={S.td}><input type="number" min="1" style={S.inpW(50)} value={sp.qty} onChange={e => setProds(prods.map(x => x.productId === sp.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td>
           <td style={S.tdR}><strong>{fmt(lineHT(sp))}</strong></td>
           <td style={S.td}><button style={S.btnS("ghost")} onClick={() => setProds(prods.filter(x => x.productId !== sp.productId))}>✕</button></td>
         </tr>);
       })}</tbody>
     </table>}
-    {prods.length > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 13, fontWeight: 700, color: Cl.pri }}>Sous-total : {fmt(totalHT)} HT</div>}
+    {prods.length > 0 && <div style={S.subT}>Sous-total : {fmt(totalHT)} HT</div>}
   </div>);
 }
 
@@ -67,7 +67,6 @@ function ContractForm({ initial, onClose }) {
   const co = getCompany(f.companyId);
   const isM = f.type === "Mécénat" || co?.dealType === "Mécénat";
 
-  // Season products
   const [sp, setSp] = useState(() => {
     if (initial?.seasonProducts && Object.keys(initial.seasonProducts).length > 0) return { ...initial.seasonProducts };
     const sids = getContractSeasonIds({ ...f }, seasons);
@@ -75,7 +74,6 @@ function ContractForm({ initial, onClose }) {
     const o = {}; sids.forEach(sid => { o[sid] = coSP[sid] ? coSP[sid].map(p => ({ ...p })) : [...(co?.products || []).map(p => ({ ...p }))]; });
     return o;
   });
-  // Season don amounts
   const [sda, setSda] = useState(() => {
     if (initial?.seasonDonAmounts && Object.keys(initial.seasonDonAmounts).length > 0) return { ...initial.seasonDonAmounts };
     const sids = getContractSeasonIds({ ...f }, seasons);
@@ -102,7 +100,6 @@ function ContractForm({ initial, onClose }) {
   const onSeasonsChange = (v) => { const nf = { ...f, seasons: v }; setF(nf); const nc = getContractSeasonIds(nf, seasons); ensureSeasons(nc); if (!nc.includes(activeSeason)) setActiveSeason(nc[0] || currentSeason); };
   const onStartChange = (v) => { const nf = { ...f, startSeason: v }; setF(nf); const nc = getContractSeasonIds(nf, seasons); ensureSeasons(nc); if (!nc.includes(activeSeason)) setActiveSeason(nc[0] || currentSeason); };
 
-  // Per-season calcs
   const sHT = (sid) => (sp[sid] || []).reduce((t, cp) => t + lineHT(cp), 0);
   const sDon = (sid) => sda[sid] || 0;
   const sRatio = (sid) => { const d = sDon(sid); return d > 0 ? (sHT(sid) / d) * 100 : 0; };
@@ -151,35 +148,34 @@ function ContractForm({ initial, onClose }) {
         </Field>
       </div>
 
-      {/* Per-season */}
-      <div style={{ marginTop: 14 }}>
+      <div style={{ marginTop: 16 }}>
         <div style={S.cT}>{isM ? "💜 Mécénat par saison" : "📦 Produits par saison"}</div>
         <SeasonTabs seasonIds={coveredSeasons} active={activeSeason} onChange={setActiveSeason} />
-        {coveredSeasons.length > 1 && <div style={{ marginBottom: 6, fontSize: 10, color: Cl.txtL }}>
+        {coveredSeasons.length > 1 && <div style={{ marginBottom: 8, fontSize: 11, color: Cl.txtL }}>
           Copier depuis : {coveredSeasons.filter(s => s !== activeSeason).map(s => (
-            <button key={s} style={{ ...S.btnS("ghost"), fontSize: 10, padding: "1px 6px" }} onClick={() => copyFrom(s)}>📋 {s}</button>
+            <button key={s} style={{ ...S.btnS("ghost"), fontSize: 11, padding: "2px 8px" }} onClick={() => copyFrom(s)}>📋 {s}</button>
           ))}
         </div>}
-        {isM && <div style={{ marginBottom: 8, padding: 8, background: Cl.purL, borderRadius: 6, border: `1px solid ${Cl.pur}` }}>
+        {isM && <div style={{ marginBottom: 10, padding: 10, background: Cl.purL, borderRadius: 8, border: `1px solid ${Cl.pur}` }}>
           <label style={{ ...S.lbl, color: Cl.pur }}>💜 Montant du don — {activeSeason}</label>
-          <input type="number" style={{ ...S.inp, fontWeight: 700, fontSize: 16 }} value={sda[activeSeason] || 0} onChange={e => setSda({ ...sda, [activeSeason]: Math.max(0, +e.target.value) })} />
+          <input type="number" style={S.mecInp} value={sda[activeSeason] || 0} onChange={e => setSda({ ...sda, [activeSeason]: Math.max(0, +e.target.value) })} />
           {sDon(activeSeason) > 0 && sHT(activeSeason) > 0 && <div style={S.alert(sOK(activeSeason) ? "success" : "danger")}>{sOK(activeSeason) ? `✅ Contreparties = ${sRatio(activeSeason).toFixed(1)}% du don (max 25%)` : `⚠️ ${sRatio(activeSeason).toFixed(1)}% > 25% !`}</div>}
         </div>}
-        <div style={{ fontSize: 11, color: Cl.txtL, marginBottom: 4 }}>{isM ? "Contreparties" : "Produits"} — {activeSeason}</div>
+        <div style={{ fontSize: 12, color: Cl.txtL, marginBottom: 6 }}>{isM ? "Contreparties" : "Produits"} — {activeSeason}</div>
         <SeasonProductEditor seasonId={activeSeason} prods={sp[activeSeason] || []} setProds={(p) => setSp({ ...sp, [activeSeason]: p })} allProducts={products} cats={cats} currentSeason={currentSeason} />
       </div>
 
-      <div style={{ marginTop: 10, textAlign: "right" }}>
-        {isM ? <div style={{ fontSize: 13 }}>Don total : <strong style={{ color: Cl.pur }}>{fmt(totDon)}</strong> · Contreparties : {fmt(totHT)} HT</div>
-          : <div style={{ fontSize: 13 }}>Total : <strong style={{ color: Cl.pri }}>{fmt(totHT)} HT</strong> · TTC: {fmt(totTTC)}</div>}
+      <div style={{ marginTop: 12, textAlign: "right" }}>
+        {isM ? <div style={{ fontSize: 14 }}>Don total : <strong style={{ color: Cl.pur }}>{fmt(totDon)}</strong> · Contreparties : {fmt(totHT)} HT</div>
+          : <div style={{ fontSize: 14 }}>Total : <strong style={{ color: Cl.pri }}>{fmt(totHT)} HT</strong> · TTC: {fmt(totTTC)}</div>}
       </div>
 
-      <div style={{ marginTop: 14 }}><div style={S.fx}><label style={S.lbl}>💳 Échéancier — base : {fmt(totFacture)}</label><button style={S.btnS("ghost")} onClick={() => { const rem = totFacture - payments.reduce((s, p) => s + p.amount, 0); setPayments(ps => [...ps, { id: uid(), label: `Éch. ${ps.length + 1}`, amount: Math.round(Math.max(0, rem)), dueDate: "", status: "En attente" }]); }}>+</button></div>
-        {payments.length === 0 ? <p style={{ fontSize: 11, color: Cl.txtL }}>Paiement en une fois</p>
+      <div style={{ marginTop: 16 }}><div style={S.fx}><label style={S.lbl}>💳 Échéancier — base : {fmt(totFacture)}</label><button style={S.btnS("ghost")} onClick={() => { const rem = totFacture - payments.reduce((s, p) => s + p.amount, 0); setPayments(ps => [...ps, { id: uid(), label: `Éch. ${ps.length + 1}`, amount: Math.round(Math.max(0, rem)), dueDate: "", status: "En attente" }]); }}>+</button></div>
+        {payments.length === 0 ? <p style={{ fontSize: 12, color: Cl.txtL }}>Paiement en une fois</p>
           : <table style={S.tbl}><thead><tr><th style={S.th}>Libellé</th><th style={S.th}>Montant</th><th style={S.th}>Date</th><th style={S.th}>Statut</th><th style={S.th}></th></tr></thead>
-            <tbody>{payments.map(p => (<tr key={p.id}><td style={S.td}><input style={S.inp} value={p.label} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, label: e.target.value } : x))} /></td><td style={S.td}><input type="number" style={{ ...S.inp, width: 80 }} value={p.amount} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, amount: +e.target.value } : x))} /></td><td style={S.td}><input type="date" style={{ ...S.inp, width: 130 }} value={p.dueDate} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, dueDate: e.target.value } : x))} /></td><td style={S.td}><select style={{ ...S.sel, width: "auto" }} value={p.status} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, status: e.target.value } : x))}><option>En attente</option><option>Payé</option><option>En retard</option></select></td><td style={S.td}><button style={S.btnS("ghost")} onClick={() => setPayments(ps => ps.filter(x => x.id !== p.id))}>✕</button></td></tr>))}</tbody></table>}
+            <tbody>{payments.map(p => (<tr key={p.id}><td style={S.td}><input style={S.inp} value={p.label} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, label: e.target.value } : x))} /></td><td style={S.td}><input type="number" style={{ ...S.inp, width: 80 }} value={p.amount} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, amount: +e.target.value } : x))} /></td><td style={S.td}><input type="date" style={{ ...S.inp, width: 140 }} value={p.dueDate} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, dueDate: e.target.value } : x))} /></td><td style={S.td}><select style={S.paySel(p.status)} value={p.status} onChange={e => setPayments(ps => ps.map(x => x.id === p.id ? { ...x, status: e.target.value } : x))}><option>En attente</option><option>Payé</option><option>En retard</option></select></td><td style={S.td}><button style={S.btnS("ghost")} onClick={() => setPayments(ps => ps.filter(x => x.id !== p.id))}>✕</button></td></tr>))}</tbody></table>}
       </div>
-      <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      <div style={{ marginTop: 14, display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button style={S.btn("ghost")} onClick={onClose}>Annuler</button>
         <button style={{ ...S.btn("primary"), opacity: isM && !allOK ? 0.5 : 1 }} disabled={isM && !allOK} onClick={save}>Enregistrer</button>
       </div>
@@ -206,7 +202,6 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
 
   const [activeSeason, setActiveSeason] = useState(coveredSeasons[0] || currentSeason);
 
-  // Per-season don for display
   const seasonDon = (sid) => sda[sid] ?? donAmount;
   const seasonHT = (sid) => (contract.seasonProducts?.[sid] || []).reduce((t, cp) => t + lineHT(cp), 0);
   const seasonRatio = (sid) => { const d = seasonDon(sid); return d > 0 ? (seasonHT(sid) / d) * 100 : 0; };
@@ -214,26 +209,22 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
   return (
     <Modal title={`Contrat — ${co?.company || "?"}`} onClose={onClose}>
       <div style={S.g2}>
-        <div><span style={S.lbl}>Statut</span><select style={{ ...S.sel, width: "auto" }} value={contract.status} onChange={e => upd({ status: e.target.value })}>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select></div>
+        <div><span style={S.lbl}>Statut</span><select style={S.ctStatusSel(isSigned(contract))} value={contract.status} onChange={e => upd({ status: e.target.value })}>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select></div>
         <div><span style={S.lbl}>Type</span><Badge type={isM ? "mecenat" : "partenariat"}>{isM ? "Mécénat" : "Partenariat"}</Badge></div>
         <div><span style={S.lbl}>Responsable</span>{contract.member}</div>
         <div><span style={S.lbl}>Saisons</span>{contract.seasons} ({coveredSeasons.join(", ")})</div>
         <div><span style={S.lbl}>Exclusivité</span>{contract.exclusivite ? <span style={{ color: Cl.ok, fontWeight: 700 }}>✅ Oui</span> : <span style={{ color: Cl.txtL }}>Non</span>}</div>
       </div>
 
-      {isM && <div style={{ ...S.card, marginTop: 10, border: `2px solid ${Cl.pur}`, background: Cl.purL }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div><div style={{ fontSize: 11, fontWeight: 700, color: Cl.pur }}>💜 MÉCÉNAT TOTAL</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: Cl.pur }}>{fmt(totDon)}</div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 10, color: Cl.txtL }}>Contreparties : {fmt(prodHT)} HT</div>
-          </div>
+      {isM && <div style={S.mecCard}>
+        <div style={S.fx}>
+          <div><div style={S.mecTitle}>💜 MÉCÉNAT TOTAL</div><div style={S.mecVal}>{fmt(totDon)}</div></div>
+          <div style={{ textAlign: "right" }}><div style={{ fontSize: 11, color: Cl.txtL }}>Contreparties : {fmt(prodHT)} HT</div></div>
         </div>
-        {coveredSeasons.length > 1 && <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {coveredSeasons.length > 1 && <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap" }}>
           {coveredSeasons.map(sid => {
             const r = seasonRatio(sid);
-            return <div key={sid} style={{ fontSize: 10 }}>
+            return <div key={sid} style={{ fontSize: 11 }}>
               <strong>{sid}</strong>: {fmt(seasonDon(sid))} don · {fmt(seasonHT(sid))} HT
               {seasonDon(sid) > 0 && seasonHT(sid) > 0 && <span style={{ marginLeft: 4, fontWeight: 700, color: r <= 25 ? Cl.ok : Cl.err }}>{r.toFixed(1)}%</span>}
             </div>;
@@ -241,30 +232,27 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
         </div>}
       </div>}
 
-      {co && <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
+      {co && <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button style={S.btnS("primary")} onClick={() => { if (onOpenCompany) onOpenCompany(co); onClose(); }}>👁️ Fiche {co.company}</button>
         <button style={S.btnS("ghost")} onClick={() => generateContrat(clubInfo, co, contract, products, seasons, currentSeason, contractTemplates, exclusiviteText)}>📄 Contrat PDF</button>
         {isSigned(contract) && coveredSeasons.map(sid => {
           const already = invoices.find(i => i.contractId === contract.id && i.season === sid);
           if (isM) {
-            // Mécénat : CERFA directement
             return already
-              ? <button key={sid} style={{ ...S.btnS("ghost"), fontSize: 10, color: Cl.pur, padding: "2px 6px" }} onClick={() => generateCerfa(clubInfo, co, contract, already, sid)} title="Télécharger le CERFA">🏛️ {already.number} 📄</button>
+              ? <button key={sid} style={{ ...S.btnS("ghost"), fontSize: 11, color: Cl.pur }} onClick={() => generateCerfa(clubInfo, co, contract, already, sid)} title="Télécharger le CERFA">🏛️ {already.number} 📄</button>
               : <button key={sid} style={{ ...S.btnS("primary"), background: Cl.pur }} onClick={async () => { const rec = generateCerfaRecord(contract, sid); if (rec) await generateCerfa(clubInfo, co, contract, rec, sid); }}>🏛️ CERFA {sid}</button>;
           } else {
-            // Partenariat : facture classique
             return already
-              ? <button key={sid} style={{ ...S.btnS("ghost"), fontSize: 10, color: Cl.ok, padding: "2px 6px" }} onClick={() => generateFacturePDF(clubInfo, co, already)} title="Télécharger la facture">✅ {already.number} 📄</button>
+              ? <button key={sid} style={{ ...S.btnS("ghost"), fontSize: 11, color: Cl.ok }} onClick={() => generateFacturePDF(clubInfo, co, already)} title="Télécharger la facture">✅ {already.number} 📄</button>
               : <button key={sid} style={S.btnS("primary")} onClick={() => generateInvoice(contract, sid)}>🧾 Facturer {sid}</button>;
           }
         })}
       </div>}
 
-      {/* Products per season */}
-      <div style={{ ...S.cT, marginTop: 14 }}>{isM ? "📦 Contreparties" : "💰 Produits"} — {fmt(prodHT)} HT total</div>
+      <div style={{ ...S.cT, marginTop: 16 }}>{isM ? "📦 Contreparties" : "💰 Produits"} — {fmt(prodHT)} HT total</div>
       {hasSP && coveredSeasons.length > 1 ? (<>
         <SeasonTabs seasonIds={coveredSeasons} active={activeSeason} onChange={setActiveSeason} />
-        {isM && seasonDon(activeSeason) > 0 && <div style={{ fontSize: 11, color: Cl.pur, marginBottom: 4 }}>Don {activeSeason} : <strong>{fmt(seasonDon(activeSeason))}</strong> · Ratio : <strong style={{ color: seasonRatio(activeSeason) <= 25 ? Cl.ok : Cl.err }}>{seasonRatio(activeSeason).toFixed(1)}%</strong></div>}
+        {isM && seasonDon(activeSeason) > 0 && <div style={{ fontSize: 12, color: Cl.pur, marginBottom: 6 }}>Don {activeSeason} : <strong>{fmt(seasonDon(activeSeason))}</strong> · Ratio : <strong style={{ color: seasonRatio(activeSeason) <= 25 ? Cl.ok : Cl.err }}>{seasonRatio(activeSeason).toFixed(1)}%</strong></div>}
         <SeasonProductTable prods={contract.seasonProducts[activeSeason] || []} products={products} />
       </>) : hasSP ? (
         <SeasonProductTable prods={contract.seasonProducts[coveredSeasons[0]] || []} products={products} />
@@ -273,30 +261,30 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
           <tbody>{(co?.products || []).map(cp => { const pr = products.find(x => x.id === cp.productId); if (!pr) return null; return (<tr key={cp.productId}><td style={S.td}>{pr.name}</td><td style={S.td}>{fmt(cp.unitPrice)}</td><td style={S.td}>{cp.qty}</td><td style={S.tdR}>{fmt(lineHT(cp))}</td></tr>); })}</tbody></table>
       )}
 
-      <div style={{ ...S.fx, marginTop: 14 }}><div style={S.cT}>💳 Échéancier — {fmt(paid)} / {fmt(totFacture)}</div>
+      <div style={{ ...S.fx, marginTop: 16 }}><div style={S.cT}>💳 Échéancier — {fmt(paid)} / {fmt(totFacture)}</div>
         <button style={S.btnS("primary")} onClick={() => { const rem = totFacture - (contract.payments || []).reduce((s, p) => s + p.amount, 0); upd({ payments: [...(contract.payments || []), { id: uid(), label: `Éch. ${(contract.payments || []).length + 1}`, amount: Math.round(Math.max(0, rem)), dueDate: "", status: "En attente" }] }); }}>+ Échéance</button>
       </div>
       {totFacture > 0 && <div style={S.barBox}><div style={S.bar((paid / totFacture) * 100, Cl.ok)} /></div>}
-      {(contract.payments || []).length === 0 ? <p style={{ fontSize: 11, color: Cl.txtL, marginTop: 6 }}>Paiement en une fois</p>
-        : <table style={{ ...S.tbl, marginTop: 8 }}>
+      {(contract.payments || []).length === 0 ? <p style={{ fontSize: 12, color: Cl.txtL, marginTop: 6 }}>Paiement en une fois</p>
+        : <table style={{ ...S.tbl, marginTop: 10 }}>
           <thead><tr><th style={S.th}>Libellé</th><th style={S.th}>Montant</th><th style={S.th}>Date</th><th style={S.th}>Statut</th><th style={S.th}></th></tr></thead>
           <tbody>{(contract.payments || []).map(p => (
-            <tr key={p.id} style={p.status === "En retard" ? { background: Cl.errL } : p.status === "Payé" ? { opacity: 0.6 } : {}}>
-              <td style={S.td}><input style={{ ...S.inp }} value={p.label} onChange={e => upd({ payments: contract.payments.map(x => x.id === p.id ? { ...x, label: e.target.value } : x) })} /></td>
+            <tr key={p.id} style={S.payRow(p.status)}>
+              <td style={S.td}><input style={S.inp} value={p.label} onChange={e => upd({ payments: contract.payments.map(x => x.id === p.id ? { ...x, label: e.target.value } : x) })} /></td>
               <td style={S.td}><input type="number" style={{ ...S.inp, width: 80 }} value={p.amount} onChange={e => upd({ payments: contract.payments.map(x => x.id === p.id ? { ...x, amount: +e.target.value } : x) })} /></td>
-              <td style={S.td}><input type="date" style={{ ...S.inp, width: 130 }} value={p.dueDate || ""} onChange={e => upd({ payments: contract.payments.map(x => x.id === p.id ? { ...x, dueDate: e.target.value } : x) })} /></td>
-              <td style={S.td}><select style={{ ...S.sel, width: "auto", fontSize: 11, padding: "2px 6px", borderRadius: 12, fontWeight: 600, background: p.status === "Payé" ? Cl.okL : p.status === "En retard" ? Cl.errL : Cl.warnL }} value={p.status} onChange={e => upd({ payments: contract.payments.map(x => x.id === p.id ? { ...x, status: e.target.value } : x) })}><option>En attente</option><option>Payé</option><option>En retard</option></select></td>
+              <td style={S.td}><input type="date" style={{ ...S.inp, width: 140 }} value={p.dueDate || ""} onChange={e => upd({ payments: contract.payments.map(x => x.id === p.id ? { ...x, dueDate: e.target.value } : x) })} /></td>
+              <td style={S.td}><select style={S.paySel(p.status)} value={p.status} onChange={e => upd({ payments: contract.payments.map(x => x.id === p.id ? { ...x, status: e.target.value } : x) })}><option>En attente</option><option>Payé</option><option>En retard</option></select></td>
               <td style={S.td}><button style={S.btnS("ghost")} onClick={() => upd({ payments: contract.payments.filter(x => x.id !== p.id) })}>✕</button></td>
             </tr>
           ))}</tbody>
         </table>}
       {(contract.payments || []).length > 0 && (() => { const tp = (contract.payments || []).reduce((s, p) => s + p.amount, 0); const diff = totFacture - tp; return Math.abs(diff) > 1 ? <div style={S.alert("warning")}>{diff > 0 ? `⚠️ Reste ${fmt(diff)} non couvert` : `⚠️ Dépasse de ${fmt(-diff)}`}</div> : null; })()}
 
-      <div style={{ ...S.fx, marginTop: 14 }}><div style={S.cT}>📋 Actions</div><button style={S.btnS("ghost")} onClick={() => openAddContractAction(contract.id)}>+</button></div>
+      <div style={{ ...S.fx, marginTop: 16 }}><div style={S.cT}>📋 Actions</div><button style={S.btnS("ghost")} onClick={() => openAddContractAction(contract.id)}>+</button></div>
       {(contract.actions || []).map(a => (
-        <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 11, opacity: a.done ? 0.5 : 1 }}>
+        <div key={a.id} style={S.actItem(a.done)}>
           <input type="checkbox" checked={a.done} onChange={() => upd({ actions: contract.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) })} />
-          <Badge type="draft">{a.category}</Badge><strong>{a.type}</strong><span style={{ color: Cl.txtL }}>{a.date}</span><span style={{ color: Cl.pri, fontSize: 10 }}>👤 {a.assignee}</span>
+          <Badge type="draft">{a.category}</Badge><strong>{a.type}</strong><span style={{ color: Cl.txtL }}>{a.date}</span><span style={{ color: Cl.pri, fontSize: 11 }}>👤 {a.assignee}</span>
         </div>
       ))}
     </Modal>
@@ -324,53 +312,43 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
   if (statusF !== "Tous") filtered = filtered.filter(c => c.status === statusF);
   if (typeF !== "Tous") filtered = filtered.filter(c => c.type === typeF);
 
-  const onDeleteClick = (e, c) => {
-    e.stopPropagation();
-    setDeleteTarget(c);
-    setDeleteConfirm("");
-  };
-
+  const onDeleteClick = (e, c) => { e.stopPropagation(); setDeleteTarget(c); setDeleteConfirm(""); };
   const hasInvoicesFor = (cid) => invoices.filter(i => i.contractId === cid && i.type !== "cerfa" && i.status !== "Annulée").length > 0;
-
   const doDelete = () => {
     if (!deleteTarget || deleteConfirm !== "SUPPRIMER") return;
     setInvoices(is => is.filter(i => i.contractId !== deleteTarget.id));
     setContracts(cs => cs.filter(c => c.id !== deleteTarget.id));
-    setDeleteTarget(null);
-    setDeleteConfirm("");
+    setDeleteTarget(null); setDeleteConfirm("");
   };
-
-  const doAvoir = (cid) => {
-    setInvoices(is => is.map(i => i.contractId === cid && i.type !== "cerfa" && i.status !== "Annulée" ? { ...i, status: "Annulée" } : i));
-  };
+  const doAvoir = (cid) => { setInvoices(is => is.map(i => i.contractId === cid && i.type !== "cerfa" && i.status !== "Annulée" ? { ...i, status: "Annulée" } : i)); };
 
   return (<>
-    <div style={S.fx}><h2 style={{ fontSize: 16, fontWeight: 700 }}>📝 Contrats ({filtered.length})</h2>
+    <div style={S.fx}><h2 style={S.pageH}>📝 Contrats ({filtered.length})</h2>
       <button style={S.btn("primary")} onClick={() => { setEditC(null); setShowForm(true); }}>+ Contrat</button>
     </div>
-    <div style={{ marginTop: 6, display: "flex", gap: 4, flexWrap: "wrap" }}>
-      <input style={{ ...S.inp, flex: 1, minWidth: 120 }} placeholder="🔍 Rechercher entreprise, responsable..." value={search} onChange={e => setSearch(e.target.value)} />
-      <select style={{ ...S.sel, width: "auto" }} value={statusF} onChange={e => setStatusF(e.target.value)}><option>Tous</option>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select>
-      <select style={{ ...S.sel, width: "auto" }} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
+    <div style={S.filterBar}>
+      <input style={S.filterInp} placeholder="🔍 Rechercher entreprise, responsable..." value={search} onChange={e => setSearch(e.target.value)} />
+      <select style={S.filterSel} value={statusF} onChange={e => setStatusF(e.target.value)}><option>Tous</option>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select>
+      <select style={S.filterSel} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
     </div>
-    <div style={{ marginTop: 8 }}>{filtered.length === 0 ? <div style={{ textAlign: "center", padding: 30, color: Cl.txtL }}>Aucun contrat trouvé</div>
+    <div style={{ marginTop: 10 }}>{filtered.length === 0 ? <div style={S.empty}>Aucun contrat trouvé</div>
       : filtered.map(c => {
         const co = getCompany(c.companyId);
         const paid = (c.payments || []).filter(p => p.status === "Payé").reduce((s, p) => s + p.amount, 0);
         return (<div key={c.id} style={{ ...S.card, cursor: "pointer" }} onClick={() => setViewC(c)}>
           <div style={S.fx}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               <strong>{co?.company || "?"}</strong>
               <Badge type={c.type === "Mécénat" ? "mecenat" : "partenariat"}>{c.type}</Badge>
               {c.seasons > 1 && <Badge type="draft">{c.seasons} sais.</Badge>}
-              <select style={{ ...S.sel, width: "auto", fontSize: 10, padding: "2px 6px", borderRadius: 12, fontWeight: 700, background: isSigned(c) ? Cl.okL : c.status === "En attente" ? Cl.warnL : Cl.hov, color: isSigned(c) ? Cl.ok : c.status === "En attente" ? Cl.warn : Cl.txtL }} value={c.status} onClick={e => e.stopPropagation()} onChange={e => { e.stopPropagation(); setContracts(cs => cs.map(x => x.id === c.id ? { ...x, status: e.target.value } : x)); }}>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select>
+              <select style={S.ctStatusSel(isSigned(c))} value={c.status} onClick={e => e.stopPropagation()} onChange={e => { e.stopPropagation(); setContracts(cs => cs.map(x => x.id === c.id ? { ...x, status: e.target.value } : x)); }}>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: Cl.pri }}>{fmt(contractHT(c))} HT</div>
-              {canDelete && <button style={{ ...S.btnS("ghost"), color: Cl.err, fontSize: 12, padding: "2px 6px" }} onClick={e => onDeleteClick(e, c)} title="Supprimer">🗑️</button>}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={S.ctAmt}>{fmt(contractHT(c))} HT</div>
+              {canDelete && <button style={S.btnDelete} onClick={e => onDeleteClick(e, c)} title="Supprimer">🗑️</button>}
             </div>
           </div>
-          <div style={{ marginTop: 4, fontSize: 11, color: Cl.txtL, display: "flex", gap: 10 }}>
+          <div style={S.ctMeta}>
             <span>👷 {c.member}</span>
             {(c.payments || []).length > 0 && <span>💳 {fmt(paid)}/{fmt(contractTTC(c))}</span>}
             {co && <span onClick={e => e.stopPropagation()}><PhoneLink phone={co.phone} /></span>}
@@ -380,26 +358,25 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
     {showForm && <ContractForm initial={editC} onClose={() => { setShowForm(false); setEditC(null); }} />}
     {viewC && <ContractDetail contract={contracts.find(c => c.id === viewC.id) || viewC} onClose={() => { setViewC(null); if (onDirectContractClosed) onDirectContractClosed(); }} onOpenCompany={onOpenCompany} />}
 
-    {/* Delete confirmation modal */}
     {deleteTarget && <Modal title="🗑️ Supprimer le contrat" onClose={() => setDeleteTarget(null)}>
       {(() => {
         const co = getCompany(deleteTarget.companyId);
         const hasInv = hasInvoicesFor(deleteTarget.id);
         return <>
-          <div style={{ fontSize: 13, marginBottom: 10 }}>Contrat <strong>{co?.company || "?"}</strong> — {deleteTarget.type} — {deleteTarget.status}</div>
+          <div style={{ fontSize: 14, marginBottom: 12 }}>Contrat <strong>{co?.company || "?"}</strong> — {deleteTarget.type} — {deleteTarget.status}</div>
           {hasInv && !isSuperDemo ? (<>
-            <div style={{ ...S.alert("danger"), marginBottom: 10 }}>⚠️ Ce contrat a des factures actives. Vous ne pouvez pas le supprimer. Vous pouvez générer un avoir pour annuler les factures.</div>
+            <div style={S.alert("danger")}>⚠️ Ce contrat a des factures actives. Vous ne pouvez pas le supprimer. Vous pouvez générer un avoir pour annuler les factures.</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button style={S.btn("ghost")} onClick={() => setDeleteTarget(null)}>Fermer</button>
               <button style={{ ...S.btn("primary"), background: Cl.warn }} onClick={() => { doAvoir(deleteTarget.id); setDeleteTarget(null); }}>📋 Générer un avoir</button>
             </div>
           </>) : (<>
-            {hasInv && isSuperDemo && <div style={{ ...S.alert("warning"), marginBottom: 8 }}>⚠️ Ce contrat a des factures — suppression forcée (super admin démo)</div>}
-            <div style={{ background: Cl.errL, padding: 12, borderRadius: 8, border: `2px solid ${Cl.err}` }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: Cl.err, marginBottom: 6 }}>⚠️ Suppression définitive</div>
-              <div style={{ fontSize: 11, color: Cl.err, marginBottom: 8 }}>Cette action est irréversible. Les factures et CERFA liés seront aussi supprimés. Tapez <strong>SUPPRIMER</strong> pour confirmer.</div>
-              <input style={{ ...S.inp, borderColor: Cl.err, textAlign: "center", fontSize: 14, fontWeight: 700, letterSpacing: 2 }} value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value.toUpperCase())} placeholder="Tapez SUPPRIMER" autoFocus />
-              <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "center" }}>
+            {hasInv && isSuperDemo && <div style={S.alert("warning")}>⚠️ Ce contrat a des factures — suppression forcée (super admin démo)</div>}
+            <div style={S.delZone}>
+              <div style={S.delTitle}>⚠️ Suppression définitive</div>
+              <div style={S.delText}>Cette action est irréversible. Les factures et CERFA liés seront aussi supprimés. Tapez <strong>SUPPRIMER</strong> pour confirmer.</div>
+              <input style={S.delInp} value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value.toUpperCase())} placeholder="Tapez SUPPRIMER" autoFocus />
+              <div style={{ display: "flex", gap: 8, marginTop: 10, justifyContent: "center" }}>
                 <button style={S.btn("ghost")} onClick={() => setDeleteTarget(null)}>Annuler</button>
                 <button style={{ ...S.btn("primary"), background: Cl.err, opacity: deleteConfirm === "SUPPRIMER" ? 1 : 0.3 }} disabled={deleteConfirm !== "SUPPRIMER"} onClick={doDelete}>🗑️ Confirmer la suppression</button>
               </div>
