@@ -21,12 +21,12 @@ export default function Dashboard() {
   const setMemberObj = (m, v) => setObjectives(o => ({ ...o, members: { ...o.members, [m]: Math.max(0, v) } }));
 
   return (<>
-    {/* Stats rapides */}
+    {/* Stats rapides — enrichies avec contexte */}
     <div style={{ ...S.card, ...S.g4 }}>
-      <div style={S.stat}><div style={S.statI}>🎯</div><div style={S.statV(Cl.pri)}>{prospectsList.length}</div><div style={S.statL}>Prospects</div></div>
-      <div style={S.stat}><div style={S.statI}>🤝</div><div style={S.statV(Cl.ok)}>{partnersList.length}</div><div style={S.statL}>Partenaires</div></div>
-      <div style={S.stat}><div style={S.statI}>📋</div><div style={S.statV(Cl.warn)}>{allActions.filter(a => a.date === todayStr && !a.done).length}</div><div style={S.statL}>Actions aujourd'hui</div></div>
-      <div style={S.stat}><div style={S.statI}>💰</div><div style={S.statV(Cl.ok)}>{fmt(totalCA)}</div><div style={S.statL}>CA HT total</div></div>
+      <div style={S.statCard}><div style={S.statL}>Prospects</div><div style={S.statV(Cl.pri)}>{prospectsList.length}</div>{prospectsList.filter(p => p.prospectStatus === "À rappeler").length > 0 && <div style={S.statSub(Cl.warn)}>{prospectsList.filter(p => p.prospectStatus === "À rappeler").length} à rappeler</div>}</div>
+      <div style={S.statCard}><div style={S.statL}>Partenaires</div><div style={S.statV(Cl.ok)}>{partnersList.length}</div><div style={S.statSub()}>{partnersList.filter(p => p.partnerStatus === "Nouveau").length > 0 ? `${partnersList.filter(p => p.partnerStatus === "Nouveau").length} nouveau${partnersList.filter(p => p.partnerStatus === "Nouveau").length > 1 ? "x" : ""}` : "Tous actifs"}</div></div>
+      <div style={S.statCard}><div style={S.statL}>CA réalisé</div><div style={S.statV(Cl.txt)}>{fmt(totalCA)}</div>{objTotal > 0 && <><div style={S.statSub(pctT >= 100 ? Cl.ok : Cl.txtL)}>{pctT.toFixed(0)}% de l'objectif</div><div style={S.statBar}><div style={S.statBarFill(pctT, pctT >= 100 ? Cl.ok : Cl.pri)} /></div></>}</div>
+      <div style={S.statCardHighlight(Cl.warnL)}><div style={S.statL}>Aujourd'hui</div><div style={S.statV(Cl.warn)}>{allActions.filter(a => a.date === todayStr && !a.done).length}</div><div style={S.statSub(Cl.warn)}>actions à faire</div></div>
     </div>
 
     {/* Objectifs saison */}
