@@ -174,7 +174,7 @@ function AppInner() {
 
   return (
     <div style={S.app}>
-      <div style={S.header}>
+      <div style={{ ...S.header, background: `linear-gradient(135deg, ${tc} 0%, ${tc}cc 100%)` }}>
         <div style={S.hdrLeft}>
           {logo ? <img src={logo} alt="Logo" style={S.hdrLogo} /> : <span style={S.hdrLogoFb}>🏟️</span>}
           <div>
