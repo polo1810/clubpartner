@@ -171,13 +171,15 @@ export function CompanyForm({ data, onSave, onClose }) {
 }
 
 export function CompanyDetail({ company, onClose, onOpenContract }) {
-  const { companies, setCompanies, products, todayStr, convertToPartner, openAddAction, companyContracts, cats, currentSeason, seasons, setMiniForm, members, addMember, clubInfo, invoices, setInvoices, contracts, setContracts } = useApp();
+  const { companies, setCompanies, products, todayStr, convertToPartner, openAddAction, companyContracts, cats, currentSeason, seasons, setMiniForm, members, addMember, clubInfo, invoices, setInvoices, contracts, setContracts, setSeasonStatus, hasContractForSeason } = useApp();
   const auth = useAuth();
   const co = companies.find(c => c.id === company.id) || company;
   const [noteText, setNoteText] = useState("");
   const [editingProducts, setEditingProducts] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [showRepass, setShowRepass] = useState(false);
+  const [repassSeason, setRepassSeason] = useState("");
   const setCo = (u) => { setCompanies(cs => cs.map(x => x.id === u.id ? u : x)); };
   const myContracts = companyContracts(co.id);
   const lastNote = (co.notes || []).sort((a, b) => b.date.localeCompare(a.date))[0];
@@ -415,11 +417,39 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         ))}
       </div>}
 
-      {co.isPartner ? <div style={{ marginTop: 16, textAlign: "center" }}>
-        <button style={{ ...S.btn("ghost"), fontSize: 12, color: Cl.err }} onClick={() => { setCo({ ...co, isPartner: false, partnerStatus: "", prospectStatus: "Nouveau" }); onClose(); }}>↩️ Repasser en prospect</button>
-      </div> : <div style={{ marginTop: 16, textAlign: "center" }}>
-        <button style={{ ...S.btn("primary"), fontSize: 12 }} onClick={() => { convertToPartner(co.id); onClose(); }}>🤝 Convertir en partenaire</button>
-      </div>}
+      {/* Convert / Repass per season */}
+      <div style={{ marginTop: 16, borderTop: `1px solid ${Cl.brd}`, paddingTop: 12 }}>
+        {co.isPartner || (co.seasonStatus && Object.values(co.seasonStatus).includes("partenaire")) ? (<>
+          {!showRepass ? (
+            <div style={{ textAlign: "center" }}>
+              <button style={{ ...S.btn("ghost"), fontSize: 12, color: Cl.warn }} onClick={() => { setShowRepass(true); setRepassSeason(""); }}>↩️ Repasser en prospect pour une saison</button>
+            </div>
+          ) : (
+            <div style={{ background: Cl.warnL, padding: 10, borderRadius: 8, border: `1px solid ${Cl.warn}` }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>↩️ Repasser en prospect — pour quelle saison ?</div>
+              <select style={S.sel} value={repassSeason} onChange={e => setRepassSeason(e.target.value)}>
+                <option value="">-- Choisir --</option>
+                {seasons.map(s => {
+                  const hasCon = hasContractForSeason(co, s.id);
+                  return <option key={s.id} value={s.id} disabled={hasCon}>{s.name}{hasCon ? " (contrat en cours)" : ""}</option>;
+                })}
+              </select>
+              {repassSeason && hasContractForSeason(co, repassSeason) && <div style={{ fontSize: 11, color: Cl.err, marginTop: 4 }}>⚠️ Un contrat signé couvre cette saison — impossible de repasser en prospect.</div>}
+              <div style={{ display: "flex", gap: 6, marginTop: 8, justifyContent: "center" }}>
+                <button style={S.btn("ghost")} onClick={() => setShowRepass(false)}>Annuler</button>
+                <button style={{ ...S.btn("primary"), background: Cl.warn }} disabled={!repassSeason || hasContractForSeason(co, repassSeason)} onClick={() => {
+                  setSeasonStatus(co.id, repassSeason, "prospect");
+                  setShowRepass(false);
+                }}>Confirmer</button>
+              </div>
+            </div>
+          )}
+        </>) : (
+          <div style={{ textAlign: "center" }}>
+            <button style={{ ...S.btn("primary"), fontSize: 12 }} onClick={() => { convertToPartner(co.id); onClose(); }}>🤝 Convertir en partenaire</button>
+          </div>
+        )}
+      </div>
 
       {/* Delete section */}
       {(() => {
