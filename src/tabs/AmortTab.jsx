@@ -28,17 +28,17 @@ export default function AmortTab() {
   const totalRes = totalCAS - totalAmortS;
 
   return (<>
-    <div style={S.fx}><h2 style={{ fontSize: 16, fontWeight: 700 }}>💰 Amortissement</h2>
-      <select style={{ ...S.sel, width: "auto", fontWeight: 700 }} value={seasonF} onChange={e => setSeasonF(e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select>
+    <div style={S.fx}><h2 style={S.pageH}>💰 Amortissement</h2>
+      <select style={{ ...S.filterSel, fontWeight: 700 }} value={seasonF} onChange={e => setSeasonF(e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select>
     </div>
-    <div style={{ ...S.card, marginTop: 8, ...S.g4 }}>
-      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.txtL }}>{fmt(totalInvest)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Investissement</div></div>
-      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.warn }}>{fmt(totalAmortS)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>À amortir ({seasonF})</div></div>
-      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: Cl.pri }}>{fmt(totalCAS)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>CA réalisé</div></div>
-      <div style={S.stat}><div style={{ fontSize: 20, fontWeight: 800, color: totalRes >= 0 ? Cl.ok : Cl.err }}>{totalRes >= 0 ? "+" : ""}{fmt(totalRes)}</div><div style={{ fontSize: 10, color: Cl.txtL }}>Résultat</div></div>
+    <div style={{ ...S.card, marginTop: 10, ...S.g4 }}>
+      <div style={S.stat}><div style={S.statV(Cl.txtL)}>{fmt(totalInvest)}</div><div style={S.statL}>Investissement</div></div>
+      <div style={S.stat}><div style={S.statV(Cl.warn)}>{fmt(totalAmortS)}</div><div style={S.statL}>À amortir ({seasonF})</div></div>
+      <div style={S.stat}><div style={S.statV(Cl.pri)}>{fmt(totalCAS)}</div><div style={S.statL}>CA réalisé</div></div>
+      <div style={S.stat}><div style={S.statV(totalRes >= 0 ? Cl.ok : Cl.err)}>{totalRes >= 0 ? "+" : ""}{fmt(totalRes)}</div><div style={S.statL}>Résultat</div></div>
     </div>
 
-    {amortData.length === 0 ? <div style={{ textAlign: "center", padding: 30, color: Cl.txtL }}>Aucun produit avec amortissement</div>
+    {amortData.length === 0 ? <div style={S.empty}>Aucun produit avec amortissement</div>
       : <div style={S.card}><table style={S.tbl}>
         <thead><tr><th style={S.th}>Produit</th><th style={S.thR}>Invest.</th><th style={S.thR}>Amort. saison</th><th style={S.thR}>CA</th><th style={S.thR}>Résultat</th><th style={S.thR}>Amort. cumulé</th><th style={S.thR}>Reste</th><th style={S.th}>Statut</th></tr></thead>
         <tbody>{amortData.map(d => {
@@ -46,7 +46,7 @@ export default function AmortTab() {
           const pct = d.totalCost > 0 ? (d.totalAmortDone / d.totalCost) * 100 : 0;
           const ok = d.result >= 0;
           return (<tr key={d.id} style={{ background: ok ? "#f9fefb" : "#fef7f7" }}>
-            <td style={S.td}><strong>{d.name}</strong><div style={{ fontSize: 10, color: Cl.txtL }}>{d.category} · {fmt(d.pr.price)}/u</div></td>
+            <td style={S.td}><strong>{d.name}</strong><div style={{ fontSize: 11, color: Cl.txtL }}>{d.category} · {fmt(d.pr.price)}/u</div></td>
             <td style={S.tdR}>{fmt(d.totalCost)}</td>
             <td style={S.tdR}><strong>{fmt(d.amortSeason)}</strong></td>
             <td style={S.tdR}><strong style={{ color: Cl.pri }}>{fmt(d.caProd)}</strong></td>
