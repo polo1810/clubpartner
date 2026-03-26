@@ -9,7 +9,7 @@ import { generateDevis } from '../utils/pdfGenerator';
 // --- Season tabs shared component ---
 function SeasonTabs({ seasonIds, active, onChange }) {
   return (
-    <div style={{ display: "flex", gap: 3, marginBottom: 8, flexWrap: "wrap" }}>
+    <div style={S.seasonTabs}>
       {seasonIds.map(sid => (
         <button key={sid} style={{ ...S.btnS(active === sid ? "primary" : "ghost"), fontWeight: active === sid ? 700 : 400 }} onClick={() => onChange(sid)}>
           📅 {sid}
@@ -19,22 +19,16 @@ function SeasonTabs({ seasonIds, active, onChange }) {
   );
 }
 
-// --- Helper: get seasonProducts from company, with fallback ---
 function getCompanySP(co, seasons) {
   if (co.seasonProducts && Object.keys(co.seasonProducts).length > 0) return co.seasonProducts;
-  // Fallback: put existing products under current season
-  if ((co.products || []).length > 0) {
-    return { [co.season || seasons[0]?.id || "?"]: [...co.products] };
-  }
+  if ((co.products || []).length > 0) return { [co.season || seasons[0]?.id || "?"]: [...co.products] };
   return {};
 }
 
-// --- Helper: total HT across all seasons ---
 function allSeasonsHT(sp) {
   return Object.values(sp).reduce((total, prods) => total + prods.reduce((t, cp) => t + lineHT(cp), 0), 0);
 }
 
-// --- Helper: has any product in any season ---
 function hasAnyProduct(sp) {
   return Object.values(sp).some(prods => prods.length > 0);
 }
@@ -45,13 +39,11 @@ export function CompanyForm({ data, onSave, onClose }) {
   const [f, setF] = useState(data || { company: "", sector: "", contact: "", phone: "", email: "", adresseNum: "", adresseRue: "", adresseCP: "", adresseCommune: "", formeJuridique: "", siret: "", tvaNumber: "", accountCode: "", season: currentSeason, isPartner: false, dealType: "Partenariat", donAmount: 0, prospectStatus: "Nouveau", partnerStatus: "", callbackDate: "", rdvDate: "", member: members[0], products: [], seasonProducts: {}, seasonDonAmounts: {} });
   const set = (k, v) => setF({ ...f, [k]: v });
 
-  // Season products state
   const [sp, setSp] = useState(() => {
     const existing = getCompanySP(data || {}, seasons);
     if (!existing[currentSeason]) existing[currentSeason] = [];
     return existing;
   });
-  // Season don amounts
   const [sda, setSda] = useState(() => {
     if (data?.seasonDonAmounts && Object.keys(data.seasonDonAmounts).length > 0) return { ...data.seasonDonAmounts };
     return { [currentSeason]: data?.donAmount || 0 };
@@ -82,14 +74,12 @@ export function CompanyForm({ data, onSave, onClose }) {
     if (sda[fromSid] !== undefined) setSda({ ...sda, [activeSeason]: sda[fromSid] });
   };
 
-  // Seasons with data
   const activeSeasons = seasonIds.filter(sid => (sp[sid]?.length > 0) || (sda[sid] > 0));
 
   const doSave = () => {
     const cleanSP = {}; const cleanSDA = {};
     Object.entries(sp).forEach(([k, v]) => { if (v.length > 0) cleanSP[k] = v; });
     Object.entries(sda).forEach(([k, v]) => { if (v > 0) cleanSDA[k] = v; });
-    // Auto-set season to first season with data
     const dataSeasons = seasons.map(s => s.id).filter(sid => cleanSP[sid]?.length > 0 || cleanSDA[sid] > 0);
     const autoSeason = dataSeasons[0] || f.season || currentSeason;
     onSave({ ...f, season: autoSeason, seasonProducts: cleanSP, seasonDonAmounts: cleanSDA, donAmount: totDon, products: cleanSP[currentSeason] || [] });
@@ -116,28 +106,28 @@ export function CompanyForm({ data, onSave, onClose }) {
         {isP && <Field label="Statut partenaire"><select style={S.sel} value={f.partnerStatus} onChange={e => set("partnerStatus", e.target.value)}>{PARTNER_STATUSES.map(s => <option key={s}>{s}</option>)}</select></Field>}
         {f.prospectStatus === "À rappeler" && <Field label="Date rappel"><input type="date" style={S.inp} value={f.callbackDate || ""} onChange={e => set("callbackDate", e.target.value)} /></Field>}
         {f.prospectStatus === "RDV pris" && <Field label="Date RDV"><input type="date" style={S.inp} value={f.rdvDate || ""} onChange={e => set("rdvDate", e.target.value)} /></Field>}
-        <Field label="Saison(s)">{activeSeasons.length > 0 ? <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>{activeSeasons.map(s => <Badge key={s} type="new">{s}</Badge>)}</div> : <select style={S.sel} value={f.season || currentSeason} onChange={e => set("season", e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select>}{activeSeasons.length > 0 && <div style={{ fontSize: 10, color: Cl.txtL, marginTop: 2 }}>Auto-détecté depuis les produits/dons saisis</div>}</Field>
+        <Field label="Saison(s)">{activeSeasons.length > 0 ? <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{activeSeasons.map(s => <Badge key={s} type="new">{s}</Badge>)}</div> : <select style={S.sel} value={f.season || currentSeason} onChange={e => set("season", e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select>}{activeSeasons.length > 0 && <div style={{ fontSize: 11, color: Cl.txtL, marginTop: 4 }}>Auto-détecté depuis les produits/dons saisis</div>}</Field>
         <Field label="Responsable"><MemberSelect value={f.member} onChange={v => set("member", v)} members={members} onAdd={addMember} /></Field>
       </div>
 
       {/* Products per season */}
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 14 }}>
         <label style={S.lbl}>{isP ? "Produits validés" : "Produits proposés"}{isM ? " (contreparties)" : ""} — par saison</label>
         <SeasonTabs seasonIds={seasonIds} active={activeSeason} onChange={(sid) => { if (!sp[sid]) setSp({ ...sp, [sid]: [] }); setActiveSeason(sid); }} />
-        {Object.keys(sp).length > 1 && <div style={{ marginBottom: 6, fontSize: 10, color: Cl.txtL }}>
+        {Object.keys(sp).length > 1 && <div style={{ marginBottom: 8, fontSize: 11, color: Cl.txtL }}>
           Copier depuis : {seasonIds.filter(s => s !== activeSeason && (sp[s]?.length > 0 || sda[s] > 0)).map(s => (
-            <button key={s} style={{ ...S.btnS("ghost"), fontSize: 10, padding: "1px 6px" }} onClick={() => copyFrom(s)}>📋 {s}</button>
+            <button key={s} style={{ ...S.btnS("ghost"), fontSize: 11, padding: "2px 8px" }} onClick={() => copyFrom(s)}>📋 {s}</button>
           ))}
         </div>}
-        {isM && <div style={{ marginBottom: 8, padding: 8, background: Cl.purL, borderRadius: 6, border: `1px solid ${Cl.pur}` }}>
+        {isM && <div style={{ marginBottom: 10, padding: 10, background: Cl.purL, borderRadius: 10, border: `1px solid ${Cl.pur}` }}>
           <label style={{ ...S.lbl, color: Cl.pur }}>💜 Montant du don — {activeSeason}</label>
-          <input type="number" style={{ ...S.inp, fontWeight: 700, fontSize: 16 }} value={sda[activeSeason] || 0} onChange={e => setSda({ ...sda, [activeSeason]: Math.max(0, +e.target.value) })} />
+          <input type="number" style={S.mecInp} value={sda[activeSeason] || 0} onChange={e => setSda({ ...sda, [activeSeason]: Math.max(0, +e.target.value) })} />
           {curDon > 0 && curHT > 0 && <div style={S.alert(curRatio <= 25 ? "success" : "danger")}>{curRatio <= 25 ? `✅ Contreparties = ${curRatio.toFixed(1)}% du don (max 25%)` : `⚠️ ${curRatio.toFixed(1)}% > 25% !`}</div>}
         </div>}
         <ProductPicker products={products} selected={curProds} onToggle={togP} cats={cats} currentSeason={activeSeason} />
       </div>
 
-      {curProds.length > 0 && <table style={{ ...S.tbl, marginTop: 8 }}><thead><tr><th style={S.th}>Produit</th><th style={S.th}>Catalogue</th><th style={S.th}>Remise</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th><th style={S.th}></th></tr></thead>
+      {curProds.length > 0 && <table style={{ ...S.tbl, marginTop: 10 }}><thead><tr><th style={S.th}>Produit</th><th style={S.th}>Catalogue</th><th style={S.th}>Remise</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th><th style={S.th}></th></tr></thead>
         <tbody>{curProds.map(spi => { const pr = products.find(x => x.id === spi.productId); if (!pr) return null; const catPrice = getPrice(pr, activeSeason).price || getPrice(pr, currentSeason).price;
           const applyDiscount = (type, val) => {
             const v = Math.max(0, val);
@@ -150,19 +140,19 @@ export function CompanyForm({ data, onSave, onClose }) {
           <tr key={spi.productId}>
             <td style={S.td}>{pr.name}</td>
             <td style={S.td}><span style={{ color: Cl.txtL }}>{fmt(catPrice)}</span></td>
-            <td style={S.td}><div style={{ display: "flex", gap: 2, alignItems: "center" }}>
-              <input type="number" min="0" style={{ ...S.inp, width: 50, fontSize: 11 }} value={dv} onChange={e => applyDiscount(dt, +e.target.value)} />
-              <select style={{ ...S.sel, width: 42, fontSize: 10, padding: "3px 2px" }} value={dt} onChange={e => applyDiscount(e.target.value, dv)}><option value="%">%</option><option value="€">€</option></select>
+            <td style={S.td}><div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <input type="number" min="0" style={S.inpW(50)} value={dv} onChange={e => applyDiscount(dt, +e.target.value)} />
+              <select style={{ ...S.sel, width: 44, fontSize: 11, padding: "3px 2px" }} value={dt} onChange={e => applyDiscount(e.target.value, dv)}><option value="%">%</option><option value="€">€</option></select>
             </div></td>
-            <td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 75, fontWeight: 700 }} value={spi.unitPrice} onChange={e => setCP(curProds.map(x => x.productId === spi.productId ? { ...x, unitPrice: Math.max(0, +e.target.value), discountType: "", discountValue: 0 } : x))} />{pctOff > 0 && <div style={{ fontSize: 9, color: Cl.ok }}>-{pctOff}%</div>}</td>
-            <td style={S.td}><input type="number" min="1" style={{ ...S.inp, width: 45 }} value={spi.qty} onChange={e => setCP(curProds.map(x => x.productId === spi.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td>
+            <td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 80, fontWeight: 700 }} value={spi.unitPrice} onChange={e => setCP(curProds.map(x => x.productId === spi.productId ? { ...x, unitPrice: Math.max(0, +e.target.value), discountType: "", discountValue: 0 } : x))} />{pctOff > 0 && <div style={{ fontSize: 10, color: Cl.ok }}>-{pctOff}%</div>}</td>
+            <td style={S.td}><input type="number" min="1" style={S.inpW(50)} value={spi.qty} onChange={e => setCP(curProds.map(x => x.productId === spi.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td>
             <td style={S.tdR}><strong>{fmt(lineHT(spi))}</strong></td>
             <td style={S.td}><button style={S.btnS("ghost")} onClick={() => setCP(curProds.filter(x => x.productId !== spi.productId))}>✕</button></td>
           </tr>); })}</tbody></table>}
-      {curProds.length > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: Cl.txtL }}>Sous-total {activeSeason} : {fmt(curHT)} HT</div>}
-      {isM && totDon > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 14, fontWeight: 700, color: Cl.pur }}>Don total : {fmt(totDon)}</div>}
-      {hasAnyProduct(sp) && <div style={{ textAlign: "right", marginTop: 2, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Contreparties total : {fmt(totalHT)} HT</div>}
-      <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      {curProds.length > 0 && <div style={S.subTL}>Sous-total {activeSeason} : {fmt(curHT)} HT</div>}
+      {isM && totDon > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 15, fontWeight: 700, color: Cl.pur }}>Don total : {fmt(totDon)}</div>}
+      {hasAnyProduct(sp) && <div style={S.subT}>Contreparties total : {fmt(totalHT)} HT</div>}
+      <div style={{ marginTop: 14, display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button style={S.btn("ghost")} onClick={onClose}>Annuler</button>
         <button style={{ ...S.btn("primary"), opacity: isM && !allRatiosOK ? 0.5 : 1 }} disabled={isM && !allRatiosOK} onClick={doSave}>Enregistrer</button>
       </div>
@@ -185,7 +175,6 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
   const lastNote = (co.notes || []).sort((a, b) => b.date.localeCompare(a.date))[0];
   const isM = co.dealType === "Mécénat";
 
-  // Season products
   const coSP = getCompanySP(co, seasons);
   const [editSP, setEditSP] = useState({ ...coSP });
   const [editSDA, setEditSDA] = useState({ ...(co.seasonDonAmounts || {}) });
@@ -238,10 +227,10 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         <div><span style={S.lbl}>Téléphone</span><input style={S.inp} value={co.phone || ""} onChange={e => setCo({ ...co, phone: e.target.value })} /></div>
         <div><span style={S.lbl}>Email</span><input style={S.inp} value={co.email || ""} onChange={e => setCo({ ...co, email: e.target.value })} /></div>
         <div><span style={S.lbl}>Forme juridique</span><input style={S.inp} value={co.formeJuridique || ""} onChange={e => setCo({ ...co, formeJuridique: e.target.value })} placeholder="SAS, SARL..." /></div>
-        <div><span style={S.lbl}>Adresse N°</span><input style={S.inp} value={co.adresseNum || ""} onChange={e => setCo({ ...co, adresseNum: e.target.value })} placeholder="12" /></div>
-        <div><span style={S.lbl}>Rue</span><input style={S.inp} value={co.adresseRue || ""} onChange={e => setCo({ ...co, adresseRue: e.target.value })} placeholder="avenue du Stade" /></div>
-        <div><span style={S.lbl}>Code postal</span><input style={S.inp} value={co.adresseCP || ""} onChange={e => setCo({ ...co, adresseCP: e.target.value })} placeholder="49300" /></div>
-        <div><span style={S.lbl}>Commune</span><input style={S.inp} value={co.adresseCommune || ""} onChange={e => setCo({ ...co, adresseCommune: e.target.value })} placeholder="Cholet" /></div>
+        <div><span style={S.lbl}>Adresse N°</span><input style={S.inp} value={co.adresseNum || ""} onChange={e => setCo({ ...co, adresseNum: e.target.value })} /></div>
+        <div><span style={S.lbl}>Rue</span><input style={S.inp} value={co.adresseRue || ""} onChange={e => setCo({ ...co, adresseRue: e.target.value })} /></div>
+        <div><span style={S.lbl}>Code postal</span><input style={S.inp} value={co.adresseCP || ""} onChange={e => setCo({ ...co, adresseCP: e.target.value })} /></div>
+        <div><span style={S.lbl}>Commune</span><input style={S.inp} value={co.adresseCommune || ""} onChange={e => setCo({ ...co, adresseCommune: e.target.value })} /></div>
         <div><span style={S.lbl}>SIRET</span><input style={S.inp} value={co.siret || ""} onChange={e => setCo({ ...co, siret: e.target.value })} /></div>
         <div><span style={S.lbl}>N° TVA</span><input style={S.inp} value={co.tvaNumber || ""} onChange={e => setCo({ ...co, tvaNumber: e.target.value })} /></div>
         <div><span style={S.lbl}>Compte comptable</span><input style={{ ...S.inp, fontFamily: "monospace" }} value={co.accountCode || ""} onChange={e => setCo({ ...co, accountCode: e.target.value })} /></div>
@@ -255,62 +244,61 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
       </div>
 
       {/* Type selector */}
-      <div style={{ ...S.section, marginTop: 12 }}>
+      <div style={{ ...S.section, marginTop: 14 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span style={S.lbl}>Type :</span>
           <button style={S.chip(!isM)} onClick={() => setCo({ ...co, dealType: "Partenariat" })}>🤝 Partenariat</button>
           <button style={S.chip(isM)} onClick={() => setCo({ ...co, dealType: "Mécénat" })}>💜 Mécénat</button>
         </div>
-        {isM && totDon > 0 && <div style={{ marginTop: 6, fontSize: 11, color: Cl.pur }}>Don total : <strong>{fmt(totDon)}</strong> (modifiable depuis les onglets produits ci-dessous)</div>}
+        {isM && totDon > 0 && <div style={{ marginTop: 8, fontSize: 12, color: Cl.pur }}>Don total : <strong>{fmt(totDon)}</strong> (modifiable depuis les onglets produits ci-dessous)</div>}
       </div>
 
       {!co.isPartner && <div style={S.section}>
         <div style={S.sectionTitle}>Statut prospection</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>{P_STATUSES.map(s => (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{P_STATUSES.map(s => (
           <button key={s} onClick={() => setCo({ ...co, prospectStatus: s })} style={{ ...S.chip(co.prospectStatus === s), fontWeight: co.prospectStatus === s ? 700 : 400 }}>{s}</button>
         ))}</div>
-        {co.prospectStatus === "À rappeler" && <div style={{ marginTop: 6 }}><span style={S.lbl}>📅 Date rappel</span><input type="date" style={{ ...S.inp, width: 160 }} value={co.callbackDate || ""} onChange={e => setCo({ ...co, callbackDate: e.target.value })} /></div>}
-        {co.prospectStatus === "RDV pris" && <div style={{ marginTop: 6 }}><span style={S.lbl}>📅 Date RDV</span><input type="date" style={{ ...S.inp, width: 160 }} value={co.rdvDate || ""} onChange={e => setCo({ ...co, rdvDate: e.target.value })} /></div>}
-        <div style={{ marginTop: 10, borderTop: `1px solid ${Cl.brd}`, paddingTop: 8 }}>
-          <button style={{ ...S.btnS("ghost"), fontSize: 11, color: Cl.ok }} onClick={() => { convertToPartner(co.id); onClose(); }}>→ Convertir en partenaire</button>
+        {co.prospectStatus === "À rappeler" && <div style={{ marginTop: 8 }}><span style={S.lbl}>📅 Date rappel</span><input type="date" style={{ ...S.inp, width: 160 }} value={co.callbackDate || ""} onChange={e => setCo({ ...co, callbackDate: e.target.value })} /></div>}
+        {co.prospectStatus === "RDV pris" && <div style={{ marginTop: 8 }}><span style={S.lbl}>📅 Date RDV</span><input type="date" style={{ ...S.inp, width: 160 }} value={co.rdvDate || ""} onChange={e => setCo({ ...co, rdvDate: e.target.value })} /></div>}
+        <div style={{ marginTop: 12, borderTop: `1px solid ${Cl.brd}`, paddingTop: 10 }}>
+          <button style={S.btnConvert} onClick={() => { convertToPartner(co.id); onClose(); }}>🤝 Convertir en partenaire</button>
         </div>
       </div>}
 
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 14 }}>
         <div style={S.cT}>📝 Journal</div>
-        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <input style={{ ...S.inp, flex: 1 }} placeholder="Ajouter une note..." value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && noteText.trim() && (setCo({ ...co, notes: [{ id: uid(), date: todayStr, text: noteText.trim() }, ...(co.notes || [])] }), setNoteText(""))} />
           <button style={S.btn("primary")} onClick={() => { if (noteText.trim()) { setCo({ ...co, notes: [{ id: uid(), date: todayStr, text: noteText.trim() }, ...(co.notes || [])] }); setNoteText(""); } }}>+</button>
         </div>
         {(co.notes || []).sort((a, b) => b.date.localeCompare(a.date)).map(n => (
-          <div key={n.id} style={{ padding: "5px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 12 }}><span style={{ fontWeight: 600, color: Cl.pri, marginRight: 6 }}>{n.date}</span>{n.text}</div>
+          <div key={n.id} style={S.noteItem}><span style={S.noteDate}>{n.date}</span>{n.text}</div>
         ))}
       </div>
 
-      {/* PRODUITS — avec onglets par saison */}
-      <div style={{ marginTop: 12 }}>
+      {/* PRODUITS */}
+      <div style={{ marginTop: 14 }}>
         <div style={S.cT}>📦 {co.isPartner ? "Produits validés" : "Produits proposés"} — par saison</div>
-        {!editingProducts && <div style={{ marginBottom: 10 }}><button style={{ ...S.btn("primary"), width: "100%" }} onClick={startEdit}>✏️ Modifier / Ajouter des produits</button></div>}
+        {!editingProducts && <div style={{ marginBottom: 12 }}><button style={{ ...S.btn("primary"), width: "100%" }} onClick={startEdit}>✏️ Modifier / Ajouter des produits</button></div>}
 
-        {/* Season tabs (shown in both modes) */}
         <SeasonTabs seasonIds={seasonIds} active={activeSeason} onChange={(sid) => {
           if (editingProducts && !editSP[sid]) setEditSP(prev => ({ ...prev, [sid]: [] }));
           setActiveSeason(sid);
         }} />
 
         {editingProducts ? (<>
-          {seasonIds.filter(s => s !== activeSeason && (editSP[s]?.length > 0 || editSDA[s] > 0)).length > 0 && <div style={{ marginBottom: 6, fontSize: 10, color: Cl.txtL }}>
+          {seasonIds.filter(s => s !== activeSeason && (editSP[s]?.length > 0 || editSDA[s] > 0)).length > 0 && <div style={{ marginBottom: 8, fontSize: 11, color: Cl.txtL }}>
             Copier depuis : {seasonIds.filter(s => s !== activeSeason && (editSP[s]?.length > 0 || editSDA[s] > 0)).map(s => (
-              <button key={s} style={{ ...S.btnS("ghost"), fontSize: 10, padding: "1px 6px" }} onClick={() => copyFrom(s)}>📋 {s}</button>
+              <button key={s} style={{ ...S.btnS("ghost"), fontSize: 11, padding: "2px 8px" }} onClick={() => copyFrom(s)}>📋 {s}</button>
             ))}
           </div>}
-          {isM && <div style={{ marginBottom: 8, padding: 8, background: Cl.purL, borderRadius: 6, border: `1px solid ${Cl.pur}` }}>
+          {isM && <div style={{ marginBottom: 10, padding: 10, background: Cl.purL, borderRadius: 10, border: `1px solid ${Cl.pur}` }}>
             <label style={{ ...S.lbl, color: Cl.pur }}>💜 Montant du don — {activeSeason}</label>
-            <input type="number" style={{ ...S.inp, fontWeight: 700, fontSize: 16 }} value={editSDA[activeSeason] || 0} onChange={e => setEditSDA({ ...editSDA, [activeSeason]: Math.max(0, +e.target.value) })} />
+            <input type="number" style={S.mecInp} value={editSDA[activeSeason] || 0} onChange={e => setEditSDA({ ...editSDA, [activeSeason]: Math.max(0, +e.target.value) })} />
             {editCurDon > 0 && editCurHT > 0 && <div style={S.alert(editCurRatio <= 25 ? "success" : "danger")}>{editCurRatio <= 25 ? `✅ Contreparties = ${editCurRatio.toFixed(1)}% du don (max 25%)` : `⚠️ ${editCurRatio.toFixed(1)}% > 25% !`}</div>}
           </div>}
           <ProductPicker products={products} selected={editProds} onToggle={togP} cats={cats} currentSeason={activeSeason} />
-          {editProds.length > 0 && <table style={{ ...S.tbl, marginTop: 8 }}>
+          {editProds.length > 0 && <table style={{ ...S.tbl, marginTop: 10 }}>
             <thead><tr><th style={S.th}>Produit</th><th style={S.th}>Catalogue</th><th style={S.th}>Remise</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th><th style={S.th}></th></tr></thead>
             <tbody>{editProds.map(sp => {
               const pr = products.find(x => x.id === sp.productId);
@@ -327,36 +315,35 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
                 <tr key={sp.productId}>
                   <td style={S.td}>{pr.name}</td>
                   <td style={S.td}><span style={{ color: Cl.txtL }}>{fmt(catPrice)}</span></td>
-                  <td style={S.td}><div style={{ display: "flex", gap: 2, alignItems: "center" }}>
-                    <input type="number" min="0" style={{ ...S.inp, width: 50, fontSize: 11 }} value={dv} onChange={e => applyDiscount(dt, +e.target.value)} />
-                    <select style={{ ...S.sel, width: 42, fontSize: 10, padding: "3px 2px" }} value={dt} onChange={e => applyDiscount(e.target.value, dv)}><option value="%">%</option><option value="€">€</option></select>
+                  <td style={S.td}><div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <input type="number" min="0" style={S.inpW(50)} value={dv} onChange={e => applyDiscount(dt, +e.target.value)} />
+                    <select style={{ ...S.sel, width: 44, fontSize: 11, padding: "3px 2px" }} value={dt} onChange={e => applyDiscount(e.target.value, dv)}><option value="%">%</option><option value="€">€</option></select>
                   </div></td>
-                  <td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 75, fontWeight: 700 }} value={sp.unitPrice} onChange={e => setEditProds(editProds.map(x => x.productId === sp.productId ? { ...x, unitPrice: Math.max(0, +e.target.value), discountType: "", discountValue: 0 } : x))} />{pctOff > 0 && <div style={{ fontSize: 9, color: Cl.ok }}>-{pctOff}%</div>}</td>
-                  <td style={S.td}><input type="number" min="1" style={{ ...S.inp, width: 45 }} value={sp.qty} onChange={e => setEditProds(editProds.map(x => x.productId === sp.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td>
+                  <td style={S.td}><input type="number" min="0" style={{ ...S.inp, width: 80, fontWeight: 700 }} value={sp.unitPrice} onChange={e => setEditProds(editProds.map(x => x.productId === sp.productId ? { ...x, unitPrice: Math.max(0, +e.target.value), discountType: "", discountValue: 0 } : x))} />{pctOff > 0 && <div style={{ fontSize: 10, color: Cl.ok }}>-{pctOff}%</div>}</td>
+                  <td style={S.td}><input type="number" min="1" style={S.inpW(50)} value={sp.qty} onChange={e => setEditProds(editProds.map(x => x.productId === sp.productId ? { ...x, qty: Math.max(1, +e.target.value) } : x))} /></td>
                   <td style={S.tdR}><strong>{fmt(lineHT(sp))}</strong></td>
                   <td style={S.td}><button style={S.btnS("ghost")} onClick={() => setEditProds(editProds.filter(x => x.productId !== sp.productId))}>✕</button></td>
                 </tr>
               );
             })}</tbody>
           </table>}
-          {editProds.length > 0 && <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: Cl.txtL }}>Sous-total {activeSeason} : {fmt(editCurHT)} HT</div>}
-          {hasAnyProduct(editSP) && <div style={{ textAlign: "right", marginTop: 4, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Contreparties total : {fmt(editTotalHT)} HT</div>}
-          <div style={{ marginTop: 8, display: "flex", gap: 6, justifyContent: "flex-end" }}>
+          {editProds.length > 0 && <div style={S.subTL}>Sous-total {activeSeason} : {fmt(editCurHT)} HT</div>}
+          {hasAnyProduct(editSP) && <div style={S.subT}>Contreparties total : {fmt(editTotalHT)} HT</div>}
+          <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button style={S.btn("ghost")} onClick={() => setEditingProducts(false)}>Annuler</button>
             <button style={S.btn("success")} onClick={saveProducts}>✅ Enregistrer</button>
           </div>
         </>) : (<>
-          {/* Read-only view for active season */}
-          {isM && (coSDA[activeSeason] || 0) > 0 && <div style={{ marginBottom: 6, fontSize: 12, color: Cl.pur }}>💜 Don {activeSeason} : <strong>{fmt(coSDA[activeSeason])}</strong></div>}
+          {isM && (coSDA[activeSeason] || 0) > 0 && <div style={{ marginBottom: 8, fontSize: 13, color: Cl.pur }}>💜 Don {activeSeason} : <strong>{fmt(coSDA[activeSeason])}</strong></div>}
           {(() => {
             const viewProds = coSP[activeSeason] || [];
-            if (viewProds.length === 0 && !(isM && (coSDA[activeSeason] || 0) > 0)) return <p style={{ fontSize: 12, color: Cl.txtL }}>Aucun produit pour {activeSeason} — cliquez Modifier pour en ajouter</p>;
+            if (viewProds.length === 0 && !(isM && (coSDA[activeSeason] || 0) > 0)) return <p style={{ fontSize: 13, color: Cl.txtL }}>Aucun produit pour {activeSeason} — cliquez Modifier pour en ajouter</p>;
             if (viewProds.length === 0) return null;
             const viewHT = viewProds.reduce((t, cp) => t + lineHT(cp), 0);
             const viewDon = coSDA[activeSeason] || 0;
             const viewRatio = isM && viewDon > 0 ? (viewHT / viewDon) * 100 : 0;
             return (<>
-              <table style={{ ...S.tbl, marginTop: 4 }}>
+              <table style={{ ...S.tbl, marginTop: 6 }}>
                 <thead><tr><th style={S.th}>Produit</th><th style={S.th}>Catalogue</th><th style={S.th}>Prix conclu</th><th style={S.th}>Qté</th><th style={S.thR}>Total HT</th></tr></thead>
                 <tbody>{viewProds.map(cp => {
                   const pr = products.find(x => x.id === cp.productId);
@@ -365,36 +352,36 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
                   const pctOff = catPrice > 0 ? Math.round((1 - cp.unitPrice / catPrice) * 100) : 0;
                   return (
                     <tr key={cp.productId}>
-                      <td style={S.td}><strong>{pr.name}</strong><span style={{ fontSize: 10, color: Cl.txtL, marginLeft: 4 }}>{pr.category}</span></td>
+                      <td style={S.td}><strong>{pr.name}</strong><span style={{ fontSize: 11, color: Cl.txtL, marginLeft: 6 }}>{pr.category}</span></td>
                       <td style={S.td}><span style={{ color: Cl.txtL }}>{fmt(catPrice)}</span></td>
-                      <td style={S.td}>{fmt(cp.unitPrice)}{pctOff > 0 && <span style={{ fontSize: 9, color: Cl.ok, marginLeft: 4 }}>-{pctOff}%</span>}</td>
+                      <td style={S.td}>{fmt(cp.unitPrice)}{pctOff > 0 && <span style={{ fontSize: 10, color: Cl.ok, marginLeft: 6 }}>-{pctOff}%</span>}</td>
                       <td style={S.td}>{cp.qty}</td>
                       <td style={S.tdR}><strong>{fmt(lineHT(cp))}</strong></td>
                     </tr>
                   );
                 })}</tbody>
               </table>
-              <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: Cl.txtL }}>Sous-total {activeSeason} : {fmt(viewHT)} HT</div>
-              {isM && viewDon > 0 && viewHT > 0 && <div style={{ textAlign: "right", fontSize: 11, color: viewRatio <= 25 ? Cl.ok : Cl.err, fontWeight: 700 }}>Ratio : {viewRatio.toFixed(1)}% du don</div>}
+              <div style={S.subTL}>Sous-total {activeSeason} : {fmt(viewHT)} HT</div>
+              {isM && viewDon > 0 && viewHT > 0 && <div style={{ textAlign: "right", fontSize: 12, color: viewRatio <= 25 ? Cl.ok : Cl.err, fontWeight: 700 }}>Ratio : {viewRatio.toFixed(1)}% du don</div>}
             </>);
           })()}
-          {hasAnyProduct(coSP) && <div style={{ textAlign: "right", marginTop: 4, fontSize: 14, fontWeight: 700, color: Cl.pri }}>Contreparties total : {fmt(allSeasonsHT(coSP))} HT</div>}
+          {hasAnyProduct(coSP) && <div style={S.subT}>Contreparties total : {fmt(allSeasonsHT(coSP))} HT</div>}
         </>)}
       </div>
 
       {/* Devis PDF */}
-      {(hasAnyProduct(coSP) || totDon > 0) && <div style={{ marginTop: 10 }}>
-        <button style={{ ...S.btn("ghost"), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => generateDevis(clubInfo, co, co.products, products, currentSeason, [], seasons)}>📄 Télécharger le devis / proposition</button>
+      {(hasAnyProduct(coSP) || totDon > 0) && <div style={{ marginTop: 12 }}>
+        <button style={{ ...S.btn("ghost"), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={() => generateDevis(clubInfo, co, co.products, products, currentSeason, [], seasons)}>📄 Télécharger le devis / proposition</button>
       </div>}
 
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 14 }}>
         <div style={S.fx}><div style={S.cT}>📋 Actions</div><button style={S.btnS("ghost")} onClick={() => openAddAction(co.id, co.isPartner ? "Partenariat" : "Prospection")}>+</button></div>
         {(co.actions || []).map(a => (
-          <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 11, opacity: a.done ? 0.5 : 1 }}>
+          <div key={a.id} style={S.actItem(a.done)}>
             <input type="checkbox" checked={a.done} onChange={() => setCo({ ...co, actions: co.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) })} />
             <Badge type={statusBType(a.category) || "draft"}>{a.category}</Badge>
             <strong style={{ flex: 1 }}>{a.type}</strong><span style={{ color: Cl.txtL }}>{a.date}</span>
-            <span style={{ color: Cl.pri, fontSize: 10 }}>👤 {a.assignee}</span>
+            <span style={{ color: Cl.pri, fontSize: 11 }}>👤 {a.assignee}</span>
             <button style={S.btnS("ghost")} onClick={() => setMiniForm({ title: "Modifier l'action", fields: [
               { key: "type", label: "Intitulé", value: a.type },
               { key: "category", label: "Catégorie", value: a.category, type: "select", options: ACTION_TYPES },
@@ -407,10 +394,10 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         ))}
       </div>
 
-      {myContracts.length > 0 && <div style={{ marginTop: 12 }}>
+      {myContracts.length > 0 && <div style={{ marginTop: 14 }}>
         <div style={S.cT}>📝 Contrats liés</div>
         {myContracts.map(con => (
-          <div key={con.id} style={{ ...S.card, cursor: "pointer", padding: 10 }} onClick={() => { if (onOpenContract) onOpenContract(con); onClose(); }}>
+          <div key={con.id} style={{ ...S.card, cursor: "pointer", padding: 12 }} onClick={() => { if (onOpenContract) onOpenContract(con); onClose(); }}>
             <Badge type={con.type === "Mécénat" ? "mecenat" : "partenariat"}>{con.type}</Badge>
             <Badge type={['Signé','Facturé','Payé'].includes(con.status) ? "signed" : "pending"}>{con.status}</Badge>
           </div>
@@ -418,15 +405,15 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
       </div>}
 
       {/* Convert / Repass per season */}
-      <div style={{ marginTop: 16, borderTop: `1px solid ${Cl.brd}`, paddingTop: 12 }}>
+      <div style={{ marginTop: 18, borderTop: `1px solid ${Cl.brd}`, paddingTop: 14 }}>
         {co.isPartner || (co.seasonStatus && Object.values(co.seasonStatus).includes("partenaire")) ? (<>
           {!showRepass ? (
             <div style={{ textAlign: "center" }}>
-              <button style={{ ...S.btn("ghost"), fontSize: 12, color: Cl.warn }} onClick={() => { setShowRepass(true); setRepassSeason(""); }}>↩️ Repasser en prospect pour une saison</button>
+              <button style={{ ...S.btn("ghost"), color: Cl.warn, fontSize: 13 }} onClick={() => { setShowRepass(true); setRepassSeason(""); }}>↩️ Repasser en prospect pour une saison</button>
             </div>
           ) : (
-            <div style={{ background: Cl.warnL, padding: 10, borderRadius: 8, border: `1px solid ${Cl.warn}` }}>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>↩️ Repasser en prospect — pour quelle saison ?</div>
+            <div style={S.repassZone}>
+              <div style={S.repassH}>↩️ Repasser en prospect — pour quelle saison ?</div>
               <select style={S.sel} value={repassSeason} onChange={e => setRepassSeason(e.target.value)}>
                 <option value="">-- Choisir --</option>
                 {seasons.map(s => {
@@ -434,19 +421,16 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
                   return <option key={s.id} value={s.id} disabled={hasCon}>{s.name}{hasCon ? " (contrat en cours)" : ""}</option>;
                 })}
               </select>
-              {repassSeason && hasContractForSeason(co, repassSeason) && <div style={{ fontSize: 11, color: Cl.err, marginTop: 4 }}>⚠️ Un contrat signé couvre cette saison — impossible de repasser en prospect.</div>}
-              <div style={{ display: "flex", gap: 6, marginTop: 8, justifyContent: "center" }}>
+              {repassSeason && hasContractForSeason(co, repassSeason) && <div style={{ fontSize: 12, color: Cl.err, marginTop: 6 }}>⚠️ Un contrat signé couvre cette saison — impossible de repasser en prospect.</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 10, justifyContent: "center" }}>
                 <button style={S.btn("ghost")} onClick={() => setShowRepass(false)}>Annuler</button>
-                <button style={{ ...S.btn("primary"), background: Cl.warn }} disabled={!repassSeason || hasContractForSeason(co, repassSeason)} onClick={() => {
-                  setSeasonStatus(co.id, repassSeason, "prospect");
-                  setShowRepass(false);
-                }}>Confirmer</button>
+                <button style={{ ...S.btn("primary"), background: Cl.warn }} disabled={!repassSeason || hasContractForSeason(co, repassSeason)} onClick={() => { setSeasonStatus(co.id, repassSeason, "prospect"); setShowRepass(false); }}>Confirmer</button>
               </div>
             </div>
           )}
         </>) : (
           <div style={{ textAlign: "center" }}>
-            <button style={{ ...S.btn("primary"), fontSize: 12 }} onClick={() => { convertToPartner(co.id); onClose(); }}>🤝 Convertir en partenaire</button>
+            <button style={S.btnConvert} onClick={() => { convertToPartner(co.id); onClose(); }}>🤝 Convertir en partenaire</button>
           </div>
         )}
       </div>
@@ -456,38 +440,32 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         const coInvoices = invoices.filter(i => i.companyId === co.id);
         const hasInvoices = coInvoices.filter(i => i.type !== "cerfa").length > 0;
         const isSuperDemo = auth.isSuperAdmin && auth.member?.club_id === "demo";
-        return <div style={{ marginTop: 16, borderTop: `1px solid ${Cl.brd}`, paddingTop: 12 }}>
+        return <div style={{ marginTop: 18, borderTop: `1px solid ${Cl.brd}`, paddingTop: 14 }}>
           {!showDelete ? (
             <div style={{ textAlign: "center" }}>
               {hasInvoices && !isSuperDemo ? (
-                <div style={{ fontSize: 11, color: Cl.txtL }}>
+                <div style={{ fontSize: 12, color: Cl.txtL }}>
                   ⚠️ Ce {co.isPartner ? "partenaire" : "prospect"} a des factures — suppression impossible.
-                  <button style={{ ...S.btn("ghost"), fontSize: 11, color: Cl.warn, marginTop: 6, display: "block", margin: "6px auto 0" }} onClick={() => {
-                    coInvoices.forEach(inv => {
-                      if (inv.type === "cerfa" || inv.status === "Annulée") return;
-                      setInvoices(is => is.map(i => i.id === inv.id ? { ...i, status: "Annulée" } : i));
-                    });
+                  <button style={{ ...S.btn("ghost"), fontSize: 12, color: Cl.warn, marginTop: 8, display: "block", margin: "8px auto 0" }} onClick={() => {
+                    coInvoices.forEach(inv => { if (inv.type === "cerfa" || inv.status === "Annulée") return; setInvoices(is => is.map(i => i.id === inv.id ? { ...i, status: "Annulée" } : i)); });
                     alert("Les factures ont été marquées comme annulées (avoir).");
                   }}>📋 Générer un avoir (annuler les factures)</button>
                 </div>
               ) : (
-                <button style={{ ...S.btn("ghost"), fontSize: 12, color: Cl.err }} onClick={() => setShowDelete(true)}>🗑️ Supprimer {co.isPartner ? "ce partenaire" : "ce prospect"}</button>
+                <button style={S.btnDelete} onClick={() => setShowDelete(true)}>🗑️ Supprimer {co.isPartner ? "ce partenaire" : "ce prospect"}</button>
               )}
-              {isSuperDemo && hasInvoices && <button style={{ ...S.btn("ghost"), fontSize: 10, color: Cl.err, marginTop: 4, opacity: 0.6 }} onClick={() => setShowDelete(true)}>🔓 Forcer la suppression (super admin démo)</button>}
+              {isSuperDemo && hasInvoices && <button style={{ ...S.btnDelete, marginTop: 6, opacity: 0.6 }} onClick={() => setShowDelete(true)}>🔓 Forcer la suppression (super admin démo)</button>}
             </div>
           ) : (
-            <div style={{ background: Cl.errL, padding: 12, borderRadius: 8, border: `2px solid ${Cl.err}` }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: Cl.err, marginBottom: 6 }}>⚠️ Suppression définitive</div>
-              <div style={{ fontSize: 11, color: Cl.err, marginBottom: 8 }}>Cette action est irréversible. Les contrats et données liés seront aussi supprimés. Tapez <strong>SUPPRIMER</strong> pour confirmer.</div>
-              <input style={{ ...S.inp, borderColor: Cl.err, textAlign: "center", fontSize: 14, fontWeight: 700, letterSpacing: 2 }} value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value.toUpperCase())} placeholder="Tapez SUPPRIMER" autoFocus />
-              <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "center" }}>
+            <div style={S.delZone}>
+              <div style={S.delTitle}>⚠️ Suppression définitive</div>
+              <div style={S.delText}>Cette action est irréversible. Les contrats et données liés seront aussi supprimés. Tapez <strong>SUPPRIMER</strong> pour confirmer.</div>
+              <input style={S.delInp} value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value.toUpperCase())} placeholder="Tapez SUPPRIMER" autoFocus />
+              <div style={{ display: "flex", gap: 8, marginTop: 10, justifyContent: "center" }}>
                 <button style={S.btn("ghost")} onClick={() => { setShowDelete(false); setDeleteConfirm(""); }}>Annuler</button>
                 <button style={{ ...S.btn("primary"), background: Cl.err, opacity: deleteConfirm === "SUPPRIMER" ? 1 : 0.3 }} disabled={deleteConfirm !== "SUPPRIMER"} onClick={() => {
-                  // Delete related contracts
                   setContracts(cs => cs.filter(c => c.companyId !== co.id));
-                  // Delete related invoices
                   setInvoices(is => is.filter(i => i.companyId !== co.id));
-                  // Delete company
                   setCompanies(cs => cs.filter(c => c.id !== co.id));
                   onClose();
                 }}>🗑️ Confirmer la suppression</button>
