@@ -154,7 +154,7 @@ export default function ProspectsTab() {
   };
 
   return (<>
-    <div style={S.fx}><h2 style={S.pageH}>🎯 Prospects ({filtered.length})</h2>
+    <div style={S.fx}><h2 style={S.pageH}>Prospects ({filtered.length})</h2>
       <div style={S.coActions}>
         <button style={S.btn("ghost")} onClick={() => setShowImport(true)}>📥 Import</button>
         <button style={S.btn("primary")} onClick={() => { setEditCo(null); setShowForm(true); }}>+ Prospect</button>
