@@ -169,12 +169,12 @@ function AppInner() {
   const visibleMore = moreTabs.filter(t => t.roles.includes(auth.role));
   const isMoreTab = visibleMore.some(t => t.id === tab);
   const memberName = auth.member?.name || auth.member?.email || "";
-  const tc = ctx.clubInfo?.themeColor || "#1e293b";
+  const tc = ctx.clubInfo?.themeColor || "#3b5998";
   const logo = ctx.clubInfo?.logo;
 
   return (
     <div style={S.app}>
-      <div style={{ ...S.header, background: `linear-gradient(135deg, ${tc} 0%, ${tc}dd 100%)` }}>
+      <div style={S.header}>
         <div style={S.hdrLeft}>
           {logo ? <img src={logo} alt="Logo" style={S.hdrLogo} /> : <span style={S.hdrLogoFb}>🏟️</span>}
           <div>
@@ -191,10 +191,10 @@ function AppInner() {
         </div>
       </div>
       <nav style={S.nav}>
-          {visiblePrimary.map(t => <button key={t.id} style={S.navB(tab === t.id)} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}
+          {visiblePrimary.map(t => <button key={t.id} style={{ ...S.navB(tab === t.id), ...(tab === t.id ? { borderBottomColor: tc } : {}) }} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}
           {visibleMore.length > 0 && <div style={S.navMore}>
-            <button style={S.navB(isMoreTab)} onClick={() => setShowMore(!showMore)}>{isMoreTab ? visibleMore.find(t => t.id === tab)?.label : "Plus"} ▾</button>
-            {showMore && <div style={S.navMoreMenu}>{visibleMore.map(t => <button key={t.id} style={S.navMoreItem} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}</div>}
+            <button style={{ ...S.navB(isMoreTab), ...(isMoreTab ? { borderBottomColor: tc } : {}) }} onClick={() => setShowMore(!showMore)}>{isMoreTab ? visibleMore.find(t => t.id === tab)?.label : "Plus"} ▾</button>
+            {showMore && <><div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} onClick={() => setShowMore(false)} /><div style={S.navMoreMenu}>{visibleMore.map(t => <button key={t.id} style={S.navMoreItem} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}</div></>}
           </div>}
         </nav>
       <div style={S.main}>
