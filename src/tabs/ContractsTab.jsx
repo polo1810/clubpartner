@@ -232,21 +232,24 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
         </div>}
       </div>}
 
-      {co && <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button style={S.btnS("primary")} onClick={() => { if (onOpenCompany) onOpenCompany(co); onClose(); }}>👁️ Fiche {co.company}</button>
-        <button style={S.btnS("ghost")} onClick={() => generateContrat(clubInfo, co, contract, products, seasons, currentSeason, contractTemplates, exclusiviteText)}>📄 Contrat PDF</button>
-        {isSigned(contract) && coveredSeasons.map(sid => {
-          const already = invoices.find(i => i.contractId === contract.id && i.season === sid);
-          if (isM) {
-            return already
-              ? <button key={sid} style={{ ...S.btnS("ghost"), fontSize: 11, color: Cl.pur }} onClick={() => generateCerfa(clubInfo, co, contract, already, sid)} title="Télécharger le CERFA">🏛️ {already.number} 📄</button>
-              : <button key={sid} style={{ ...S.btnS("primary"), background: Cl.pur }} onClick={async () => { const rec = generateCerfaRecord(contract, sid); if (rec) await generateCerfa(clubInfo, co, contract, rec, sid); }}>🏛️ CERFA {sid}</button>;
-          } else {
-            return already
-              ? <button key={sid} style={{ ...S.btnS("ghost"), fontSize: 11, color: Cl.ok }} onClick={() => generateFacturePDF(clubInfo, co, already)} title="Télécharger la facture">✅ {already.number} 📄</button>
-              : <button key={sid} style={S.btnS("primary")} onClick={() => generateInvoice(contract, sid)}>🧾 Facturer {sid}</button>;
-          }
-        })}
+      {co && <div style={S.docZone}>
+        <div style={S.docZoneTitle}>Documents</div>
+        <div style={S.docGrid}>
+          <button style={S.btnDoc} onClick={() => generateContrat(clubInfo, co, contract, products, seasons, currentSeason, contractTemplates, exclusiviteText)}>📄 Contrat PDF</button>
+          <button style={S.btnDoc} onClick={() => { if (onOpenCompany) onOpenCompany(co); onClose(); }}>👁️ Fiche {co.company}</button>
+          {isSigned(contract) && coveredSeasons.map(sid => {
+            const already = invoices.find(i => i.contractId === contract.id && i.season === sid);
+            if (isM) {
+              return already
+                ? <div key={sid} style={S.docDone}><span style={{ color: Cl.pur }}>✓</span> {already.number} <button style={{ ...S.btnS("ghost"), fontSize: 11 }} onClick={() => generateCerfa(clubInfo, co, contract, already, sid)}>re-télécharger</button></div>
+                : <button key={sid} style={S.btnDocAction(Cl.pur, Cl.purL)} onClick={async () => { const rec = generateCerfaRecord(contract, sid); if (rec) await generateCerfa(clubInfo, co, contract, rec, sid); }}>🏛️ Générer CERFA {sid}</button>;
+            } else {
+              return already
+                ? <div key={sid} style={S.docDone}><span style={{ color: Cl.ok }}>✓</span> {already.number} <button style={{ ...S.btnS("ghost"), fontSize: 11 }} onClick={() => generateFacturePDF(clubInfo, co, already)}>re-télécharger</button></div>
+                : <button key={sid} style={S.btnDocAction(Cl.ok, Cl.okL)} onClick={() => generateInvoice(contract, sid)}>🧾 Générer facture {sid}</button>;
+            }
+          })}
+        </div>
       </div>}
 
       <div style={{ ...S.cT, marginTop: 16 }}>{isM ? "📦 Contreparties" : "💰 Produits"} — {fmt(prodHT)} HT total</div>
