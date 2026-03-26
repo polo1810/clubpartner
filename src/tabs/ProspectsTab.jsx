@@ -166,26 +166,28 @@ export default function ProspectsTab() {
       <select style={S.filterSel} value={statusF} onChange={e => setStatusF(e.target.value)}><option>Tous</option>{P_STATUSES.map(s => <option key={s}>{s}</option>)}</select>
       <select style={S.filterSel} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
     </div>
-    <div style={{ marginTop: 10 }}>{filtered.length === 0 ? <div style={S.empty}>Aucun prospect trouvé</div> : filtered.map(co => (
-      <div key={co.id} style={S.coCard(co.prospectStatus === "Intéressé" ? Cl.ok : co.prospectStatus === "RDV pris" ? Cl.pur : co.prospectStatus === "Refusé" ? Cl.err : co.prospectStatus === "À rappeler" ? Cl.warn : Cl.brd)} onClick={() => setViewCo(co)}>
+    <div style={{ marginTop: 10 }}>{filtered.length === 0 ? <div style={S.empty}>Aucun prospect trouvé</div> : filtered.map(co => {
+      const bc = co.prospectStatus === "Intéressé" ? Cl.ok : co.prospectStatus === "RDV pris" ? Cl.pur : co.prospectStatus === "Refusé" ? Cl.err : co.prospectStatus === "À rappeler" ? Cl.warn : Cl.brd;
+      // Bouton contextuel : change selon le statut
+      const ctxBtn = co.prospectStatus === "Intéressé"
+        ? <button style={S.btnConvert} onClick={(e) => { e.stopPropagation(); convertToPartner(co.id); }}>Convertir</button>
+        : co.prospectStatus === "RDV pris"
+        ? <button style={{ ...S.btnS("primary") }} onClick={(e) => { e.stopPropagation(); setViewCo(co); }}>Voir fiche</button>
+        : <button style={S.btnCall} onClick={(e) => { e.stopPropagation(); setCallCo(co); }}>Appeler</button>;
+      return (
+      <div key={co.id} style={S.coCard(bc)} onClick={() => setViewCo(co)}>
         <div style={S.fx}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <strong style={S.coName}>{co.company}</strong><span style={S.coSector}>{co.sector}</span>
+          <div>
+            <div style={S.coName}>{co.company}</div>
+            <div style={S.coSub}>{co.contact}{co.phone ? ` · ${co.phone}` : ""}{co.sector ? ` · ${co.sector}` : ""}</div>
+          </div>
+          <div style={S.coRight}>
             <Badge type={statusBType(co.prospectStatus)}>{co.prospectStatus}</Badge>
-            <Badge type={co.dealType === "Mécénat" ? "mecenat" : "partenariat"}>{co.dealType || "Partenariat"}</Badge>
-          </div>
-          <div style={S.coActions} onClick={e => e.stopPropagation()}>
-            <button style={S.btnCall} onClick={() => setCallCo(co)} title="Prospecter">📞 Appeler</button>
-            <button style={S.btnS("ghost")} onClick={() => { setEditCo(co); setShowForm(true); }}>✏️</button>
-            <button style={S.btnConvert} onClick={() => convertToPartner(co.id)}>→ Convertir</button>
+            {ctxBtn}
           </div>
         </div>
-        <div style={S.coMeta}>
-          <span>👤 {co.contact}</span><PhoneLink phone={co.phone} /><EmailLink email={co.email} /><span>👷 {co.member}</span>
-        </div>
-        {(co.notes || []).length > 0 && <div style={S.coNote}>📝 {co.notes[0]?.text?.slice(0, 60)}</div>}
       </div>
-    ))}</div>
+    );})}</div>
     {showForm && <CompanyForm data={editCo} onSave={saveCo} onClose={() => { setShowForm(false); setEditCo(null); }} />}
     {viewCo && <CompanyDetail company={companies.find(c => c.id === viewCo.id) || viewCo} onClose={() => setViewCo(null)} />}
     {callCo && <CallModal company={callCo} onClose={() => setCallCo(null)} />}
