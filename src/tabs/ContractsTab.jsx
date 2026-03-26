@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../data/AppContext';
+import { useAuth } from '../data/AuthContext';
 import { S, Cl } from '../data/styles';
 import { uid, fmt, lineHT, lineTTC, isSigned, getPrice, getContractSeasonIds } from '../data/initialData';
 import { Badge, Modal, Field, MemberSelect, PhoneLink, ProductPicker } from '../components/index';
@@ -304,20 +305,44 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
 
 // --- Contracts List ---
 export default function ContractsTab({ onOpenCompany, directContract, onDirectContractClosed }) {
-  const { contracts, setContracts, getCompany, contractHT, contractTTC, seasonContracts } = useApp();
+  const { contracts, setContracts, getCompany, contractHT, contractTTC, seasonContracts, invoices, setInvoices } = useApp();
+  const auth = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editC, setEditC] = useState(null);
   const [viewC, setViewC] = useState(directContract || null);
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("Tous");
   const [typeF, setTypeF] = useState("Tous");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+
+  const canDelete = auth.role === "admin" || auth.role === "superadmin";
+  const isSuperDemo = auth.isSuperAdmin && auth.member?.club_id === "demo";
 
   let filtered = seasonContracts;
   if (search) { const q = search.toLowerCase(); filtered = filtered.filter(c => { const co = getCompany(c.companyId); return (co?.company || "").toLowerCase().includes(q) || (c.member || "").toLowerCase().includes(q); }); }
   if (statusF !== "Tous") filtered = filtered.filter(c => c.status === statusF);
   if (typeF !== "Tous") filtered = filtered.filter(c => c.type === typeF);
 
-  const deleteContract = (e, cid) => { e.stopPropagation(); if (confirm("Supprimer ce contrat ?")) setContracts(cs => cs.filter(c => c.id !== cid)); };
+  const onDeleteClick = (e, c) => {
+    e.stopPropagation();
+    setDeleteTarget(c);
+    setDeleteConfirm("");
+  };
+
+  const hasInvoicesFor = (cid) => invoices.filter(i => i.contractId === cid && i.type !== "cerfa" && i.status !== "Annulée").length > 0;
+
+  const doDelete = () => {
+    if (!deleteTarget || deleteConfirm !== "SUPPRIMER") return;
+    setInvoices(is => is.filter(i => i.contractId !== deleteTarget.id));
+    setContracts(cs => cs.filter(c => c.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    setDeleteConfirm("");
+  };
+
+  const doAvoir = (cid) => {
+    setInvoices(is => is.map(i => i.contractId === cid && i.type !== "cerfa" && i.status !== "Annulée" ? { ...i, status: "Annulée" } : i));
+  };
 
   return (<>
     <div style={S.fx}><h2 style={{ fontSize: 16, fontWeight: 700 }}>📝 Contrats ({filtered.length})</h2>
@@ -342,7 +367,7 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: Cl.pri }}>{fmt(contractHT(c))} HT</div>
-              <button style={{ ...S.btnS("ghost"), color: Cl.err, fontSize: 12, padding: "2px 6px" }} onClick={e => deleteContract(e, c.id)} title="Supprimer">🗑️</button>
+              {canDelete && <button style={{ ...S.btnS("ghost"), color: Cl.err, fontSize: 12, padding: "2px 6px" }} onClick={e => onDeleteClick(e, c)} title="Supprimer">🗑️</button>}
             </div>
           </div>
           <div style={{ marginTop: 4, fontSize: 11, color: Cl.txtL, display: "flex", gap: 10 }}>
@@ -354,5 +379,34 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
       })}</div>
     {showForm && <ContractForm initial={editC} onClose={() => { setShowForm(false); setEditC(null); }} />}
     {viewC && <ContractDetail contract={contracts.find(c => c.id === viewC.id) || viewC} onClose={() => { setViewC(null); if (onDirectContractClosed) onDirectContractClosed(); }} onOpenCompany={onOpenCompany} />}
+
+    {/* Delete confirmation modal */}
+    {deleteTarget && <Modal title="🗑️ Supprimer le contrat" onClose={() => setDeleteTarget(null)}>
+      {(() => {
+        const co = getCompany(deleteTarget.companyId);
+        const hasInv = hasInvoicesFor(deleteTarget.id);
+        return <>
+          <div style={{ fontSize: 13, marginBottom: 10 }}>Contrat <strong>{co?.company || "?"}</strong> — {deleteTarget.type} — {deleteTarget.status}</div>
+          {hasInv && !isSuperDemo ? (<>
+            <div style={{ ...S.alert("danger"), marginBottom: 10 }}>⚠️ Ce contrat a des factures actives. Vous ne pouvez pas le supprimer. Vous pouvez générer un avoir pour annuler les factures.</div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button style={S.btn("ghost")} onClick={() => setDeleteTarget(null)}>Fermer</button>
+              <button style={{ ...S.btn("primary"), background: Cl.warn }} onClick={() => { doAvoir(deleteTarget.id); setDeleteTarget(null); }}>📋 Générer un avoir</button>
+            </div>
+          </>) : (<>
+            {hasInv && isSuperDemo && <div style={{ ...S.alert("warning"), marginBottom: 8 }}>⚠️ Ce contrat a des factures — suppression forcée (super admin démo)</div>}
+            <div style={{ background: Cl.errL, padding: 12, borderRadius: 8, border: `2px solid ${Cl.err}` }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: Cl.err, marginBottom: 6 }}>⚠️ Suppression définitive</div>
+              <div style={{ fontSize: 11, color: Cl.err, marginBottom: 8 }}>Cette action est irréversible. Les factures et CERFA liés seront aussi supprimés. Tapez <strong>SUPPRIMER</strong> pour confirmer.</div>
+              <input style={{ ...S.inp, borderColor: Cl.err, textAlign: "center", fontSize: 14, fontWeight: 700, letterSpacing: 2 }} value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value.toUpperCase())} placeholder="Tapez SUPPRIMER" autoFocus />
+              <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "center" }}>
+                <button style={S.btn("ghost")} onClick={() => setDeleteTarget(null)}>Annuler</button>
+                <button style={{ ...S.btn("primary"), background: Cl.err, opacity: deleteConfirm === "SUPPRIMER" ? 1 : 0.3 }} disabled={deleteConfirm !== "SUPPRIMER"} onClick={doDelete}>🗑️ Confirmer la suppression</button>
+              </div>
+            </div>
+          </>)}
+        </>;
+      })()}
+    </Modal>}
   </>);
 }
