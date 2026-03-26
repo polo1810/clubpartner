@@ -145,25 +145,31 @@ function AppInner() {
   const [showTeam, setShowTeam] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [directContract, setDirectContract] = useState(null);
 
   const openContractDirect = (contract) => { setDirectContract(contract); setTab("contracts"); };
-  const setTabAndView = (t) => { setDirectContract(null); setTab(t); };
+  const setTabAndView = (t) => { setDirectContract(null); setShowMore(false); setTab(t); };
 
-  const allTabs = [
-    { id: "dashboard", label: "📊 Bord", roles: ["superadmin", "admin", "commercial", "readonly"] },
-    { id: "prospects", label: "🎯 Prospects", roles: ["superadmin", "admin", "commercial", "readonly"] },
-    { id: "partners", label: "🤝 Partenaires", roles: ["superadmin", "admin", "commercial", "readonly"] },
-    { id: "contracts", label: "📝 Contrats", roles: ["superadmin", "admin", "commercial", "readonly"] },
-    { id: "invoices", label: "🧾 Factures", roles: ["superadmin", "admin"] },
+  // Onglets principaux (toujours visibles) vs secondaires (sous "Plus")
+  const primaryTabs = [
+    { id: "dashboard", label: "Tableau de bord", roles: ["superadmin", "admin", "commercial", "readonly"] },
+    { id: "prospects", label: "Prospects", roles: ["superadmin", "admin", "commercial", "readonly"] },
+    { id: "partners", label: "Partenaires", roles: ["superadmin", "admin", "commercial", "readonly"] },
+    { id: "contracts", label: "Contrats", roles: ["superadmin", "admin", "commercial", "readonly"] },
+    { id: "invoices", label: "Factures", roles: ["superadmin", "admin"] },
+  ];
+  const moreTabs = [
     { id: "actions", label: "📋 Actions", roles: ["superadmin", "admin", "commercial", "readonly"] },
     { id: "products", label: "📦 Stocks", roles: ["superadmin", "admin", "commercial", "readonly"] },
-    { id: "amortize", label: "💰 Amort.", roles: ["superadmin", "admin"] },
-    { id: "admin", label: "🔧 Admin", roles: ["superadmin"] },
+    { id: "amortize", label: "💰 Amortissement", roles: ["superadmin", "admin"] },
+    { id: "admin", label: "🔧 Administration", roles: ["superadmin"] },
   ];
-  const visibleTabs = allTabs.filter(t => t.roles.includes(auth.role));
+  const visiblePrimary = primaryTabs.filter(t => t.roles.includes(auth.role));
+  const visibleMore = moreTabs.filter(t => t.roles.includes(auth.role));
+  const isMoreTab = visibleMore.some(t => t.id === tab);
   const memberName = auth.member?.name || auth.member?.email || "";
-  const tc = ctx.clubInfo?.themeColor || "#2563eb";
+  const tc = ctx.clubInfo?.themeColor || "#1e293b";
   const logo = ctx.clubInfo?.logo;
 
   return (
@@ -184,7 +190,13 @@ function AppInner() {
           {!auth.isLocal && <button style={S.hdrBtn} onClick={auth.logout}>🚪</button>}
         </div>
       </div>
-      <nav style={{ ...S.nav, background: `${tc}ee` }}>{visibleTabs.map(t => <button key={t.id} style={S.navB(tab === t.id)} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}</nav>
+      <nav style={S.nav}>
+          {visiblePrimary.map(t => <button key={t.id} style={S.navB(tab === t.id)} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}
+          {visibleMore.length > 0 && <div style={S.navMore}>
+            <button style={S.navB(isMoreTab)} onClick={() => setShowMore(!showMore)}>{isMoreTab ? visibleMore.find(t => t.id === tab)?.label : "Plus"} ▾</button>
+            {showMore && <div style={S.navMoreMenu}>{visibleMore.map(t => <button key={t.id} style={S.navMoreItem} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}</div>}
+          </div>}
+        </nav>
       <div style={S.main}>
         {tab === "dashboard" && <Dashboard />}
         {tab === "prospects" && <ProspectsTab />}
