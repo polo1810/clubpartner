@@ -61,24 +61,24 @@ export default function PartnersTab({ onOpenContract }) {
       const myC = companyContracts(co.id);
       const hasSigned = myC.some(c => isSigned(c));
       const isSelected = selected.includes(co.id);
+      const ht = ((co.seasonProducts?.[currentSeason]) || co.products || []).reduce((t, cp) => t + lineHT(cp), 0);
       return (
         <div key={co.id} style={{ ...S.coCard(Cl.ok), background: isSelected ? Cl.okL : undefined }} onClick={() => setViewCo(co)}>
           <div style={S.fx}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input type="checkbox" checked={isSelected} onClick={e => e.stopPropagation()} onChange={() => toggleSelect(co.id)} />
-              <strong style={S.coName}>{co.company}</strong><span style={S.coSector}>{co.sector}</span>
-              <Badge type={statusBType(co.partnerStatus)}>{co.partnerStatus}</Badge>
-              <Badge type={co.dealType === "Mécénat" ? "mecenat" : "partenariat"}>{co.dealType || "Partenariat"}</Badge>
+              <div>
+                <div style={S.coName}>{co.company}</div>
+                <div style={S.coSub}>{co.contact}{co.sector ? ` · ${co.sector}` : ""}{ht > 0 ? ` · ${fmt(ht)} HT` : ""}</div>
+              </div>
+            </div>
+            <div style={S.coRight}>
               {hasSigned && <Badge type="signed">Contrat signé</Badge>}
+              {myC.length > 0
+                ? <button style={S.btnS("primary")} onClick={(e) => { e.stopPropagation(); onOpenContract && onOpenContract(myC[0]); }}>Voir contrat</button>
+                : <button style={S.btnS("ghost")} onClick={(e) => { e.stopPropagation(); setEditCo(co); setShowForm(true); }}>Modifier</button>
+              }
             </div>
-            <div style={S.coActions} onClick={e => e.stopPropagation()}>
-              <button style={S.btnS("ghost")} onClick={() => { setEditCo(co); setShowForm(true); }}>✏️</button>
-              {myC.length > 0 && <button style={S.btnS("primary")} onClick={() => onOpenContract && onOpenContract(myC[0])}>📝 Contrat</button>}
-            </div>
-          </div>
-          <div style={S.coMeta}>
-            <span>👤 {co.contact}</span><PhoneLink phone={co.phone} /><EmailLink email={co.email} />
-            <span style={{ fontWeight: 700, color: Cl.pri }}>{fmt(((co.seasonProducts?.[currentSeason]) || co.products || []).reduce((t, cp) => t + lineHT(cp), 0))} HT</span>
           </div>
         </div>
       );
