@@ -42,7 +42,7 @@ export default function PartnersTab({ onOpenContract }) {
   };
 
   return (<>
-    <div style={S.fx}><h2 style={S.pageH}>🤝 Partenaires ({filtered.length})</h2>
+    <div style={S.fx}><h2 style={S.pageH}>Partenaires ({filtered.length})</h2>
       {selected.length > 0 && <button style={{ ...S.btn("ghost"), color: Cl.warn, fontSize: 13 }} onClick={() => setShowBulkRepass(true)}>↩️ Repasser {selected.length} en prospect</button>}
     </div>
     <div style={S.filterBar}>
