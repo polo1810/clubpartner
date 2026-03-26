@@ -53,7 +53,7 @@ export default function PartnersTab({ onOpenContract }) {
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4, fontSize: 11 }}>
             <span>👤 {co.contact}</span><PhoneLink phone={co.phone} /><EmailLink email={co.email} />
-            <span style={{ fontWeight: 700, color: Cl.pri }}>{fmt((co.products || []).reduce((t, cp) => t + lineHT(cp), 0))} HT</span>
+            <span style={{ fontWeight: 700, color: Cl.pri }}>{fmt(((co.seasonProducts?.[currentSeason]) || co.products || []).reduce((t, cp) => t + lineHT(cp), 0))} HT</span>
           </div>
         </div>
       );
