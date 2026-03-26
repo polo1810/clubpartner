@@ -6,7 +6,6 @@ import { uid, fmt, lineHT, lineTTC, isSigned, getPrice, getContractSeasonIds } f
 import { Badge, Modal, Field, MemberSelect, PhoneLink, ProductPicker } from '../components/index';
 import { generateContrat, generateFacturePDF, generateCerfa } from '../utils/pdfGenerator';
 
-// --- Shared components ---
 function SeasonProductTable({ prods, products: allProducts }) {
   if (!prods || prods.length === 0) return <p style={{ fontSize: 12, color: Cl.txtL }}>Aucun produit pour cette saison</p>;
   const tot = prods.reduce((t, cp) => t + lineHT(cp), 0);
@@ -232,6 +231,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
         </div>}
       </div>}
 
+      {/* Zone documents dédiée */}
       {co && <div style={S.docZone}>
         <div style={S.docZoneTitle}>Documents</div>
         <div style={S.docGrid}>
@@ -294,7 +294,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
   );
 }
 
-// --- Contracts List ---
+// --- Contracts List (même pattern que Prospects/Partners) ---
 export default function ContractsTab({ onOpenCompany, directContract, onDirectContractClosed }) {
   const { contracts, setContracts, getCompany, contractHT, contractTTC, seasonContracts, invoices, setInvoices } = useApp();
   const auth = useAuth();
@@ -326,35 +326,33 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
   const doAvoir = (cid) => { setInvoices(is => is.map(i => i.contractId === cid && i.type !== "cerfa" && i.status !== "Annulée" ? { ...i, status: "Annulée" } : i)); };
 
   return (<>
-    <div style={S.fx}><h2 style={S.pageH}>📝 Contrats ({filtered.length})</h2>
+    {/* Titre — même pattern que Prospects/Partners */}
+    <div style={S.fx}><h2 style={S.pageH}>Contrats ({filtered.length})</h2>
       <button style={S.btn("primary")} onClick={() => { setEditC(null); setShowForm(true); }}>+ Contrat</button>
     </div>
+    {/* Filtres — même pattern */}
     <div style={S.filterBar}>
       <input style={S.filterInp} placeholder="🔍 Rechercher entreprise, responsable..." value={search} onChange={e => setSearch(e.target.value)} />
       <select style={S.filterSel} value={statusF} onChange={e => setStatusF(e.target.value)}><option>Tous</option>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select>
       <select style={S.filterSel} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
     </div>
+    {/* Cartes — même coCard que Prospects/Partners */}
     <div style={{ marginTop: 10 }}>{filtered.length === 0 ? <div style={S.empty}>Aucun contrat trouvé</div>
       : filtered.map(c => {
         const co = getCompany(c.companyId);
         const paid = (c.payments || []).filter(p => p.status === "Payé").reduce((s, p) => s + p.amount, 0);
-        return (<div key={c.id} style={{ ...S.card, cursor: "pointer" }} onClick={() => setViewC(c)}>
+        const bc = isSigned(c) ? Cl.ok : c.status === "En attente" ? Cl.warn : Cl.brd;
+        return (<div key={c.id} style={S.coCard(bc)} onClick={() => setViewC(c)}>
           <div style={S.fx}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <strong>{co?.company || "?"}</strong>
-              <Badge type={c.type === "Mécénat" ? "mecenat" : "partenariat"}>{c.type}</Badge>
-              {c.seasons > 1 && <Badge type="draft">{c.seasons} sais.</Badge>}
-              <select style={S.ctStatusSel(isSigned(c))} value={c.status} onClick={e => e.stopPropagation()} onChange={e => { e.stopPropagation(); setContracts(cs => cs.map(x => x.id === c.id ? { ...x, status: e.target.value } : x)); }}>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select>
+            <div>
+              <div style={S.coName}>{co?.company || "?"}</div>
+              <div style={S.coSub}>{c.type}{c.seasons > 1 ? ` · ${c.seasons} saisons` : ""} · {c.member}{(c.payments || []).length > 0 ? ` · ${fmt(paid)}/${fmt(contractTTC(c))}` : ""}</div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={S.ctAmt}>{fmt(contractHT(c))} HT</div>
+            <div style={S.coRight}>
+              <Badge type={isSigned(c) ? "signed" : c.status === "En attente" ? "pending" : "draft"}>{c.status}</Badge>
+              <span style={S.ctAmt}>{fmt(contractHT(c))} HT</span>
               {canDelete && <button style={S.btnDelete} onClick={e => onDeleteClick(e, c)} title="Supprimer">🗑️</button>}
             </div>
-          </div>
-          <div style={S.ctMeta}>
-            <span>👷 {c.member}</span>
-            {(c.payments || []).length > 0 && <span>💳 {fmt(paid)}/{fmt(contractTTC(c))}</span>}
-            {co && <span onClick={e => e.stopPropagation()}><PhoneLink phone={co.phone} /></span>}
           </div>
         </div>);
       })}</div>
