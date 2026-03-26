@@ -121,10 +121,10 @@ export const S = {
   hdrLogo: { height: 34, borderRadius: 6, background: "#fff", padding: 2 },
   hdrLogoFb: { fontSize: 22 },
   hdrClub: { fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" },
-  hdrSeason: { fontSize: 11, background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.85)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 5, padding: "2px 8px", cursor: "pointer" },
+  hdrSeason: { fontSize: 11, background: "rgba(255,255,255,0.2)", color: "#fff", border: "1px solid rgba(255,255,255,0.35)", borderRadius: 5, padding: "3px 10px", cursor: "pointer" },
   hdrRight: { display: "flex", gap: 6, alignItems: "center" },
   hdrUser: { fontSize: 11, color: "rgba(255,255,255,0.55)", marginRight: 4 },
-  hdrBtn: { padding: "5px 8px", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 5, cursor: "pointer", fontWeight: 500, fontSize: 12, fontFamily: font, background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.85)" },
+  hdrBtn: { padding: "6px 12px", border: "1px solid rgba(255,255,255,0.35)", borderRadius: 5, cursor: "pointer", fontWeight: 500, fontSize: 12, fontFamily: font, background: "rgba(255,255,255,0.2)", color: "#fff" },
 
   // --- Pages ---
   pageH: { fontSize: 16, fontWeight: 600, letterSpacing: "-0.02em", color: "#111827" },
