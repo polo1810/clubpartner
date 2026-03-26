@@ -45,9 +45,22 @@ export function AppProvider({ children }) {
   const addMember = (n) => { if (n && !members.includes(n)) setMembers(ms => [...ms, n]); };
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const companyInSeason = (c, sid) => c.season === sid || !!(c.seasonProducts?.[sid]?.length) || !!(c.seasonDonAmounts?.[sid]);
-  const prospectsList = useMemo(() => companies.filter(c => !c.isPartner && companyInSeason(c, currentSeason)), [companies, currentSeason]);
-  const partnersList = useMemo(() => companies.filter(c => c.isPartner && companyInSeason(c, currentSeason)), [companies, currentSeason]);
+  const companyInSeason = (c, sid) => c.season === sid || !!(c.seasonProducts?.[sid]?.length) || !!(c.seasonDonAmounts?.[sid]) || !!(c.seasonStatus?.[sid]) || contracts.some(con => con.companyId === c.id && getContractSeasonIds(con, seasons).includes(sid));
+  // Per-season partner/prospect logic
+  const hasContractForSeason = (c, sid) => contracts.some(con => con.companyId === c.id && isSigned(con) && getContractSeasonIds(con, seasons).includes(sid));
+  const isPartnerForSeason = (c, sid) => {
+    // If there's a signed contract covering this season → always partner
+    if (hasContractForSeason(c, sid)) return true;
+    // If explicit seasonStatus set → use it
+    if (c.seasonStatus && c.seasonStatus[sid] !== undefined) return c.seasonStatus[sid] === "partenaire";
+    // Fallback to global isPartner
+    return c.isPartner || false;
+  };
+  const setSeasonStatus = (companyId, sid, status) => {
+    setCompanies(cs => cs.map(c => c.id === companyId ? { ...c, seasonStatus: { ...(c.seasonStatus || {}), [sid]: status } } : c));
+  };
+  const prospectsList = useMemo(() => companies.filter(c => !isPartnerForSeason(c, currentSeason) && companyInSeason(c, currentSeason)), [companies, contracts, currentSeason, seasons]);
+  const partnersList = useMemo(() => companies.filter(c => isPartnerForSeason(c, currentSeason) && companyInSeason(c, currentSeason)), [companies, contracts, currentSeason, seasons]);
   // All companies (unfiltered) for lookups
   const allCompanies = companies;
   const getCompany = (id) => companies.find(c => c.id === id);
@@ -127,7 +140,7 @@ export function AppProvider({ children }) {
     const coSDA = co.seasonDonAmounts && Object.keys(co.seasonDonAmounts).length > 0 ? { ...co.seasonDonAmounts } : {};
     const totDon = Object.keys(coSDA).length > 0 ? Object.values(coSDA).reduce((t, d) => t + (d || 0), 0) : (co.donAmount || 0);
     setContracts(cs => [...cs, { id: uid(), companyId, type: co.dealType || "Partenariat", member: co.member, signataire: co.contact, seasons: Object.keys(sp).length || 1, startSeason: Object.keys(sp).sort()[0] || currentSeason, status: "En attente", donAmount: totDon, seasonDonAmounts: coSDA, seasonProducts: sp, payments: [], actions: [] }]);
-    setCompanies(cs => cs.map(c => c.id === companyId ? { ...c, isPartner: true, prospectStatus: "", partnerStatus: "Nouveau partenaire" } : c));
+    setCompanies(cs => cs.map(c => c.id === companyId ? { ...c, isPartner: true, prospectStatus: "", partnerStatus: "Nouveau partenaire", seasonStatus: { ...(c.seasonStatus || {}), [currentSeason]: "partenaire" } } : c));
   };
 
   const openAddAction = (companyId, defaultCat) => {
@@ -271,7 +284,7 @@ export function AppProvider({ children }) {
     prospectsList, partnersList, getCompany, companyContracts,
     contractHT, contractTTC, stockSold, stockProv, caByProd, caByType, totalCA, totalPaid, allActions, seasonContracts,
     objectives, setObjectives, caByMember,
-    convertToPartner, openAddAction, openAddContractAction, openAddInvoiceAction,
+    convertToPartner, openAddAction, openAddContractAction, openAddInvoiceAction, setSeasonStatus, hasContractForSeason,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
