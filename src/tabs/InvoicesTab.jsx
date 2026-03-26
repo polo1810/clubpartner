@@ -102,19 +102,22 @@ function InvoiceDetail({ invoice, onClose }) {
         </div>
       ))}
 
-      {/* PDF buttons */}
-      <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {!isCerfa && !isAvoir && <button style={S.btn("primary")} onClick={() => generateFacturePDF(clubInfo, co, invoice)}>📄 Télécharger la facture</button>}
-        {isCerfa && <button style={{ ...S.btn("primary"), background: Cl.pur }} onClick={() => generateCerfa(clubInfo, co, con, invoice, invoice.season)}>🏛️ Télécharger le CERFA</button>}
-        {!isCerfa && !isAvoir && !isAnnulee && !hasAvoir && (
-          showAvoirConfirm
-            ? <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                <input style={S.inp} placeholder="Tapez AVOIR" value={avoirConfirmText} onChange={e => setAvoirConfirmText(e.target.value.toUpperCase())} />
-                <button style={{ ...S.btn("primary"), background: Cl.err }} disabled={avoirConfirmText !== "AVOIR"} onClick={generateAvoir}>Confirmer</button>
-                <button style={S.btn("ghost")} onClick={() => setShowAvoirConfirm(false)}>✕</button>
-              </div>
-            : <button style={{ ...S.btn("ghost"), color: Cl.err }} onClick={() => setShowAvoirConfirm(true)}>📋 Générer un avoir</button>
-        )}
+      {/* Documents */}
+      <div style={S.docZone}>
+        <div style={S.docZoneTitle}>Documents</div>
+        <div style={S.docGrid}>
+          {!isCerfa && !isAvoir && <button style={S.btnDocAction(Cl.pri, Cl.priL)} onClick={() => generateFacturePDF(clubInfo, co, invoice)}>📄 Télécharger la facture</button>}
+          {isCerfa && <button style={S.btnDocAction(Cl.pur, Cl.purL)} onClick={() => generateCerfa(clubInfo, co, con, invoice, invoice.season)}>🏛️ Télécharger le CERFA</button>}
+          {!isCerfa && !isAvoir && !isAnnulee && !hasAvoir && (
+            showAvoirConfirm
+              ? <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  <input style={S.inp} placeholder="Tapez AVOIR" value={avoirConfirmText} onChange={e => setAvoirConfirmText(e.target.value.toUpperCase())} />
+                  <button style={{ ...S.btn("primary"), background: Cl.err }} disabled={avoirConfirmText !== "AVOIR"} onClick={generateAvoir}>Confirmer</button>
+                  <button style={S.btn("ghost")} onClick={() => setShowAvoirConfirm(false)}>✕</button>
+                </div>
+              : <button style={S.btnDoc} onClick={() => setShowAvoirConfirm(true)}>📋 Générer un avoir</button>
+          )}
+        </div>
       </div>
     </Modal>
   );
