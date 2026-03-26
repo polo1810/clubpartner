@@ -12,13 +12,13 @@ export default function ProductsTab() {
   const totReal = Object.values(caByProd).reduce((a, b) => a + b, 0);
 
   return (<>
-    <div style={S.fx}><h2 style={S.pageH}>📦 Produits & Stocks</h2>
+    <div style={S.fx}><h2 style={S.pageH}>Produits & Stocks</h2>
       <button style={S.btn("primary")} onClick={() => setShowProdF(true)}>+ Produit</button>
     </div>
     <div style={{ ...S.card, marginTop: 10, ...S.g3 }}>
-      <div style={S.stat}><div style={S.statV(Cl.txtL)}>{fmt(totPot)}</div><div style={S.statL}>CA potentiel</div></div>
-      <div style={S.stat}><div style={S.statV(Cl.ok)}>{fmt(totReal)}</div><div style={S.statL}>CA réalisé</div></div>
-      <div style={S.stat}><div style={S.statV(Cl.pri)}>{totPot > 0 ? ((totReal / totPot) * 100).toFixed(0) : 0}%</div><div style={S.statL}>Progression</div></div>
+      <div style={S.statCard}><div style={S.statL}>CA potentiel</div><div style={S.statV(Cl.txtL)}>{fmt(totPot)}</div></div>
+      <div style={S.statCard}><div style={S.statL}>CA réalisé</div><div style={S.statV(Cl.ok)}>{fmt(totReal)}</div></div>
+      <div style={S.statCard}><div style={S.statL}>Progression</div><div style={S.statV(Cl.pri)}>{totPot > 0 ? ((totReal / totPot) * 100).toFixed(0) : 0}%</div><div style={S.statBar}><div style={S.statBarFill(totPot > 0 ? (totReal / totPot) * 100 : 0, Cl.ok)} /></div></div>
     </div>
     {cats.map(cat => {
       const items = products.filter(p => p.category === cat); if (!items.length) return null;
