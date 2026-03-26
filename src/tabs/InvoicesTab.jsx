@@ -170,7 +170,7 @@ export default function InvoicesTab() {
 
   return (<>
     <div style={S.fx}>
-      <h2 style={S.pageH}>🧾 Factures & CERFA</h2>
+      <h2 style={S.pageH}>Factures & CERFA</h2>
       {seasonInvoices.filter(i => i.type !== "cerfa").length > 0 && <button style={S.btn("ghost")} onClick={() => dlCSV(`Ecritures_comptables_${currentSeason}.csv`, toCSV(buildAllEntries()))}>📤 Export écritures</button>}
     </div>
     <div style={S.filterBar}>
@@ -179,13 +179,15 @@ export default function InvoicesTab() {
       <select style={S.filterSel} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
     </div>
 
-    {filtered.length > 0 && <div style={{ ...S.card, ...S.g4 }}>
-      <div style={S.stat}><div style={S.statV(Cl.pri)}>{filtered.filter(i => i.type !== "cerfa" && !i.isAvoir).length}</div><div style={S.statL}>Factures</div></div>
-      <div style={S.stat}><div style={S.statV(Cl.pur)}>{filtered.filter(i => i.type === "cerfa").length}</div><div style={S.statL}>CERFA</div></div>
-      <div style={S.stat}><div style={S.statV(Cl.err)}>{filtered.filter(i => i.isAvoir).length}</div><div style={S.statL}>Avoirs</div></div>
-      <div style={S.stat}><div style={S.statV(Cl.pri)}>{fmt(totalTTC)}</div><div style={S.statL}>Net</div></div>
+    {/* Stats — même statCard que Dashboard */}
+    {filtered.length > 0 && <div style={{ ...S.card, ...S.g4, marginTop: 10 }}>
+      <div style={S.statCard}><div style={S.statL}>Factures</div><div style={S.statV(Cl.pri)}>{filtered.filter(i => i.type !== "cerfa" && !i.isAvoir).length}</div></div>
+      <div style={S.statCard}><div style={S.statL}>CERFA</div><div style={S.statV(Cl.pur)}>{filtered.filter(i => i.type === "cerfa").length}</div></div>
+      <div style={S.statCard}><div style={S.statL}>Avoirs</div><div style={S.statV(Cl.err)}>{filtered.filter(i => i.isAvoir).length}</div></div>
+      <div style={S.statCard}><div style={S.statL}>Net</div><div style={S.statV(Cl.txt)}>{fmt(totalTTC)}</div></div>
     </div>}
 
+    {/* Liste — même marginTop: 10 et coCard que partout */}
     <div style={{ marginTop: 10 }}>
       {filtered.length === 0 ? <div style={S.empty}>Aucune facture trouvée</div>
       : filtered.map(inv => {
@@ -199,25 +201,21 @@ export default function InvoicesTab() {
         return (
           <div key={inv.id} style={S.coCard(borderColor)} onClick={() => setViewInv(inv)}>
             <div style={S.fx}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <strong style={S.invNum(isAv ? Cl.err : isCerfa ? Cl.pur : null)}>{inv.number}</strong>
-                <strong>{inv.companyName}</strong>
+              <div>
+                <div style={S.coName}>{inv.companyName}</div>
+                <div style={S.coSub}>{inv.number} · {inv.dateStr}{!isCerfa && !isAv ? ` · ${inv.lines.length} ligne${inv.lines.length > 1 ? "s" : ""}` : ""}{!isCerfa && !isAv && payments.length > 0 ? ` · ${fmt(paid)}/${fmt(inv.totalTTC)}` : ""}{isAv ? ` · Annule ${inv.avoirDeFacture ? invoices.find(i => i.id === inv.avoirDeFacture)?.number || "" : ""}` : ""}</div>
+              </div>
+              <div style={S.coRight}>
                 {isAv
-                  ? <Badge type="danger">📋 Avoir</Badge>
+                  ? <Badge type="danger">Avoir</Badge>
                   : isCerfa
-                  ? <Badge type="mecenat">🏛️ CERFA</Badge>
-                  : <Badge type={inv.status === "Payée" ? "signed" : inv.status === "Annulée" ? "draft" : late ? "danger" : "pending"}>{late && inv.status !== "Payée" ? "⚠️ Retard" : inv.status}</Badge>
+                  ? <Badge type="mecenat">CERFA</Badge>
+                  : <Badge type={inv.status === "Payée" ? "signed" : inv.status === "Annulée" ? "draft" : late ? "danger" : "pending"}>{late && inv.status !== "Payée" ? "Retard" : inv.status}</Badge>
                 }
+                <span style={S.invAmt(isAv ? Cl.err : isCerfa ? Cl.pur : Cl.pri)}>
+                  {isAv ? `-${fmt(inv.totalTTC)}` : isCerfa ? fmt(inv.donAmount || inv.totalTTC) : fmt(inv.totalTTC)}
+                </span>
               </div>
-              <div style={S.invAmt(isAv ? Cl.err : isCerfa ? Cl.pur : Cl.pri)}>
-                {isAv ? `-${fmt(inv.totalTTC)}` : isCerfa ? `Don: ${fmt(inv.donAmount || inv.totalTTC)}` : fmt(inv.totalTTC)}
-              </div>
-            </div>
-            <div style={S.invMeta}>
-              <span>📅 {inv.dateStr}</span>
-              {!isCerfa && !isAv && <span>📦 {inv.lines.length} ligne{inv.lines.length > 1 ? "s" : ""}</span>}
-              {!isCerfa && !isAv && payments.length > 0 && <span>💳 {fmt(paid)} / {fmt(inv.totalTTC)}</span>}
-              {isAv && <span>↩️ Annule {inv.avoirDeFacture ? invoices.find(i => i.id === inv.avoirDeFacture)?.number || "" : ""}</span>}
             </div>
           </div>
         );
