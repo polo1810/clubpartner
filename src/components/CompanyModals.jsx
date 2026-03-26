@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../data/AppContext';
+import { useAuth } from '../data/AuthContext';
 import { S, Cl } from '../data/styles';
 import { uid, fmt, lineHT, getPrice, statusBType, P_STATUSES, PARTNER_STATUSES, ACTION_TYPES, genAccountCode } from '../data/initialData';
 import { Badge, Modal, Field, MemberSelect, ProductPicker, PhoneLink, EmailLink } from './index';
@@ -170,10 +171,13 @@ export function CompanyForm({ data, onSave, onClose }) {
 }
 
 export function CompanyDetail({ company, onClose, onOpenContract }) {
-  const { companies, setCompanies, products, todayStr, convertToPartner, openAddAction, companyContracts, cats, currentSeason, seasons, setMiniForm, members, addMember, clubInfo } = useApp();
+  const { companies, setCompanies, products, todayStr, convertToPartner, openAddAction, companyContracts, cats, currentSeason, seasons, setMiniForm, members, addMember, clubInfo, invoices, setInvoices, contracts, setContracts } = useApp();
+  const auth = useAuth();
   const co = companies.find(c => c.id === company.id) || company;
   const [noteText, setNoteText] = useState("");
   const [editingProducts, setEditingProducts] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
   const setCo = (u) => { setCompanies(cs => cs.map(x => x.id === u.id ? u : x)); };
   const myContracts = companyContracts(co.id);
   const lastNote = (co.notes || []).sort((a, b) => b.date.localeCompare(a.date))[0];
@@ -414,6 +418,52 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
       {co.isPartner && <div style={{ marginTop: 16, textAlign: "center" }}>
         <button style={{ ...S.btn("ghost"), fontSize: 12, color: Cl.err }} onClick={() => { setCo({ ...co, isPartner: false, partnerStatus: "", prospectStatus: "Nouveau" }); onClose(); }}>↩️ Repasser en prospect</button>
       </div>}
+
+      {/* Delete section */}
+      {(() => {
+        const coInvoices = invoices.filter(i => i.companyId === co.id);
+        const hasInvoices = coInvoices.filter(i => i.type !== "cerfa").length > 0;
+        const isSuperDemo = auth.isSuperAdmin && auth.member?.club_id === "demo";
+        return <div style={{ marginTop: 16, borderTop: `1px solid ${Cl.brd}`, paddingTop: 12 }}>
+          {!showDelete ? (
+            <div style={{ textAlign: "center" }}>
+              {hasInvoices && !isSuperDemo ? (
+                <div style={{ fontSize: 11, color: Cl.txtL }}>
+                  ⚠️ Ce {co.isPartner ? "partenaire" : "prospect"} a des factures — suppression impossible.
+                  <button style={{ ...S.btn("ghost"), fontSize: 11, color: Cl.warn, marginTop: 6, display: "block", margin: "6px auto 0" }} onClick={() => {
+                    coInvoices.forEach(inv => {
+                      if (inv.type === "cerfa" || inv.status === "Annulée") return;
+                      setInvoices(is => is.map(i => i.id === inv.id ? { ...i, status: "Annulée" } : i));
+                    });
+                    alert("Les factures ont été marquées comme annulées (avoir).");
+                  }}>📋 Générer un avoir (annuler les factures)</button>
+                </div>
+              ) : (
+                <button style={{ ...S.btn("ghost"), fontSize: 12, color: Cl.err }} onClick={() => setShowDelete(true)}>🗑️ Supprimer {co.isPartner ? "ce partenaire" : "ce prospect"}</button>
+              )}
+              {isSuperDemo && hasInvoices && <button style={{ ...S.btn("ghost"), fontSize: 10, color: Cl.err, marginTop: 4, opacity: 0.6 }} onClick={() => setShowDelete(true)}>🔓 Forcer la suppression (super admin démo)</button>}
+            </div>
+          ) : (
+            <div style={{ background: Cl.errL, padding: 12, borderRadius: 8, border: `2px solid ${Cl.err}` }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: Cl.err, marginBottom: 6 }}>⚠️ Suppression définitive</div>
+              <div style={{ fontSize: 11, color: Cl.err, marginBottom: 8 }}>Cette action est irréversible. Les contrats et données liés seront aussi supprimés. Tapez <strong>SUPPRIMER</strong> pour confirmer.</div>
+              <input style={{ ...S.inp, borderColor: Cl.err, textAlign: "center", fontSize: 14, fontWeight: 700, letterSpacing: 2 }} value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value.toUpperCase())} placeholder="Tapez SUPPRIMER" autoFocus />
+              <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "center" }}>
+                <button style={S.btn("ghost")} onClick={() => { setShowDelete(false); setDeleteConfirm(""); }}>Annuler</button>
+                <button style={{ ...S.btn("primary"), background: Cl.err, opacity: deleteConfirm === "SUPPRIMER" ? 1 : 0.3 }} disabled={deleteConfirm !== "SUPPRIMER"} onClick={() => {
+                  // Delete related contracts
+                  setContracts(cs => cs.filter(c => c.companyId !== co.id));
+                  // Delete related invoices
+                  setInvoices(is => is.filter(i => i.companyId !== co.id));
+                  // Delete company
+                  setCompanies(cs => cs.filter(c => c.id !== co.id));
+                  onClose();
+                }}>🗑️ Confirmer la suppression</button>
+              </div>
+            </div>
+          )}
+        </div>;
+      })()}
     </Modal>
   );
 }
