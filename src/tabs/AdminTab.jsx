@@ -56,7 +56,7 @@ export default function AdminTab() {
 
   return (<>
     <div style={S.fx}>
-      <h2 style={S.pageH}>🔧 Administration</h2>
+      <h2 style={S.pageH}>Administration</h2>
       <div style={{ display: "flex", gap: 6 }}>
         <button style={S.btn("primary")} onClick={() => setShowAddClub(true)}>+ Club</button>
         <button style={S.btn("primary")} onClick={() => setShowAddMember(true)}>+ Membre</button>
