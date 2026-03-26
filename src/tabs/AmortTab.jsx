@@ -28,14 +28,15 @@ export default function AmortTab() {
   const totalRes = totalCAS - totalAmortS;
 
   return (<>
-    <div style={S.fx}><h2 style={S.pageH}>💰 Amortissement</h2>
-      <select style={{ ...S.filterSel, fontWeight: 700 }} value={seasonF} onChange={e => setSeasonF(e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select>
+    <div style={S.fx}><h2 style={S.pageH}>Amortissement</h2></div>
+    <div style={S.filterBar}>
+      <select style={{ ...S.filterSel, fontWeight: 600 }} value={seasonF} onChange={e => setSeasonF(e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select>
     </div>
     <div style={{ ...S.card, marginTop: 10, ...S.g4 }}>
-      <div style={S.stat}><div style={S.statV(Cl.txtL)}>{fmt(totalInvest)}</div><div style={S.statL}>Investissement</div></div>
-      <div style={S.stat}><div style={S.statV(Cl.warn)}>{fmt(totalAmortS)}</div><div style={S.statL}>À amortir ({seasonF})</div></div>
-      <div style={S.stat}><div style={S.statV(Cl.pri)}>{fmt(totalCAS)}</div><div style={S.statL}>CA réalisé</div></div>
-      <div style={S.stat}><div style={S.statV(totalRes >= 0 ? Cl.ok : Cl.err)}>{totalRes >= 0 ? "+" : ""}{fmt(totalRes)}</div><div style={S.statL}>Résultat</div></div>
+      <div style={S.statCard}><div style={S.statL}>Investissement</div><div style={S.statV(Cl.txtL)}>{fmt(totalInvest)}</div></div>
+      <div style={S.statCard}><div style={S.statL}>À amortir ({seasonF})</div><div style={S.statV(Cl.warn)}>{fmt(totalAmortS)}</div></div>
+      <div style={S.statCard}><div style={S.statL}>CA réalisé</div><div style={S.statV(Cl.pri)}>{fmt(totalCAS)}</div></div>
+      <div style={S.statCard}><div style={S.statL}>Résultat</div><div style={S.statV(totalRes >= 0 ? Cl.ok : Cl.err)}>{totalRes >= 0 ? "+" : ""}{fmt(totalRes)}</div></div>
     </div>
 
     {amortData.length === 0 ? <div style={S.empty}>Aucun produit avec amortissement</div>
