@@ -4,6 +4,7 @@ import { S, Cl } from '../data/styles';
 import { uid, fmt, lineHT, statusBType, isSigned } from '../data/initialData';
 import { Badge, Modal, PhoneLink, EmailLink } from '../components/index';
 import { CompanyForm, CompanyDetail } from '../components/CompanyModals';
+import ImportWizard from '../components/ImportWizard';
 
 export default function PartnersTab({ onOpenContract }) {
   const { partnersList, companies, setCompanies, seasons, currentSeason, companyContracts, setSeasonStatus, hasContractForSeason } = useApp();
@@ -16,6 +17,7 @@ export default function PartnersTab({ onOpenContract }) {
   const [selected, setSelected] = useState([]);
   const [showBulkRepass, setShowBulkRepass] = useState(false);
   const [bulkSeason, setBulkSeason] = useState("");
+  const [showImport, setShowImport] = useState(false);
 
   const sectors = [...new Set(partnersList.map(p => p.sector).filter(Boolean))];
   let filtered = partnersList;
@@ -43,7 +45,10 @@ export default function PartnersTab({ onOpenContract }) {
 
   return (<>
     <div style={S.fx}><h2 style={S.pageH}>Partenaires ({filtered.length})</h2>
-      {selected.length > 0 && <button style={{ ...S.btn("ghost"), color: Cl.warn, fontSize: 13 }} onClick={() => setShowBulkRepass(true)}>↩️ Repasser {selected.length} en prospect</button>}
+      <div style={S.coActions}>
+        {selected.length > 0 && <button style={{ ...S.btn("ghost"), color: Cl.warn, fontSize: 13 }} onClick={() => setShowBulkRepass(true)}>↩️ Repasser {selected.length} en prospect</button>}
+        <button style={S.btn("ghost")} onClick={() => setShowImport(true)}>📥 Import</button>
+      </div>
     </div>
     <div style={S.filterBar}>
       <input style={S.filterInp} placeholder="🔍 Rechercher entreprise, contact, responsable..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -106,5 +111,6 @@ export default function PartnersTab({ onOpenContract }) {
         <button style={{ ...S.btn("primary"), background: Cl.warn }} disabled={!bulkSeason || selected.filter(id => canRepass(id, bulkSeason)).length === 0} onClick={doBulkRepass}>Confirmer</button>
       </div>
     </Modal>}
+    {showImport && <ImportWizard defaultType="partenaires" onClose={() => setShowImport(false)} />}
   </>);
 }
