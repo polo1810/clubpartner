@@ -1,6 +1,5 @@
-// --- UID generator ---
-let nid = 100;
-export const uid = () => ++nid;
+// --- UID generator (multi-user safe) ---
+export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 // --- CSV helpers ---
 export const toCSV = (rows) => { if (!rows.length) return ""; const h = Object.keys(rows[0]); const esc = (v) => { const s = String(v ?? ""); return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s; }; return [h.map(esc).join(","), ...rows.map(r => h.map(k => esc(r[k])).join(","))].join("\n"); };
