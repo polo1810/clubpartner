@@ -52,6 +52,20 @@ const IMPORT_TYPES = {
       { key: "notes",          label: "Notes",           required: false },
     ],
   },
+  produits: {
+    label: "📦 Produits",
+    desc: "Produits & stocks",
+    fields: [
+      { key: "name",     label: "Nom du produit", required: true },
+      { key: "category", label: "Catégorie",      required: false },
+      { key: "price",    label: "Prix vente HT",  required: false },
+      { key: "cost",     label: "Coût revient",   required: false },
+      { key: "stock",    label: "Stock",           required: false },
+      { key: "tva",      label: "TVA %",           required: false },
+      { key: "totalCost",label: "Investissement",  required: false },
+      { key: "amort",    label: "Amortissement",   required: false },
+    ],
+  },
 };
 
 // ====================================================
@@ -74,6 +88,14 @@ const ALIASES = {
   dealType:       ["type", "type contrat", "partenariat", "mécénat", "deal_type"],
   member:         ["commercial", "assigné", "assignee", "responsable", "membre", "member", "attribué"],
   notes:          ["notes", "commentaire", "remarque", "observation", "commentaires", "note"],
+  name:           ["nom", "produit", "nom produit", "nom_produit", "name", "product", "désignation", "designation", "libellé", "libelle"],
+  price:          ["prix", "prix vente", "prix_vente", "prix ht", "prix_ht", "tarif", "price"],
+  cost:           ["coût", "cout", "coût revient", "cout_revient", "cost", "prix achat", "prix_achat"],
+  stock:          ["stock", "quantité", "quantite", "qty", "quantity", "disponible"],
+  tva:            ["tva", "tva %", "taux tva", "taux_tva", "tax"],
+  totalCost:      ["investissement", "invest", "coût total", "cout_total", "total_cost", "investment"],
+  amort:          ["amortissement", "amort", "depreciation"],
+  category:       ["catégorie", "categorie", "category", "cat", "type produit", "type_produit", "famille"],
 };
 
 function normalize(s) {
@@ -164,7 +186,7 @@ async function parseExcel(file) {
 // COMPOSANT PRINCIPAL
 // ====================================================
 export default function ImportWizard({ onClose, defaultType }) {
-  const { companies, setCompanies, members, currentSeason } = useApp();
+  const { companies, setCompanies, products, setProducts, members, currentSeason, cats } = useApp();
 
   const [step, setStep] = useState(1);               // 1=type+fichier, 2=mapping, 3=aperçu
   const [importType, setImportType] = useState(defaultType || "prospects");
@@ -233,55 +255,97 @@ export default function ImportWizard({ onClose, defaultType }) {
 
   // --- Import effectif ---
   const doImport = () => {
-    const isPartner = importType === "partenaires";
     let added = 0, skipped = 0;
 
-    const newCompanies = [];
-    mappedRows.forEach(row => {
-      if (!row.company) { skipped++; return; }
-      // Doublon ?
-      if (companies.some(c => c.company.toLowerCase() === row.company.toLowerCase())) { skipped++; return; }
-      if (newCompanies.some(c => c.company.toLowerCase() === row.company.toLowerCase())) { skipped++; return; }
-
-      newCompanies.push({
-        id: uid(),
-        company: row.company,
-        sector: row.sector || "",
-        contact: row.contact || "",
-        phone: String(row.phone || ""),
-        email: row.email || "",
-        address: row.address || "",
-        adresseNum: row.adresseNum || "",
-        adresseRue: row.adresseRue || "",
-        adresseCP: row.adresseCP || "",
-        adresseCommune: row.adresseCommune || "",
-        formeJuridique: row.formeJuridique || "",
-        siret: String(row.siret || ""),
-        tvaNumber: row.tvaNumber || "",
-        accountCode: "",
-        season: currentSeason,
-        isPartner,
-        dealType: row.dealType || "Partenariat",
-        donAmount: 0,
-        prospectStatus: isPartner ? "" : "Nouveau",
-        partnerStatus: isPartner ? "Nouveau partenaire" : "",
-        callbackDate: "",
-        rdvDate: "",
-        member: row.member || members[0] || "",
-        products: [],
-        seasonProducts: {},
-        seasonDonAmounts: {},
-        notes: row.notes ? [{ id: uid(), date: new Date().toISOString().slice(0, 10), text: row.notes }] : [],
-        actions: [],
+    if (importType === "produits") {
+      // Import de produits
+      const newProducts = [];
+      mappedRows.forEach(row => {
+        if (!row.name) { skipped++; return; }
+        if (products.some(p => p.name.toLowerCase() === row.name.toLowerCase())) { skipped++; return; }
+        if (newProducts.some(p => p.name.toLowerCase() === row.name.toLowerCase())) { skipped++; return; }
+        const price = parseFloat(row.price) || 0;
+        const cost = parseFloat(row.cost) || 0;
+        const amort = parseFloat(row.amort) || 0;
+        newProducts.push({
+          id: uid(),
+          name: row.name,
+          category: row.category || cats[0] || "Signalétique",
+          stock: parseInt(row.stock) || 0,
+          tva: parseFloat(row.tva) || 20,
+          totalCost: parseFloat(row.totalCost) || 0,
+          prices: { [currentSeason]: { price, cost, amort } },
+        });
+        added++;
       });
-      added++;
-    });
-
-    if (newCompanies.length) {
-      setCompanies(cs => [...cs, ...newCompanies]);
+      if (newProducts.length) setProducts(ps => [...ps, ...newProducts]);
+    } else {
+      // Import prospects / partenaires
+      const isPartner = importType === "partenaires";
+      const newCompanies = [];
+      mappedRows.forEach(row => {
+        if (!row.company) { skipped++; return; }
+        if (companies.some(c => c.company.toLowerCase() === row.company.toLowerCase())) { skipped++; return; }
+        if (newCompanies.some(c => c.company.toLowerCase() === row.company.toLowerCase())) { skipped++; return; }
+        newCompanies.push({
+          id: uid(),
+          company: row.company,
+          sector: row.sector || "",
+          contact: row.contact || "",
+          phone: String(row.phone || ""),
+          email: row.email || "",
+          address: row.address || "",
+          adresseNum: row.adresseNum || "",
+          adresseRue: row.adresseRue || "",
+          adresseCP: row.adresseCP || "",
+          adresseCommune: row.adresseCommune || "",
+          formeJuridique: row.formeJuridique || "",
+          siret: String(row.siret || ""),
+          tvaNumber: row.tvaNumber || "",
+          accountCode: "",
+          season: currentSeason,
+          isPartner,
+          dealType: row.dealType || "Partenariat",
+          donAmount: 0,
+          prospectStatus: isPartner ? "" : "Nouveau",
+          partnerStatus: isPartner ? "Nouveau partenaire" : "",
+          callbackDate: "",
+          rdvDate: "",
+          member: row.member || members[0] || "",
+          products: [],
+          seasonProducts: {},
+          seasonDonAmounts: {},
+          notes: row.notes ? [{ id: uid(), date: new Date().toISOString().slice(0, 10), text: row.notes }] : [],
+          actions: [],
+        });
+        added++;
+      });
+      if (newCompanies.length) setCompanies(cs => [...cs, ...newCompanies]);
     }
     setResult({ added, skipped });
     setStep(4);
+  };
+
+  // --- Télécharger un modèle CSV ---
+  const downloadTemplate = () => {
+    const sep = ";";
+    const header = fields.map(f => f.label).join(sep);
+    // Ligne d'exemple
+    const examples = {
+      prospects: { Entreprise: "Boulangerie Dupont", Contact: "Jean Dupont", "Téléphone": "0601020304", Email: "jean@dupont.fr", Secteur: "Alimentaire", Commercial: "Marie" },
+      partenaires: { Entreprise: "Garage Martin", Contact: "Pierre Martin", "Téléphone": "0611223344", Email: "pierre@garage.fr", Secteur: "Automobile", Commercial: "Paul" },
+      produits: { "Nom du produit": "Panneau LED 4x3", "Catégorie": "Signalétique", "Prix vente HT": "1500", "Coût revient": "200", Stock: "10", "TVA %": "20", Investissement: "5000", Amortissement: "1000" },
+    };
+    const ex = examples[importType] || {};
+    const exampleRow = fields.map(f => ex[f.label] || "").join(sep);
+    const csv = header + "\n" + exampleRow;
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `modele_${importType}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // --- Colonnes non-mappées (pour info) ---
@@ -351,6 +415,12 @@ export default function ImportWizard({ onClose, defaultType }) {
 
           {loading && <div style={{ textAlign: "center", marginTop: 12, color: Cl.pri }}>⏳ Chargement...</div>}
           {error && <div style={{ ...S.alert("danger"), marginTop: 12 }}>{error}</div>}
+
+          <div style={{ marginTop: 16, textAlign: "center" }}>
+            <button onClick={downloadTemplate} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: Cl.pri, textDecoration: "underline" }}>
+              📄 Télécharger un modèle CSV ({config.label.replace(/^[^\s]+\s/, "")})
+            </button>
+          </div>
         </div>
       )}
 
@@ -400,8 +470,10 @@ export default function ImportWizard({ onClose, defaultType }) {
             <button
               style={S.btn("primary")}
               onClick={() => {
-                if (!mapping.company) {
-                  setError("Le champ « Entreprise » est obligatoire.");
+                const requiredKey = importType === "produits" ? "name" : "company";
+                const requiredLabel = importType === "produits" ? "Nom du produit" : "Entreprise";
+                if (!mapping[requiredKey]) {
+                  setError(`Le champ « ${requiredLabel} » est obligatoire.`);
                   return;
                 }
                 setError("");
@@ -416,10 +488,16 @@ export default function ImportWizard({ onClose, defaultType }) {
       )}
 
       {/* === ÉTAPE 3 : Aperçu avant import === */}
-      {step === 3 && (
+      {step === 3 && (() => {
+        const nameKey = importType === "produits" ? "name" : "company";
+        const existingNames = importType === "produits"
+          ? products.map(p => p.name.toLowerCase())
+          : companies.map(c => c.company.toLowerCase());
+        const countOk = mappedRows.filter(r => r[nameKey] && !existingNames.includes(r[nameKey].toLowerCase())).length;
+        return (
         <div>
           <div style={{ ...S.alert("success"), marginBottom: 12 }}>
-            📋 Aperçu — {mappedRows.filter(r => r.company).length} entrée(s) à importer
+            📋 Aperçu — {countOk} entrée(s) à importer
           </div>
 
           <div style={{ overflowX: "auto", maxHeight: 350 }}>
@@ -435,7 +513,8 @@ export default function ImportWizard({ onClose, defaultType }) {
               </thead>
               <tbody>
                 {mappedRows.slice(0, 50).map((row, i) => {
-                  const isDuplicate = !row.company || companies.some(c => c.company.toLowerCase() === row.company.toLowerCase());
+                  const name = row[nameKey];
+                  const isDuplicate = !name || existingNames.includes(name.toLowerCase());
                   return (
                     <tr key={i} style={{ opacity: isDuplicate ? 0.4 : 1 }}>
                       <td style={S.td}>{i + 1}</td>
@@ -445,7 +524,7 @@ export default function ImportWizard({ onClose, defaultType }) {
                         </td>
                       ))}
                       <td style={S.td}>
-                        {!row.company
+                        {!name
                           ? <span style={S.badge(Cl.err, Cl.errL)}>Nom manquant</span>
                           : isDuplicate
                             ? <span style={S.badge(Cl.warn, Cl.warnL)}>Doublon</span>
@@ -467,11 +546,12 @@ export default function ImportWizard({ onClose, defaultType }) {
           <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "space-between" }}>
             <button style={S.btn("ghost")} onClick={() => setStep(2)}>← Mapping</button>
             <button style={S.btn("primary")} onClick={doImport}>
-              ✅ Importer {mappedRows.filter(r => r.company && !companies.some(c => c.company.toLowerCase() === r.company.toLowerCase())).length} entrée(s)
+              ✅ Importer {countOk} entrée(s)
             </button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* === ÉTAPE 4 : Résultat === */}
       {step === 4 && result && (
@@ -479,7 +559,7 @@ export default function ImportWizard({ onClose, defaultType }) {
           <div style={{ fontSize: 40, marginBottom: 10 }}>🎉</div>
           <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Import terminé !</div>
           <div style={{ fontSize: 14, color: Cl.txt, marginBottom: 4 }}>
-            ✅ <strong>{result.added}</strong> {importType === "partenaires" ? "partenaire(s)" : "prospect(s)"} ajouté(s)
+            ✅ <strong>{result.added}</strong> {importType === "produits" ? "produit(s)" : importType === "partenaires" ? "partenaire(s)" : "prospect(s)"} ajouté(s)
           </div>
           {result.skipped > 0 && (
             <div style={{ fontSize: 13, color: Cl.txtL }}>
