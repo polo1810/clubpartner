@@ -20,7 +20,7 @@ export default function ActionsTab() {
         else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : c));
         else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : c));
         setCelebrating(prev => { const n = { ...prev }; delete n[a.id]; return n; });
-      }, 700);
+      }, 800);
     } else {
       if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: i.actions.map(x => x.id === a.id ? { ...x, done: false } : x) } : i));
       else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: false } : x) } : c));
@@ -66,7 +66,10 @@ export default function ActionsTab() {
   };
 
   return (<>
-    <style>{`@keyframes popIn { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.3); } 100% { transform: scale(1); opacity: 1; } }`}</style>
+    <style>{`
+      @keyframes celebPop { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 50% { transform: scale(1.4) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+      @keyframes celebSlide { 0% { transform: translateX(-8px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+    `}</style>
     {/* Titre + bouton */}
     <div style={S.fx}><h2 style={S.pageH}>Actions ({filtered.length})</h2><button style={S.btn("primary")} onClick={addAction}>+ Action</button></div>
     {/* Filtres — même filterBar que Prospects/Partners/Contrats */}
@@ -87,24 +90,22 @@ export default function ActionsTab() {
         return (<div key={cat} style={{ marginTop: 12 }}>
           <div style={S.sectionTitle}>{cat} ({items.length})</div>
           {items.sort((a, b) => a.date.localeCompare(b.date)).map(a => {
-            const isCelebrating = celebrating[a.id];
+            const isCeleb = celebrating[a.id];
             return (
             <div key={`${a.id}-${a.source}`} style={{
               ...S.actItem(a.done),
-              background: isCelebrating ? Cl.okL : S.actItem(a.done).background,
-              borderColor: isCelebrating ? Cl.ok : S.actItem(a.done).borderColor,
-              transform: isCelebrating ? "scale(1.02)" : "scale(1)",
-              opacity: isCelebrating ? 1 : a.done ? 0.4 : 1,
-              transition: "all 0.4s ease",
+              borderLeft: isCeleb ? `3px solid ${Cl.ok}` : "3px solid transparent",
+              background: isCeleb ? Cl.okL : S.actItem(a.done).background,
+              transition: "all 0.3s ease",
             }}>
-              <div style={{ position: "relative", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <input type="checkbox" checked={a.done || !!isCelebrating} style={{ ...S.actCheck, width: 18, height: 18, accentColor: Cl.ok }} onChange={() => toggleAction(a)} />
-                {isCelebrating && <span style={{ position: "absolute", fontSize: 18, pointerEvents: "none", animation: "popIn 0.4s ease" }}>✅</span>}
+              <div style={{ position: "relative", width: 18, height: 18, flexShrink: 0 }}>
+                <input type="checkbox" checked={a.done || !!isCeleb} style={{ ...S.actCheck, width: 18, height: 18, accentColor: Cl.ok }} onChange={() => toggleAction(a)} />
+                {isCeleb && <span style={{ position: "absolute", top: -2, left: -1, fontSize: 20, pointerEvents: "none", animation: "celebPop 0.4s ease forwards" }}>✓</span>}
               </div>
               <div style={S.actText}>
                 <strong>{a.companyName}</strong> · {a.type}
                 {a.note && <span style={{ color: Cl.txtL }}> — {a.note}</span>}
-                {isCelebrating && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: Cl.ok, animation: "popIn 0.3s ease" }}>Bravo !</span>}
+                {isCeleb && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: Cl.ok, animation: "celebSlide 0.3s ease forwards" }}>Fait !</span>}
               </div>
               <span style={{ fontSize: 12, color: Cl.txtL }}>{a.date}</span>
               <span style={{ fontSize: 11, color: Cl.pri, fontWeight: 500 }}>👤 {a.assignee}</span>
