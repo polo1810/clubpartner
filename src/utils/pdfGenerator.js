@@ -551,7 +551,7 @@ const CERFA_COORDS = {
   nature_description:     { page: 2, x: 275, y: 383, size: 7, lineHeight: 12 },
   versement_montant:      { page: 2, x: 35, y: 475, size: 10 },
   versement_lettres:      { page: 2, x: 294, y: 483, size: 8 },
-  check_virement:         { page: 2, x: 246, y: 523, size: 10 },
+  check_virement:         { page: 2, x: 256, y: 523, size: 10 },
   total_montant:          { page: 2, x: 35, y: 546, size: 10 },
   total_lettres:          { page: 2, x: 371, y: 556, size: 8 },
   date_periode:           { page: 2, x: 101, y: 609, size: 8 },
