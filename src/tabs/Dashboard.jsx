@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useApp } from '../data/AppContext';
 import { S, Cl } from '../data/styles';
-import { fmt, isSigned } from '../data/initialData';
+import { fmt, isSigned, uid, ACTION_TYPES } from '../data/initialData';
 
 export default function Dashboard() {
-  const { prospectsList, partnersList, allActions, todayStr, totalCA, totalPaid, contracts, contractTTC, caByType, caByMember, members, objectives, setObjectives, currentSeason } = useApp();
+  const { prospectsList, partnersList, allActions, todayStr, totalCA, totalPaid, contracts, setContracts, contractTTC, caByType, caByMember, members, addMember, objectives, setObjectives, currentSeason, companies, setCompanies, setInvoices, setMiniForm } = useApp();
   const [editObj, setEditObj] = useState(false);
   const totalDue = contracts.filter(c => isSigned(c)).reduce((t, c) => t + contractTTC(c), 0);
   const nbPartP = partnersList.filter(c => (c.dealType || "Partenariat") === "Partenariat").length;
@@ -36,29 +36,61 @@ export default function Dashboard() {
       const lateActions = allActions.filter(a => a.date < todayStr && !a.done).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
       const shown = todayActions.length > 0 ? todayActions : upcomingActions;
       const label = todayActions.length > 0 ? `📋 Actions du jour (${todayActions.length})` : `📋 Prochaines actions (${upcomingActions.length})`;
-      return (shown.length > 0 || lateActions.length > 0) && <div style={S.card}>
+
+      const toggleAction = (a) => {
+        if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: i.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : i));
+        else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : c));
+        else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : c));
+      };
+
+      const addAction = () => {
+        const allCos = [...prospectsList, ...partnersList];
+        if (!allCos.length) return;
+        setMiniForm({ title: "Nouvelle action", fields: [
+          { key: "company", label: "Entreprise", value: allCos[0]?.company || "", type: "select", options: allCos.map(c => c.company) },
+          { key: "type", label: "Intitulé", value: "" },
+          { key: "category", label: "Catégorie", value: "Prospection", type: "select", options: ACTION_TYPES },
+          { key: "date", label: "Date", value: todayStr, type: "date" },
+          { key: "assignee", label: "Assigné à", value: members[0], type: "member", options: members, onAdd: addMember },
+          { key: "note", label: "Note", value: "", type: "textarea" },
+        ], onSave: (v) => {
+          if (!v.type || !v.company) return;
+          const co = allCos.find(c => c.company === v.company);
+          if (!co) return;
+          setCompanies(cs => cs.map(c => c.id === co.id ? { ...c, actions: [...(c.actions || []), { id: uid(), type: v.type, category: v.category, date: v.date || todayStr, done: false, note: v.note || "", assignee: v.assignee || "" }] } : c));
+          setMiniForm(null);
+        }});
+      };
+
+      const ActionRow = ({ a }) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 13 }}>
+          <input type="checkbox" checked={a.done} style={{ cursor: "pointer", width: 16, height: 16, accentColor: Cl.ok }} onChange={() => toggleAction(a)} />
+          <span style={{ ...S.badge(a.date < todayStr ? Cl.err : a.date === todayStr ? Cl.warn : Cl.txtL, a.date < todayStr ? Cl.errL : a.date === todayStr ? Cl.warnL : Cl.hov) }}>{a.date}</span>
+          <strong style={{ flex: 1 }}>{a.type}</strong>
+          <span style={{ color: Cl.txtL }}>{a.companyName}</span>
+          {a.assignee && <span style={{ ...S.badge(Cl.pri, Cl.priL) }}>{a.assignee}</span>}
+        </div>
+      );
+
+      return (shown.length > 0 || lateActions.length > 0) ? <div style={S.card}>
+        <div style={S.fx}>
+          <div style={S.cT}>📋 Actions</div>
+          <button style={S.btn("primary")} onClick={addAction}>+ Action</button>
+        </div>
         {lateActions.length > 0 && <>
-          <div style={{ ...S.cT, color: Cl.err }}>⚠️ En retard ({lateActions.length})</div>
-          {lateActions.map((a, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 13 }}>
-              <span style={{ ...S.badge(Cl.err, Cl.errL) }}>{a.date}</span>
-              <strong style={{ flex: 1 }}>{a.type}</strong>
-              <span style={{ color: Cl.txtL }}>{a.companyName}</span>
-              {a.assignee && <span style={{ ...S.badge(Cl.pri, Cl.priL) }}>{a.assignee}</span>}
-            </div>
-          ))}
+          <div style={{ ...S.cT, color: Cl.err, fontSize: 13, marginTop: 4 }}>⚠️ En retard ({lateActions.length})</div>
+          {lateActions.map((a, i) => <ActionRow key={`l${i}`} a={a} />)}
         </>}
         {shown.length > 0 && <>
-          <div style={{ ...S.cT, marginTop: lateActions.length > 0 ? 14 : 0 }}>{label}</div>
-          {shown.map((a, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 13 }}>
-              <span style={{ ...S.badge(todayActions.length > 0 ? Cl.warn : Cl.txtL, todayActions.length > 0 ? Cl.warnL : Cl.hov) }}>{a.date}</span>
-              <strong style={{ flex: 1 }}>{a.type}</strong>
-              <span style={{ color: Cl.txtL }}>{a.companyName}</span>
-              {a.assignee && <span style={{ ...S.badge(Cl.pri, Cl.priL) }}>{a.assignee}</span>}
-            </div>
-          ))}
+          <div style={{ ...S.cT, fontSize: 13, marginTop: lateActions.length > 0 ? 14 : 4 }}>{label}</div>
+          {shown.map((a, i) => <ActionRow key={`s${i}`} a={a} />)}
         </>}
+      </div> : <div style={S.card}>
+        <div style={S.fx}>
+          <div style={S.cT}>📋 Actions</div>
+          <button style={S.btn("primary")} onClick={addAction}>+ Action</button>
+        </div>
+        <div style={{ color: Cl.txtL, fontSize: 13, padding: "8px 0" }}>Aucune action à venir</div>
       </div>;
     })()}
 
