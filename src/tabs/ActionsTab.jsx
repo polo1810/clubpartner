@@ -10,22 +10,53 @@ export default function ActionsTab() {
   const [memberF, setMemberF] = useState("Tous");
   const [seasonF, setSeasonF] = useState(currentSeason);
   const [catF, setCatF] = useState("Tous");
+  const [showArchived, setShowArchived] = useState(false);
   const [celebrating, setCelebrating] = useState({});
+  const [menuOpen, setMenuOpen] = useState(null);
+
+  // --- Helper : modifier une action dans sa source ---
+  const updateActionInSource = (a, updater) => {
+    if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: updater(i.actions) } : i));
+    else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: updater(c.actions) } : c));
+    else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: updater(c.actions) } : c));
+  };
 
   const toggleAction = (a) => {
     if (!a.done) {
       setCelebrating(prev => ({ ...prev, [a.id]: true }));
       setTimeout(() => {
-        if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: i.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : i));
-        else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : c));
-        else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : c));
+        updateActionInSource(a, acts => acts.map(x => x.id === a.id ? { ...x, done: true } : x));
         setCelebrating(prev => { const n = { ...prev }; delete n[a.id]; return n; });
       }, 800);
     } else {
-      if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: i.actions.map(x => x.id === a.id ? { ...x, done: false } : x) } : i));
-      else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: false } : x) } : c));
-      else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: false } : x) } : c));
+      updateActionInSource(a, acts => acts.map(x => x.id === a.id ? { ...x, done: false } : x));
     }
+  };
+
+  const editAction = (a) => {
+    setMenuOpen(null);
+    setMiniForm({ title: "Modifier l'action", fields: [
+      { key: "type", label: "Intitulé", value: a.type },
+      { key: "category", label: "Catégorie", value: a.category, type: "select", options: ACTION_TYPES },
+      { key: "date", label: "Date", value: a.date, type: "date" },
+      { key: "assignee", label: "Assigné à", value: a.assignee, type: "member", options: members, onAdd: addMember },
+      { key: "note", label: "Note", value: a.note || "", type: "textarea" },
+    ], onSave: (v) => {
+      if (!v.type) return;
+      updateActionInSource(a, acts => acts.map(x => x.id === a.id ? { ...x, type: v.type, category: v.category, date: v.date, assignee: v.assignee, note: v.note || "" } : x));
+      setMiniForm(null);
+    }});
+  };
+
+  const archiveAction = (a) => {
+    setMenuOpen(null);
+    updateActionInSource(a, acts => acts.map(x => x.id === a.id ? { ...x, archived: !x.archived } : x));
+  };
+
+  const deleteAction = (a) => {
+    setMenuOpen(null);
+    if (!confirm("Supprimer cette action ?")) return;
+    updateActionInSource(a, acts => acts.filter(x => x.id !== a.id));
   };
 
   const now = new Date();
@@ -40,6 +71,8 @@ export default function ActionsTab() {
   };
 
   let filtered = allActions.filter(a => isInPeriod(a.date));
+  if (!showArchived) filtered = filtered.filter(a => !a.archived);
+  else filtered = filtered.filter(a => a.archived);
   if (memberF !== "Tous") filtered = filtered.filter(a => a.assignee === memberF);
   if (catF !== "Tous") filtered = filtered.filter(a => a.category === catF);
 
@@ -96,10 +129,13 @@ export default function ActionsTab() {
       {periodF === "saison" && <select style={S.filterSel} value={seasonF} onChange={e => setSeasonF(e.target.value)}>{seasons.map(s => <option key={s.id}>{s.name}</option>)}</select>}
       <select style={S.filterSel} value={catF} onChange={e => setCatF(e.target.value)}><option>Tous</option>{ACTION_TYPES.map(t => <option key={t}>{t}</option>)}</select>
       <select style={S.filterSel} value={memberF} onChange={e => setMemberF(e.target.value)}><option>Tous</option>{members.map(m => <option key={m}>{m}</option>)}</select>
+      <button style={{ ...S.filterSel, cursor: "pointer", background: showArchived ? Cl.priL : Cl.wh, border: `1px solid ${showArchived ? Cl.pri : Cl.brd}`, borderRadius: 6, padding: "5px 10px", fontSize: 12 }} onClick={() => setShowArchived(!showArchived)}>
+        {showArchived ? "📦 Archivées" : "📋 Actives"}
+      </button>
     </div>
     {/* Liste */}
     <div style={{ marginTop: 10 }}>
-    {filtered.length === 0 ? <div style={S.empty}>Aucune action pour cette période</div>
+    {filtered.length === 0 ? <div style={S.empty}>{showArchived ? "Aucune action archivée" : "Aucune action pour cette période"}</div>
       : (catF !== "Tous" ? [catF] : ACTION_TYPES).map(cat => {
         const items = grouped[cat] || [];
         if (!items.length) return null;
@@ -107,6 +143,7 @@ export default function ActionsTab() {
           <div style={S.sectionTitle}>{cat} ({items.length})</div>
           {items.sort((a, b) => a.date.localeCompare(b.date)).map(a => {
             const isCeleb = celebrating[a.id];
+            const isMenuOpen = menuOpen === a.id + a.source;
             const CheckSvg = () => (
               <svg width="22" height="22" viewBox="0 0 22 22" style={{ animation: "popBounce 0.5s ease forwards" }}>
                 <circle cx="11" cy="11" r="9" fill="none" stroke={Cl.ok} strokeWidth="2" strokeDasharray="60" strokeDashoffset="60" style={{ animation: "circleDraw 0.4s ease forwards" }} />
@@ -116,7 +153,7 @@ export default function ActionsTab() {
             return (
             <div key={`${a.id}-${a.source}`} style={{
               ...S.actItem(a.done),
-              background: isCeleb ? Cl.okL : S.actItem(a.done).background,
+              background: isCeleb ? Cl.okL : a.archived ? "#f9f9f9" : S.actItem(a.done).background,
               boxShadow: isCeleb ? `0 0 0 1px ${Cl.ok}` : "none",
               transition: "all 0.3s ease",
             }}>
@@ -138,6 +175,18 @@ export default function ActionsTab() {
                 ? <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700, color: "#fff", background: Cl.ok, animation: "popBounce 0.4s ease 0.3s both", whiteSpace: "nowrap" }}>Fait !</span>
                 : <span style={{ fontSize: 11, color: Cl.pri, fontWeight: 500 }}>👤 {a.assignee}</span>
               }
+              {/* Menu contextuel */}
+              <div style={{ position: "relative" }}>
+                <button style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, padding: "2px 6px", borderRadius: 4, color: Cl.txtL }} onClick={(e) => { e.stopPropagation(); setMenuOpen(isMenuOpen ? null : a.id + a.source); }}>⋮</button>
+                {isMenuOpen && <>
+                  <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} onClick={() => setMenuOpen(null)} />
+                  <div style={{ position: "absolute", right: 0, top: "100%", background: Cl.wh, border: `1px solid ${Cl.brd}`, borderRadius: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 100, minWidth: 150, padding: "4px 0" }}>
+                    <button style={{ padding: "8px 14px", fontSize: 13, cursor: "pointer", display: "block", width: "100%", border: "none", background: "transparent", textAlign: "left" }} onClick={() => editAction(a)}>✏️ Modifier</button>
+                    <button style={{ padding: "8px 14px", fontSize: 13, cursor: "pointer", display: "block", width: "100%", border: "none", background: "transparent", textAlign: "left" }} onClick={() => archiveAction(a)}>{a.archived ? "📋 Désarchiver" : "📦 Archiver"}</button>
+                    <button style={{ padding: "8px 14px", fontSize: 13, cursor: "pointer", display: "block", width: "100%", border: "none", background: "transparent", textAlign: "left", color: Cl.err }} onClick={() => deleteAction(a)}>🗑️ Supprimer</button>
+                  </div>
+                </>}
+              </div>
             </div>
             );
           })}
