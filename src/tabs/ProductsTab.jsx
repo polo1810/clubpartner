@@ -3,17 +3,22 @@ import { useApp } from '../data/AppContext';
 import { S, Cl } from '../data/styles';
 import { uid, fmt, getPrice } from '../data/initialData';
 import { Badge, ProductFormModal } from '../components/index';
+import ImportWizard from '../components/ImportWizard';
 
 export default function ProductsTab() {
   const { products, setProducts, cats, seasons, currentSeason, stockSold, stockProv, caByProd, setMiniForm } = useApp();
   const [showProdF, setShowProdF] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const totPot = products.reduce((t, p) => t + getPrice(p, currentSeason).price * p.stock, 0);
   const totReal = Object.values(caByProd).reduce((a, b) => a + b, 0);
 
   return (<>
     <div style={S.fx}><h2 style={S.pageH}>Produits & Stocks</h2>
-      <button style={S.btn("primary")} onClick={() => setShowProdF(true)}>+ Produit</button>
+      <div style={S.coActions}>
+        <button style={S.btn("ghost")} onClick={() => setShowImport(true)}>📥 Import</button>
+        <button style={S.btn("primary")} onClick={() => setShowProdF(true)}>+ Produit</button>
+      </div>
     </div>
     <div style={{ ...S.card, marginTop: 10, ...S.g3 }}>
       <div style={S.statCard}><div style={S.statL}>CA potentiel</div><div style={S.statV(Cl.txtL)}>{fmt(totPot)}</div></div>
@@ -48,5 +53,6 @@ export default function ProductsTab() {
       </div>);
     })}
     {showProdF && <ProductFormModal onClose={() => setShowProdF(false)} onAdd={p => { setProducts(ps => [...ps, { ...p, id: uid() }]); setShowProdF(false); }} cats={cats} seasons={seasons} currentSeason={currentSeason} />}
+    {showImport && <ImportWizard defaultType="produits" onClose={() => setShowImport(false)} />}
   </>);
 }
