@@ -10,6 +10,23 @@ export default function ActionsTab() {
   const [memberF, setMemberF] = useState("Tous");
   const [seasonF, setSeasonF] = useState(currentSeason);
   const [catF, setCatF] = useState("Tous");
+  const [celebrating, setCelebrating] = useState({});
+
+  const toggleAction = (a) => {
+    if (!a.done) {
+      setCelebrating(prev => ({ ...prev, [a.id]: true }));
+      setTimeout(() => {
+        if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: i.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : i));
+        else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : c));
+        else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : c));
+        setCelebrating(prev => { const n = { ...prev }; delete n[a.id]; return n; });
+      }, 700);
+    } else {
+      if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: i.actions.map(x => x.id === a.id ? { ...x, done: false } : x) } : i));
+      else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: false } : x) } : c));
+      else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: false } : x) } : c));
+    }
+  };
 
   const now = new Date();
   const isInPeriod = (dateStr) => {
@@ -49,6 +66,7 @@ export default function ActionsTab() {
   };
 
   return (<>
+    <style>{`@keyframes popIn { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.3); } 100% { transform: scale(1); opacity: 1; } }`}</style>
     {/* Titre + bouton */}
     <div style={S.fx}><h2 style={S.pageH}>Actions ({filtered.length})</h2><button style={S.btn("primary")} onClick={addAction}>+ Action</button></div>
     {/* Filtres — même filterBar que Prospects/Partners/Contrats */}
@@ -68,18 +86,31 @@ export default function ActionsTab() {
         if (!items.length) return null;
         return (<div key={cat} style={{ marginTop: 12 }}>
           <div style={S.sectionTitle}>{cat} ({items.length})</div>
-          {items.sort((a, b) => a.date.localeCompare(b.date)).map(a => (
-            <div key={`${a.id}-${a.source}`} style={S.actItem(a.done)}>
-              <input type="checkbox" checked={a.done} style={S.actCheck} onChange={() => {
-                if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: i.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : i));
-                else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : c));
-                else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : c));
-              }} />
-              <div style={S.actText}><strong>{a.companyName}</strong> · {a.type}{a.note && <span style={{ color: Cl.txtL }}> — {a.note}</span>}</div>
+          {items.sort((a, b) => a.date.localeCompare(b.date)).map(a => {
+            const isCelebrating = celebrating[a.id];
+            return (
+            <div key={`${a.id}-${a.source}`} style={{
+              ...S.actItem(a.done),
+              background: isCelebrating ? Cl.okL : S.actItem(a.done).background,
+              borderColor: isCelebrating ? Cl.ok : S.actItem(a.done).borderColor,
+              transform: isCelebrating ? "scale(1.02)" : "scale(1)",
+              opacity: isCelebrating ? 1 : a.done ? 0.4 : 1,
+              transition: "all 0.4s ease",
+            }}>
+              <div style={{ position: "relative", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <input type="checkbox" checked={a.done || !!isCelebrating} style={{ ...S.actCheck, width: 18, height: 18, accentColor: Cl.ok }} onChange={() => toggleAction(a)} />
+                {isCelebrating && <span style={{ position: "absolute", fontSize: 18, pointerEvents: "none", animation: "popIn 0.4s ease" }}>✅</span>}
+              </div>
+              <div style={S.actText}>
+                <strong>{a.companyName}</strong> · {a.type}
+                {a.note && <span style={{ color: Cl.txtL }}> — {a.note}</span>}
+                {isCelebrating && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: Cl.ok, animation: "popIn 0.3s ease" }}>Bravo !</span>}
+              </div>
               <span style={{ fontSize: 12, color: Cl.txtL }}>{a.date}</span>
               <span style={{ fontSize: 11, color: Cl.pri, fontWeight: 500 }}>👤 {a.assignee}</span>
             </div>
-          ))}
+            );
+          })}
         </div>);
       })}
     </div>
