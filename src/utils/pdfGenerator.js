@@ -521,7 +521,7 @@ export function generateFacturePDF(club, company, invoice) {
 // =====================================================
 const CERFA_COORDS = {
   // --- PAGE 1 ---
-  numero_recu:           { page: 1, x: 463, y: 129, size: 8 },
+  numero_recu:           { page: 1, x: 463, y: 135, size: 8 },
   denomination:          { page: 1, x: 201, y: 184, size: 9 },
   siren:                 { page: 1, x: 166, y: 207, size: 9 },
   adresse_numero:        { page: 1, x: 66, y: 230, size: 8 },
@@ -530,8 +530,8 @@ const CERFA_COORDS = {
   adresse_commune:       { page: 1, x: 242, y: 244, size: 8 },
   adresse_pays:          { page: 1, x: 68, y: 255, size: 8 },
   objet:                 { page: 1, x: 79, y: 269, size: 8 },
-  check_oeuvre:           { page: 1, x: 31, y: 383, size: 10 },
-  check_asso_1901:        { page: 1, x: 56, y: 338, size: 10 },
+  check_oeuvre:           { page: 1, x: 34, y: 383, size: 10 },
+  check_asso_1901:        { page: 1, x: 56, y: 346, size: 10 },
   check_asso_rup:         { page: 1, x: 114, y: 365, size: 10 },
   check_fondation_uni:    { page: 1, x: 114, y: 394, size: 10 },
   check_fondation_ent:    { page: 1, x: 114, y: 410, size: 10 },
