@@ -4,6 +4,7 @@ import { S, Cl } from '../data/styles';
 import { statusBType, P_STATUSES, ACTION_TYPES, parseCSV, uid } from '../data/initialData';
 import { Badge, Modal, PhoneLink, EmailLink } from '../components/index';
 import { CompanyForm, CompanyDetail } from '../components/CompanyModals';
+import ImportWizard from '../components/ImportWizard';
 
 // --- Script renderer ---
 function ScriptView({ text }) {
@@ -191,6 +192,6 @@ export default function ProspectsTab() {
     {showForm && <CompanyForm data={editCo} onSave={saveCo} onClose={() => { setShowForm(false); setEditCo(null); }} />}
     {viewCo && <CompanyDetail company={companies.find(c => c.id === viewCo.id) || viewCo} onClose={() => setViewCo(null)} />}
     {callCo && <CallModal company={callCo} onClose={() => setCallCo(null)} />}
-    {showImport && <Modal title="📥 Import CSV" onClose={() => setShowImport(false)}><p style={{ fontSize: 13, marginBottom: 10 }}>CSV avec colonne <strong>Entreprise</strong> minimum.</p><input type="file" accept=".csv" onChange={(e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { try { const data = parseCSV(ev.target.result); let count = 0; data.forEach(row => { const company = row.Entreprise || row.entreprise || row["Nom"] || ""; if (!company || companies.find(p => p.company.toLowerCase() === company.toLowerCase())) return; count++; setCompanies(cs => [...cs, { id: uid(), company, sector: row.Secteur || "", contact: row.Contact || "", phone: String(row.Téléphone || ""), email: row.Email || "", adresseNum: row["N°"] || "", adresseRue: row.Rue || "", adresseCP: row["Code postal"] || "", adresseCommune: row.Commune || "", address: row.Adresse || "", formeJuridique: row["Forme juridique"] || "", siret: "", tvaNumber: "", season: currentSeason, isPartner: false, prospectStatus: "Nouveau", partnerStatus: "", callbackDate: "", rdvDate: "", member: members[0], products: [], notes: [], actions: [] }]); }); alert(`${count} importé(s)`); setShowImport(false); } catch { alert("Erreur CSV"); } }; reader.readAsText(file); e.target.value = ""; }} /></Modal>}
+    {showImport && <ImportWizard defaultType="prospects" onClose={() => setShowImport(false)} />}
   </>);
 }
