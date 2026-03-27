@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useApp } from '../data/AppContext';
 import { S, Cl } from '../data/styles';
-import { ACTION_TYPES } from '../data/initialData';
+import { ACTION_TYPES, uid } from '../data/initialData';
 import { Badge } from '../components/index';
 
 export default function ActionsTab() {
-  const { allActions, companies, setCompanies, contracts, setContracts, members, seasons, currentSeason, todayStr } = useApp();
+  const { allActions, companies, setCompanies, contracts, setContracts, members, addMember, seasons, currentSeason, todayStr, prospectsList, partnersList, setMiniForm, setInvoices } = useApp();
   const [periodF, setPeriodF] = useState("jour");
   const [memberF, setMemberF] = useState("Tous");
   const [seasonF, setSeasonF] = useState(currentSeason);
@@ -29,9 +29,28 @@ export default function ActionsTab() {
   const grouped = {};
   ACTION_TYPES.forEach(t => { grouped[t] = filtered.filter(a => a.category === t); });
 
+  const addAction = () => {
+    const allCos = [...prospectsList, ...partnersList];
+    if (!allCos.length) return;
+    setMiniForm({ title: "Nouvelle action", fields: [
+      { key: "company", label: "Entreprise", value: allCos[0]?.company || "", type: "select", options: allCos.map(c => c.company) },
+      { key: "type", label: "Intitulé", value: "" },
+      { key: "category", label: "Catégorie", value: "Prospection", type: "select", options: ACTION_TYPES },
+      { key: "date", label: "Date", value: todayStr, type: "date" },
+      { key: "assignee", label: "Assigné à", value: members[0], type: "member", options: members, onAdd: addMember },
+      { key: "note", label: "Note", value: "", type: "textarea" },
+    ], onSave: (v) => {
+      if (!v.type || !v.company) return;
+      const co = allCos.find(c => c.company === v.company);
+      if (!co) return;
+      setCompanies(cs => cs.map(c => c.id === co.id ? { ...c, actions: [...(c.actions || []), { id: uid(), type: v.type, category: v.category, date: v.date || todayStr, done: false, note: v.note || "", assignee: v.assignee || "" }] } : c));
+      setMiniForm(null);
+    }});
+  };
+
   return (<>
-    {/* Titre — même pattern que toutes les pages */}
-    <div style={S.fx}><h2 style={S.pageH}>Actions ({filtered.length})</h2></div>
+    {/* Titre + bouton */}
+    <div style={S.fx}><h2 style={S.pageH}>Actions ({filtered.length})</h2><button style={S.btn("primary")} onClick={addAction}>+ Action</button></div>
     {/* Filtres — même filterBar que Prospects/Partners/Contrats */}
     <div style={S.filterBar}>
       <select style={{ ...S.filterSel, fontWeight: 600 }} value={periodF} onChange={e => setPeriodF(e.target.value)}>
@@ -52,7 +71,8 @@ export default function ActionsTab() {
           {items.sort((a, b) => a.date.localeCompare(b.date)).map(a => (
             <div key={`${a.id}-${a.source}`} style={S.actItem(a.done)}>
               <input type="checkbox" checked={a.done} style={S.actCheck} onChange={() => {
-                if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : c));
+                if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: i.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : i));
+                else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : c));
                 else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : c));
               }} />
               <div style={S.actText}><strong>{a.companyName}</strong> · {a.type}{a.note && <span style={{ color: Cl.txtL }}> — {a.note}</span>}</div>
