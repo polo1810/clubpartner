@@ -29,6 +29,39 @@ export default function Dashboard() {
       <div style={S.statCardHighlight(Cl.warnL)}><div style={S.statL}>Aujourd'hui</div><div style={S.statV(Cl.warn)}>{allActions.filter(a => a.date === todayStr && !a.done).length}</div><div style={S.statSub(Cl.warn)}>actions à faire</div></div>
     </div>
 
+    {/* Actions du jour */}
+    {(() => {
+      const todayActions = allActions.filter(a => a.date === todayStr && !a.done);
+      const upcomingActions = allActions.filter(a => a.date > todayStr && !a.done).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
+      const lateActions = allActions.filter(a => a.date < todayStr && !a.done).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+      const shown = todayActions.length > 0 ? todayActions : upcomingActions;
+      const label = todayActions.length > 0 ? `📋 Actions du jour (${todayActions.length})` : `📋 Prochaines actions (${upcomingActions.length})`;
+      return (shown.length > 0 || lateActions.length > 0) && <div style={S.card}>
+        {lateActions.length > 0 && <>
+          <div style={{ ...S.cT, color: Cl.err }}>⚠️ En retard ({lateActions.length})</div>
+          {lateActions.map((a, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 13 }}>
+              <span style={{ ...S.badge(Cl.err, Cl.errL) }}>{a.date}</span>
+              <strong style={{ flex: 1 }}>{a.type}</strong>
+              <span style={{ color: Cl.txtL }}>{a.companyName}</span>
+              {a.assignee && <span style={{ ...S.badge(Cl.pri, Cl.priL) }}>{a.assignee}</span>}
+            </div>
+          ))}
+        </>}
+        {shown.length > 0 && <>
+          <div style={{ ...S.cT, marginTop: lateActions.length > 0 ? 14 : 0 }}>{label}</div>
+          {shown.map((a, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 13 }}>
+              <span style={{ ...S.badge(todayActions.length > 0 ? Cl.warn : Cl.txtL, todayActions.length > 0 ? Cl.warnL : Cl.hov) }}>{a.date}</span>
+              <strong style={{ flex: 1 }}>{a.type}</strong>
+              <span style={{ color: Cl.txtL }}>{a.companyName}</span>
+              {a.assignee && <span style={{ ...S.badge(Cl.pri, Cl.priL) }}>{a.assignee}</span>}
+            </div>
+          ))}
+        </>}
+      </div>;
+    })()}
+
     {/* Objectifs saison */}
     <div style={S.card}>
       <div style={S.fx}>
