@@ -24,8 +24,31 @@ export default function Dashboard() {
 
   return (<>
     <style>{`
-      @keyframes celebPop { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 50% { transform: scale(1.4) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
-      @keyframes celebSlide { 0% { transform: translateX(-8px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+      @keyframes drawCheck {
+        0% { stroke-dashoffset: 24; }
+        100% { stroke-dashoffset: 0; }
+      }
+      @keyframes circleDraw {
+        0% { stroke-dashoffset: 60; }
+        100% { stroke-dashoffset: 0; }
+      }
+      @keyframes popBounce {
+        0% { transform: scale(0); opacity: 0; }
+        40% { transform: scale(1.2); opacity: 1; }
+        70% { transform: scale(0.9); }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      @keyframes strikeThrough {
+        0% { width: 0; }
+        100% { width: 100%; }
+      }
+      @keyframes fadeSlideOut {
+        0% { opacity: 1; max-height: 60px; transform: translateX(0); }
+        60% { opacity: 0.5; transform: translateX(20px); }
+        100% { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; transform: translateX(40px); }
+      }
+      .celeb-row { animation: none; }
+      .celeb-row.fading { animation: fadeSlideOut 0.6s ease forwards; }
     `}</style>
     {/* Stats rapides — enrichies avec contexte */}
     <div style={{ ...S.card, ...S.g4 }}>
@@ -44,17 +67,14 @@ export default function Dashboard() {
       const totalCount = lateActions.length + shown.length;
 
       const toggleAction = (a) => {
-        // Phase 1 : célébration (0.8s)
         setJustDone(prev => ({ ...prev, [a.id]: "celebrate" }));
-        // Phase 2 : fondu (après 0.8s, dure 0.5s)
-        setTimeout(() => setJustDone(prev => ({ ...prev, [a.id]: "fadeout" })), 800);
-        // Phase 3 : vraiment coché (après 1.3s)
+        setTimeout(() => setJustDone(prev => ({ ...prev, [a.id]: "fadeout" })), 1200);
         setTimeout(() => {
           if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: i.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : i));
           else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : c));
           else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : c));
           setJustDone(prev => { const n = { ...prev }; delete n[a.id]; return n; });
-        }, 1300);
+        }, 1800);
       };
 
       const addAction = () => {
@@ -78,33 +98,43 @@ export default function Dashboard() {
 
       const catColors = { Prospection: [Cl.pri, Cl.priL], Partenariat: [Cl.ok, Cl.okL], "Mise en place": [Cl.pur, Cl.purL], Contrat: [Cl.warn, Cl.warnL], Facturation: [Cl.err, Cl.errL] };
 
+      const CheckSvg = () => (
+        <svg width="22" height="22" viewBox="0 0 22 22" style={{ animation: "popBounce 0.5s ease forwards" }}>
+          <circle cx="11" cy="11" r="9" fill="none" stroke={Cl.ok} strokeWidth="2" strokeDasharray="60" strokeDashoffset="60" style={{ animation: "circleDraw 0.4s ease forwards" }} />
+          <path d="M6.5 11.5L9.5 14.5L15.5 8" fill="none" stroke={Cl.ok} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="24" strokeDashoffset="24" style={{ animation: "drawCheck 0.3s ease 0.2s forwards" }} />
+        </svg>
+      );
+
       const ActionRow = ({ a }) => {
-        const phase = justDone[a.id]; // "celebrate" | "fadeout" | undefined
+        const phase = justDone[a.id];
         const celebrating = phase === "celebrate";
         const fading = phase === "fadeout";
         const [cc, cbg] = catColors[a.category] || [Cl.txtL, Cl.hov];
         return (
-          <div style={{
+          <div className={`celeb-row ${fading ? "fading" : ""}`} style={{
             display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", marginBottom: 3,
-            borderRadius: 6, fontSize: 13,
-            borderLeft: celebrating ? `3px solid ${Cl.ok}` : "3px solid transparent",
+            borderRadius: 8, fontSize: 13, overflow: "hidden",
             background: celebrating ? Cl.okL : "transparent",
-            opacity: fading ? 0 : 1,
-            maxHeight: fading ? 0 : 50,
-            padding: fading ? "0 10px" : "8px 10px",
-            overflow: "hidden",
-            transition: celebrating ? "all 0.3s ease" : "all 0.5s ease",
+            boxShadow: celebrating ? `0 0 0 1px ${Cl.ok}` : "none",
+            transition: "background 0.3s, box-shadow 0.3s",
           }}>
-            <div style={{ position: "relative", width: 18, height: 18, flexShrink: 0 }}>
-              <input type="checkbox" checked={!!phase} style={{ cursor: "pointer", width: 18, height: 18, accentColor: Cl.ok }} onChange={() => !phase && toggleAction(a)} />
-              {celebrating && <span style={{ position: "absolute", top: -2, left: -1, fontSize: 20, pointerEvents: "none", animation: "celebPop 0.4s ease forwards" }}>✓</span>}
+            <div style={{ width: 22, height: 22, flexShrink: 0, cursor: "pointer" }} onClick={() => !phase && toggleAction(a)}>
+              {celebrating || fading
+                ? <CheckSvg />
+                : <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${Cl.brd}`, background: Cl.wh, transition: "border-color 0.2s" }} />
+              }
             </div>
             <span style={{ ...S.badge(a.date < todayStr ? Cl.err : a.date === todayStr ? Cl.warn : Cl.txtL, a.date < todayStr ? Cl.errL : a.date === todayStr ? Cl.warnL : Cl.hov) }}>{a.date}</span>
             <span style={{ ...S.badge(cc, cbg) }}>{a.category}</span>
-            <strong style={{ flex: 1 }}>{a.type}</strong>
+            <div style={{ flex: 1, position: "relative", display: "inline-block" }}>
+              <strong style={{ color: celebrating ? Cl.txtL : Cl.txt, transition: "color 0.3s" }}>{a.type}</strong>
+              {celebrating && <div style={{ position: "absolute", top: "50%", left: 0, height: 2, background: Cl.ok, borderRadius: 1, animation: "strikeThrough 0.4s ease 0.3s forwards", width: 0 }} />}
+            </div>
             <span style={{ color: Cl.txtL }}>{a.companyName}</span>
-            {celebrating && <span style={{ fontSize: 11, fontWeight: 600, color: Cl.ok, animation: "celebSlide 0.3s ease forwards", whiteSpace: "nowrap" }}>Fait !</span>}
-            {a.assignee && !celebrating && <span style={{ ...S.badge(Cl.pri, Cl.priL) }}>{a.assignee}</span>}
+            {celebrating
+              ? <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700, color: "#fff", background: Cl.ok, animation: "popBounce 0.4s ease 0.3s both", whiteSpace: "nowrap" }}>Fait !</span>
+              : a.assignee && <span style={{ ...S.badge(Cl.pri, Cl.priL) }}>{a.assignee}</span>
+            }
           </div>
         );
       };
