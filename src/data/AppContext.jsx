@@ -1,24 +1,86 @@
 import { createContext, useContext, useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds, INIT_ACCOUNT_CODES, genAccountCode, invoiceNum, cerfaDocNum, INIT_SCRIPTS, INIT_CONTRACT_TEMPLATES, DEFAULT_EXCLUSIVITE } from '../data/initialData';
 import { useAuth } from './AuthContext';
+import { supabase } from './supabase';
 
 const Ctx = createContext();
 export const useApp = () => useContext(Ctx);
 
+// --- Sync helper : détecte les ajouts/modifs/suppressions et met à jour Supabase ---
+const syncTable = async (table, clubId, current, prevRef) => {
+  if (!supabase || !clubId) return;
+  const prev = prevRef.current;
+  if (prev === null) { prevRef.current = current; return; } // premier rendu, on skip
+
+  const prevMap = new Map(prev.map(item => [String(item.id), JSON.stringify(item)]));
+  const currMap = new Map(current.map(item => [String(item.id), JSON.stringify(item)]));
+
+  // Upsert les ajoutés/modifiés
+  const upserts = [];
+  for (const [id, json] of currMap) {
+    if (prevMap.get(id) !== json) {
+      upserts.push({ id, club_id: clubId, data: JSON.parse(json), updated_at: new Date().toISOString() });
+    }
+  }
+  if (upserts.length) {
+    const { error } = await supabase.from(table).upsert(upserts);
+    if (error) console.error(`Sync ${table} upsert error:`, error);
+  }
+
+  // Supprimer les retirés
+  const deleted = [...prevMap.keys()].filter(id => !currMap.has(id));
+  if (deleted.length) {
+    const { error } = await supabase.from(table).delete().in('id', deleted);
+    if (error) console.error(`Sync ${table} delete error:`, error);
+  }
+
+  prevRef.current = current;
+};
+
+// --- Hook de sync debounced pour une table ---
+function useTableSync(table, data, clubId, canSync) {
+  const prevRef = useRef(null);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (!canSync) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => syncTable(table, clubId, data, prevRef), 800);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [data, canSync, clubId, table]);
+}
+
 export function AppProvider({ children }) {
   const auth = useAuth();
-  const cd = auth?.clubData; // JSON from Supabase (or null in local mode)
+  const cd = auth?.clubData;
+  const clubId = auth?.member?.club_id;
+  const canSync = !auth?.isLocal && !!clubId && auth?.member?.role !== "readonly";
 
-  const [companies, setCompanies] = useState(cd?.companies || INIT_COMPANIES);
-  const [products, setProducts] = useState(cd?.products || INIT_PRODUCTS);
-  const [contracts, setContracts] = useState(cd?.contracts || INIT_CONTRACTS);
+  // --- Les 4 tables séparées : init depuis les tables Supabase (ou données démo en local) ---
+  const [companies, setCompanies] = useState(() => {
+    if (auth?.isLocal) return cd?.companies || INIT_COMPANIES;
+    return auth?.initCompanies?.length ? auth.initCompanies : [];
+  });
+  const [products, setProducts] = useState(() => {
+    if (auth?.isLocal) return cd?.products || INIT_PRODUCTS;
+    return auth?.initProducts?.length ? auth.initProducts : [];
+  });
+  const [contracts, setContracts] = useState(() => {
+    if (auth?.isLocal) return cd?.contracts || INIT_CONTRACTS;
+    return auth?.initContracts?.length ? auth.initContracts : [];
+  });
+  const [invoices, setInvoices] = useState(() => {
+    if (auth?.isLocal) return cd?.invoices || [];
+    return auth?.initInvoices?.length ? auth.initInvoices : [];
+  });
+
+  // --- Paramètres du club : restent dans le JSON clubs.data ---
   const [members, setMembers] = useState(cd?.members || INIT_MEMBERS);
   const [seasons, setSeasons] = useState(cd?.seasons || INIT_SEASONS);
   const [cats, setCats] = useState(cd?.cats || INIT_CATS);
   const [currentSeason, setCurrentSeason] = useState(cd?.currentSeason || INIT_CURRENT);
   const [miniForm, setMiniForm] = useState(null);
   const [clubInfo, setClubInfo] = useState(cd?.clubInfo || INIT_CLUB_INFO);
-  const [invoices, setInvoices] = useState(cd?.invoices || []);
   const [accountCodes, setAccountCodes] = useState(cd?.accountCodes || INIT_ACCOUNT_CODES);
   const [invoiceSeq, setInvoiceSeq] = useState(cd?.invoiceSeq || 1);
   const [scripts, setScripts] = useState((cd?.scripts && cd.scripts["Partenariat"]) ? cd.scripts : INIT_SCRIPTS);
@@ -26,34 +88,40 @@ export function AppProvider({ children }) {
   const [exclusiviteText, setExclusiviteText] = useState(cd?.exclusiviteText || DEFAULT_EXCLUSIVITE);
   const [allObjectives, setAllObjectives] = useState(cd?.allObjectives || { "2025-2026": { partenariat: 50000, mecenat: 20000, members: {} } });
 
-  // --- Auto-save to Supabase (debounced) ---
-  const saveTimer = useRef(null);
-  const getFullState = useCallback(() => ({
-    companies, products, contracts, members, seasons, cats, currentSeason,
-    clubInfo, invoices, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives,
-  }), [companies, products, contracts, members, seasons, cats, currentSeason, clubInfo, invoices, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
+  // --- Sync automatique des 4 tables vers Supabase ---
+  useTableSync('companies', companies, clubId, canSync);
+  useTableSync('contracts', contracts, clubId, canSync);
+  useTableSync('invoices', invoices, clubId, canSync);
+  useTableSync('products', products, clubId, canSync);
+
+  // --- Sync des paramètres vers clubs.data (debounced) ---
+  const settingsTimer = useRef(null);
+  const getSettings = useCallback(() => ({
+    members, seasons, cats, currentSeason,
+    clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives,
+  }), [members, seasons, cats, currentSeason, clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
 
   useEffect(() => {
     if (auth?.isLocal || !auth?.saveClubData) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      auth.saveClubData(getFullState());
-    }, 1000); // Save 1s after last change
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [companies, products, contracts, members, seasons, cats, currentSeason, clubInfo, invoices, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
+    if (settingsTimer.current) clearTimeout(settingsTimer.current);
+    settingsTimer.current = setTimeout(() => {
+      auth.saveClubData(getSettings());
+    }, 1000);
+    return () => { if (settingsTimer.current) clearTimeout(settingsTimer.current); };
+  }, [members, seasons, cats, currentSeason, clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
+
+  // ==================================================================
+  // Tout le reste est IDENTIQUE à l'ancien AppContext
+  // ==================================================================
 
   const addMember = (n) => { if (n && !members.includes(n)) setMembers(ms => [...ms, n]); };
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const companyInSeason = (c, sid) => c.season === sid || !!(c.seasonProducts?.[sid]?.length) || !!(c.seasonDonAmounts?.[sid]) || !!(c.seasonStatus?.[sid]) || contracts.some(con => con.companyId === c.id && getContractSeasonIds(con, seasons).includes(sid));
-  // Per-season partner/prospect logic
   const hasContractForSeason = (c, sid) => contracts.some(con => con.companyId === c.id && isSigned(con) && getContractSeasonIds(con, seasons).includes(sid));
   const isPartnerForSeason = (c, sid) => {
-    // If there's a signed contract covering this season → always partner
     if (hasContractForSeason(c, sid)) return true;
-    // If explicit seasonStatus set → use it
     if (c.seasonStatus && c.seasonStatus[sid] !== undefined) return c.seasonStatus[sid] === "partenaire";
-    // Fallback to global isPartner
     return c.isPartner || false;
   };
   const setSeasonStatus = (companyId, sid, status) => {
@@ -61,12 +129,10 @@ export function AppProvider({ children }) {
   };
   const prospectsList = useMemo(() => companies.filter(c => !isPartnerForSeason(c, currentSeason) && companyInSeason(c, currentSeason)), [companies, contracts, currentSeason, seasons]);
   const partnersList = useMemo(() => companies.filter(c => isPartnerForSeason(c, currentSeason) && companyInSeason(c, currentSeason)), [companies, contracts, currentSeason, seasons]);
-  // All companies (unfiltered) for lookups
   const allCompanies = companies;
   const getCompany = (id) => companies.find(c => c.id === id);
   const companyContracts = (cid) => contracts.filter(c => c.companyId === cid);
 
-  // Contracts covering the current season
   const seasonContracts = useMemo(() => contracts.filter(c => {
     const sids = getContractSeasonIds(c, seasons);
     return sids.includes(currentSeason);
@@ -85,7 +151,6 @@ export function AppProvider({ children }) {
     const co = getCompany(con.companyId); return (co?.products || []).reduce((t, cp) => { const prod = products.find(x => x.id === cp.productId); return t + lineTTC(cp, prod?.tva); }, 0);
   };
 
-  // Helper: get products for a company for the current season
   const seasonProdsFor = (c) => {
     if (c.seasonProducts && c.seasonProducts[currentSeason]) return c.seasonProducts[currentSeason];
     return c.products || [];
@@ -104,12 +169,9 @@ export function AppProvider({ children }) {
 
   const allActions = useMemo(() => {
     const acts = [];
-    // Actions from companies of current season
     const seasonCompanies = companies.filter(c => companyInSeason(c, currentSeason));
     seasonCompanies.forEach(co => { (co.actions || []).forEach(a => acts.push({ ...a, companyId: co.id, companyName: co.company, source: co.isPartner ? "partner" : "prospect" })); });
-    // Actions from contracts covering current season
     seasonContracts.forEach(con => { const co = getCompany(con.companyId); (con.actions || []).forEach(a => acts.push({ ...a, companyId: con.companyId, companyName: co?.company || "?", contractId: con.id, source: "contract" })); });
-    // Actions from invoices of current season
     seasonInvoices.forEach(inv => { (inv.actions || []).forEach(a => acts.push({ ...a, companyId: inv.companyId, companyName: inv.companyName, invoiceId: inv.id, source: "invoice" })); });
     return acts;
   }, [companies, contracts, invoices, currentSeason, seasons]);
@@ -132,7 +194,6 @@ export function AppProvider({ children }) {
     const coSP = co.seasonProducts && Object.keys(co.seasonProducts).length > 0 ? co.seasonProducts : {};
     const sp = {};
     if (Object.keys(coSP).length > 0) {
-      // Copy all season products from company
       Object.entries(coSP).forEach(([sid, prods]) => { sp[sid] = prods.map(p => ({ ...p })); });
     } else {
       sp[currentSeason] = [...(co.products || []).map(p => ({ ...p }))];
@@ -167,7 +228,6 @@ export function AppProvider({ children }) {
     });
   };
 
-  // CA réalisé par membre (basé sur le responsable de l'entreprise)
   const caByMember = useMemo(() => {
     const r = {};
     members.forEach(m => { r[m] = { partenariat: 0, mecenat: 0, total: 0 }; });
@@ -217,7 +277,6 @@ export function AppProvider({ children }) {
     }});
   };
 
-  // --- Invoice generation ---
   const generateInvoice = (contract, season) => {
     const co = getCompany(contract.companyId);
     if (!co) return null;
@@ -247,12 +306,10 @@ export function AppProvider({ children }) {
       status: "Émise",
     };
     setInvoices(is => [...is, inv]);
-    // Set contract status to Facturé if not already
     setContracts(cs => cs.map(c => c.id === contract.id ? { ...c, status: c.status === "Signé" ? "Facturé" : c.status } : c));
     return inv;
   };
 
-  // Generate CERFA record (for mécénat - no invoice, just a tracking record)
   const generateCerfaRecord = (contract, season) => {
     const co = getCompany(contract.companyId);
     if (!co) return null;
@@ -274,7 +331,6 @@ export function AppProvider({ children }) {
     setContracts(cs => cs.map(c => c.id === contract.id ? { ...c, status: c.status === "Signé" ? "Facturé" : c.status } : c));
     return rec;
   };
-
 
   const value = {
     companies, setCompanies, products, setProducts, contracts, setContracts,
