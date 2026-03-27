@@ -7,6 +7,7 @@ export default function Dashboard() {
   const { prospectsList, partnersList, allActions, todayStr, totalCA, totalPaid, contracts, setContracts, contractTTC, caByType, caByMember, members, addMember, objectives, setObjectives, currentSeason, companies, setCompanies, setInvoices, setMiniForm } = useApp();
   const [editObj, setEditObj] = useState(false);
   const [justDone, setJustDone] = useState({});
+  // justDone[id] = "celebrate" | "fadeout"
   const totalDue = contracts.filter(c => isSigned(c)).reduce((t, c) => t + contractTTC(c), 0);
   const nbPartP = partnersList.filter(c => (c.dealType || "Partenariat") === "Partenariat").length;
   const nbPartM = partnersList.filter(c => c.dealType === "Mécénat").length;
@@ -22,6 +23,10 @@ export default function Dashboard() {
   const setMemberObj = (m, v) => setObjectives(o => ({ ...o, members: { ...o.members, [m]: Math.max(0, v) } }));
 
   return (<>
+    <style>{`
+      @keyframes celebPop { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 50% { transform: scale(1.4) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+      @keyframes celebSlide { 0% { transform: translateX(-8px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+    `}</style>
     {/* Stats rapides — enrichies avec contexte */}
     <div style={{ ...S.card, ...S.g4 }}>
       <div style={S.statCard}><div style={S.statL}>Prospects</div><div style={S.statV(Cl.pri)}>{prospectsList.length}</div>{prospectsList.filter(p => p.prospectStatus === "À rappeler").length > 0 && <div style={S.statSub(Cl.warn)}>{prospectsList.filter(p => p.prospectStatus === "À rappeler").length} à rappeler</div>}</div>
@@ -39,13 +44,17 @@ export default function Dashboard() {
       const totalCount = lateActions.length + shown.length;
 
       const toggleAction = (a) => {
-        setJustDone(prev => ({ ...prev, [a.id]: true }));
+        // Phase 1 : célébration (0.8s)
+        setJustDone(prev => ({ ...prev, [a.id]: "celebrate" }));
+        // Phase 2 : fondu (après 0.8s, dure 0.5s)
+        setTimeout(() => setJustDone(prev => ({ ...prev, [a.id]: "fadeout" })), 800);
+        // Phase 3 : vraiment coché (après 1.3s)
         setTimeout(() => {
-          if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: i.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : i));
-          else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : c));
-          else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } : c));
+          if (a.invoiceId) setInvoices(is => is.map(i => i.id === a.invoiceId ? { ...i, actions: i.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : i));
+          else if (a.contractId) setContracts(cs => cs.map(c => c.id === a.contractId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : c));
+          else setCompanies(cs => cs.map(c => c.id === a.companyId ? { ...c, actions: c.actions.map(x => x.id === a.id ? { ...x, done: true } : x) } : c));
           setJustDone(prev => { const n = { ...prev }; delete n[a.id]; return n; });
-        }, 600);
+        }, 1300);
       };
 
       const addAction = () => {
@@ -70,16 +79,32 @@ export default function Dashboard() {
       const catColors = { Prospection: [Cl.pri, Cl.priL], Partenariat: [Cl.ok, Cl.okL], "Mise en place": [Cl.pur, Cl.purL], Contrat: [Cl.warn, Cl.warnL], Facturation: [Cl.err, Cl.errL] };
 
       const ActionRow = ({ a }) => {
-        const done = justDone[a.id];
+        const phase = justDone[a.id]; // "celebrate" | "fadeout" | undefined
+        const celebrating = phase === "celebrate";
+        const fading = phase === "fadeout";
         const [cc, cbg] = catColors[a.category] || [Cl.txtL, Cl.hov];
         return (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${Cl.brd}`, fontSize: 13, opacity: done ? 0 : 1, transform: done ? "translateX(40px)" : "none", transition: "opacity 0.5s, transform 0.5s", background: done ? Cl.okL : "transparent" }}>
-            <input type="checkbox" checked={!!done} style={{ cursor: "pointer", width: 16, height: 16, accentColor: Cl.ok }} onChange={() => toggleAction(a)} />
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", marginBottom: 3,
+            borderRadius: 6, fontSize: 13,
+            borderLeft: celebrating ? `3px solid ${Cl.ok}` : "3px solid transparent",
+            background: celebrating ? Cl.okL : "transparent",
+            opacity: fading ? 0 : 1,
+            maxHeight: fading ? 0 : 50,
+            padding: fading ? "0 10px" : "8px 10px",
+            overflow: "hidden",
+            transition: celebrating ? "all 0.3s ease" : "all 0.5s ease",
+          }}>
+            <div style={{ position: "relative", width: 18, height: 18, flexShrink: 0 }}>
+              <input type="checkbox" checked={!!phase} style={{ cursor: "pointer", width: 18, height: 18, accentColor: Cl.ok }} onChange={() => !phase && toggleAction(a)} />
+              {celebrating && <span style={{ position: "absolute", top: -2, left: -1, fontSize: 20, pointerEvents: "none", animation: "celebPop 0.4s ease forwards" }}>✓</span>}
+            </div>
             <span style={{ ...S.badge(a.date < todayStr ? Cl.err : a.date === todayStr ? Cl.warn : Cl.txtL, a.date < todayStr ? Cl.errL : a.date === todayStr ? Cl.warnL : Cl.hov) }}>{a.date}</span>
             <span style={{ ...S.badge(cc, cbg) }}>{a.category}</span>
             <strong style={{ flex: 1 }}>{a.type}</strong>
             <span style={{ color: Cl.txtL }}>{a.companyName}</span>
-            {a.assignee && <span style={{ ...S.badge(Cl.pri, Cl.priL) }}>{a.assignee}</span>}
+            {celebrating && <span style={{ fontSize: 11, fontWeight: 600, color: Cl.ok, animation: "celebSlide 0.3s ease forwards", whiteSpace: "nowrap" }}>Fait !</span>}
+            {a.assignee && !celebrating && <span style={{ ...S.badge(Cl.pri, Cl.priL) }}>{a.assignee}</span>}
           </div>
         );
       };
