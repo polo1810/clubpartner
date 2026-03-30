@@ -130,7 +130,7 @@ function CallModal({ company, onClose }) {
 
 // --- Main Tab ---
 export default function ProspectsTab() {
-  const { prospectsList, companies, setCompanies, seasons, currentSeason, members, convertToPartner } = useApp();
+  const { prospectsList, companies, setCompanies, seasons, currentSeason, members, convertToPartner, setMiniForm } = useApp();
   const [sectorF, setSectorF] = useState("Tous");
   const [statusF, setStatusF] = useState("Tous");
   const [typeF, setTypeF] = useState("Tous");
@@ -140,6 +140,7 @@ export default function ProspectsTab() {
   const [viewCo, setViewCo] = useState(null);
   const [callCo, setCallCo] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  const [selected, setSelected] = useState([]);
 
   const sectors = [...new Set(prospectsList.map(p => p.sector).filter(Boolean))];
   let filtered = prospectsList;
@@ -154,9 +155,37 @@ export default function ProspectsTab() {
     setShowForm(false); setEditCo(null);
   };
 
+  const toggleSelect = (id) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  const allSelected = filtered.length > 0 && filtered.every(c => selected.includes(c.id));
+  const toggleAll = () => setSelected(allSelected ? [] : filtered.map(c => c.id));
+
+  const deleteSelected = () => { if (window.confirm(`Supprimer ${selected.length} prospect(s) ?`)) { setCompanies(cs => cs.filter(c => !selected.includes(c.id))); setSelected([]); } };
+
+  const bulkEdit = () => {
+    setMiniForm({ title: `Modifier ${selected.length} prospect(s)`, fields: [
+      { key: "prospectStatus", label: "Statut (vide = ne pas changer)", value: "", type: "select", options: ["", ...P_STATUSES] },
+      { key: "member", label: "Responsable (vide = ne pas changer)", value: "", type: "select", options: ["", ...members] },
+      { key: "dealType", label: "Type (vide = ne pas changer)", value: "", type: "select", options: ["", "Partenariat", "Mécénat"] },
+    ], onSave: (v) => {
+      setCompanies(cs => cs.map(c => {
+        if (!selected.includes(c.id)) return c;
+        const u = { ...c };
+        if (v.prospectStatus) u.prospectStatus = v.prospectStatus;
+        if (v.member) u.member = v.member;
+        if (v.dealType) u.dealType = v.dealType;
+        return u;
+      }));
+      setSelected([]); setMiniForm(null);
+    }});
+  };
+
   return (<>
     <div style={S.fx}><h2 style={S.pageH}>Prospects ({filtered.length})</h2>
       <div style={S.coActions}>
+        {selected.length > 0 && <>
+          <button style={{ ...S.btn("ghost"), color: Cl.warn, fontSize: 13 }} onClick={bulkEdit}>✏️ Modifier {selected.length}</button>
+          <button style={{ ...S.btn("ghost"), color: Cl.err, fontSize: 13 }} onClick={deleteSelected}>🗑 Supprimer {selected.length}</button>
+        </>}
         <button style={S.btn("ghost")} onClick={() => setShowImport(true)}>📥 Import</button>
         <button style={S.btn("primary")} onClick={() => { setEditCo(null); setShowForm(true); }}>+ Prospect</button>
       </div>
@@ -167,8 +196,16 @@ export default function ProspectsTab() {
       <select style={S.filterSel} value={statusF} onChange={e => setStatusF(e.target.value)}><option>Tous</option>{P_STATUSES.map(s => <option key={s}>{s}</option>)}</select>
       <select style={S.filterSel} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
     </div>
+
+    {filtered.length > 0 && <div style={S.selAll}>
+      <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+      <span style={{ cursor: "pointer" }} onClick={toggleAll}>{allSelected ? "Tout désélectionner" : "Tout sélectionner"}</span>
+      {selected.length > 0 && <span style={S.selCount}>{selected.length} sélectionné{selected.length > 1 ? "s" : ""}</span>}
+    </div>}
+
     <div style={{ marginTop: 10 }}>{filtered.length === 0 ? <div style={S.empty}>Aucun prospect trouvé</div> : filtered.map(co => {
       const bc = co.prospectStatus === "Intéressé" ? Cl.ok : co.prospectStatus === "RDV pris" ? Cl.pur : co.prospectStatus === "Refusé" ? Cl.err : co.prospectStatus === "À rappeler" ? Cl.warn : Cl.brd;
+      const isSelected = selected.includes(co.id);
       // Bouton contextuel : change selon le statut
       const ctxBtn = co.prospectStatus === "Intéressé"
         ? <button style={S.btnConvert} onClick={(e) => { e.stopPropagation(); convertToPartner(co.id); }}>Convertir</button>
@@ -176,11 +213,14 @@ export default function ProspectsTab() {
         ? <button style={{ ...S.btnS("primary") }} onClick={(e) => { e.stopPropagation(); setViewCo(co); }}>Voir fiche</button>
         : <button style={S.btnCall} onClick={(e) => { e.stopPropagation(); setCallCo(co); }}>Appeler</button>;
       return (
-      <div key={co.id} style={S.coCard(bc)} onClick={() => setViewCo(co)}>
+      <div key={co.id} style={{ ...S.coCard(bc), background: isSelected ? Cl.priL : undefined }} onClick={() => setViewCo(co)}>
         <div style={S.fx}>
-          <div>
-            <div style={S.coName}>{co.company}</div>
-            <div style={S.coSub}>{co.contact}{co.phone ? ` · ${co.phone}` : ""}{co.sector ? ` · ${co.sector}` : ""}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" checked={isSelected} onClick={e => e.stopPropagation()} onChange={() => toggleSelect(co.id)} />
+            <div>
+              <div style={S.coName}>{co.company}</div>
+              <div style={S.coSub}>{co.contact}{co.phone ? ` · ${co.phone}` : ""}{co.sector ? ` · ${co.sector}` : ""}</div>
+            </div>
           </div>
           <div style={S.coRight}>
             <Badge type={statusBType(co.prospectStatus)}>{co.prospectStatus}</Badge>
