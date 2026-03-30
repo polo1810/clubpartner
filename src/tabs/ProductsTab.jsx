@@ -60,9 +60,11 @@ export default function ProductsTab() {
   const allIds = products.map(p => p.id);
   const allSelected = products.length > 0 && products.every(p => selected.includes(p.id));
   const toggleAll = () => setSelected(allSelected ? [] : allIds);
+  const [confirmDel, setConfirmDel] = useState(null); // { ids: [...], label: "..." }
 
-  const deleteSelected = () => { if (window.confirm(`Supprimer ${selected.length} produit(s) ?`)) { setProducts(ps => ps.filter(p => !selected.includes(p.id))); setSelected([]); } };
-  const deleteOne = (id) => { if (window.confirm("Supprimer ce produit ?")) setProducts(ps => ps.filter(p => p.id !== id)); };
+  const deleteSelected = () => setConfirmDel({ ids: [...selected], label: `${selected.length} produit(s)` });
+  const deleteOne = (id) => { const p = products.find(x => x.id === id); setConfirmDel({ ids: [id], label: p?.name || "ce produit" }); };
+  const doDelete = () => { setProducts(ps => ps.filter(p => !confirmDel.ids.includes(p.id))); setSelected(s => s.filter(x => !confirmDel.ids.includes(x))); setConfirmDel(null); };
 
   const bulkEdit = () => {
     setMiniForm({ title: `Modifier ${selected.length} produit(s)`, fields: [
@@ -154,5 +156,12 @@ export default function ProductsTab() {
     {showProdF && <ProductFormModal onClose={() => setShowProdF(false)} onAdd={p => { setProducts(ps => [...ps, { ...p, id: uid() }]); setShowProdF(false); }} cats={cats} subcats={subcats} productTypes={productTypes} placements={placements} seasons={seasons} currentSeason={currentSeason} />}
     {showImport && <ImportWizard defaultType="produits" onClose={() => setShowImport(false)} />}
     {showSettings && <ProductSettingsModal onClose={() => setShowSettings(false)} />}
+    {confirmDel && <Modal title="🗑 Confirmer la suppression" onClose={() => setConfirmDel(null)}>
+      <p style={{ fontSize: 14, marginBottom: 16 }}>Êtes-vous sûr de vouloir supprimer <strong>{confirmDel.label}</strong> ? Cette action est irréversible.</p>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button style={S.btn("ghost")} onClick={() => setConfirmDel(null)}>Annuler</button>
+        <button style={{ ...S.btn("primary"), background: Cl.err }} onClick={doDelete}>Supprimer</button>
+      </div>
+    </Modal>}
   </>);
 }
