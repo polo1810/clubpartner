@@ -7,7 +7,7 @@ import { CompanyForm, CompanyDetail } from '../components/CompanyModals';
 import ImportWizard from '../components/ImportWizard';
 
 export default function PartnersTab({ onOpenContract }) {
-  const { partnersList, companies, setCompanies, seasons, currentSeason, companyContracts, setSeasonStatus, hasContractForSeason } = useApp();
+  const { partnersList, companies, setCompanies, seasons, currentSeason, companyContracts, setSeasonStatus, hasContractForSeason, members, setMiniForm } = useApp();
   const [sectorF, setSectorF] = useState("Tous");
   const [typeF, setTypeF] = useState("Tous");
   const [search, setSearch] = useState("");
@@ -43,10 +43,34 @@ export default function PartnersTab({ onOpenContract }) {
     setSelected([]); setShowBulkRepass(false); setBulkSeason("");
   };
 
+  const deleteSelected = () => { if (window.confirm(`Supprimer ${selected.length} partenaire(s) ?`)) { setCompanies(cs => cs.filter(c => !selected.includes(c.id))); setSelected([]); } };
+
+  const bulkEdit = () => {
+    setMiniForm({ title: `Modifier ${selected.length} partenaire(s)`, fields: [
+      { key: "member", label: "Responsable (vide = ne pas changer)", value: "", type: "select", options: ["", ...members] },
+      { key: "dealType", label: "Type (vide = ne pas changer)", value: "", type: "select", options: ["", "Partenariat", "Mécénat"] },
+      { key: "sector", label: "Secteur (vide = ne pas changer)", value: "" },
+    ], onSave: (v) => {
+      setCompanies(cs => cs.map(c => {
+        if (!selected.includes(c.id)) return c;
+        const u = { ...c };
+        if (v.member) u.member = v.member;
+        if (v.dealType) u.dealType = v.dealType;
+        if (v.sector) u.sector = v.sector;
+        return u;
+      }));
+      setSelected([]); setMiniForm(null);
+    }});
+  };
+
   return (<>
     <div style={S.fx}><h2 style={S.pageH}>Partenaires ({filtered.length})</h2>
       <div style={S.coActions}>
-        {selected.length > 0 && <button style={{ ...S.btn("ghost"), color: Cl.warn, fontSize: 13 }} onClick={() => setShowBulkRepass(true)}>↩️ Repasser {selected.length} en prospect</button>}
+        {selected.length > 0 && <>
+          <button style={{ ...S.btn("ghost"), color: Cl.warn, fontSize: 13 }} onClick={() => setShowBulkRepass(true)}>↩️ Repasser {selected.length} en prospect</button>
+          <button style={{ ...S.btn("ghost"), color: Cl.warn, fontSize: 13 }} onClick={bulkEdit}>✏️ Modifier {selected.length}</button>
+          <button style={{ ...S.btn("ghost"), color: Cl.err, fontSize: 13 }} onClick={deleteSelected}>🗑 Supprimer {selected.length}</button>
+        </>}
         <button style={S.btn("ghost")} onClick={() => setShowImport(true)}>📥 Import</button>
       </div>
     </div>
