@@ -43,7 +43,9 @@ export default function PartnersTab({ onOpenContract }) {
     setSelected([]); setShowBulkRepass(false); setBulkSeason("");
   };
 
-  const deleteSelected = () => { if (window.confirm(`Supprimer ${selected.length} partenaire(s) ?`)) { setCompanies(cs => cs.filter(c => !selected.includes(c.id))); setSelected([]); } };
+  const [confirmDel, setConfirmDel] = useState(null);
+  const deleteSelected = () => setConfirmDel({ ids: [...selected], label: `${selected.length} partenaire(s)` });
+  const doDelete = () => { setCompanies(cs => cs.filter(c => !confirmDel.ids.includes(c.id))); setSelected(s => s.filter(x => !confirmDel.ids.includes(x))); setConfirmDel(null); };
 
   const bulkEdit = () => {
     setMiniForm({ title: `Modifier ${selected.length} partenaire(s)`, fields: [
@@ -136,5 +138,12 @@ export default function PartnersTab({ onOpenContract }) {
       </div>
     </Modal>}
     {showImport && <ImportWizard defaultType="partenaires" onClose={() => setShowImport(false)} />}
+    {confirmDel && <Modal title="🗑 Confirmer la suppression" onClose={() => setConfirmDel(null)}>
+      <p style={{ fontSize: 14, marginBottom: 16 }}>Êtes-vous sûr de vouloir supprimer <strong>{confirmDel.label}</strong> ? Cette action est irréversible.</p>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button style={S.btn("ghost")} onClick={() => setConfirmDel(null)}>Annuler</button>
+        <button style={{ ...S.btn("primary"), background: Cl.err }} onClick={doDelete}>Supprimer</button>
+      </div>
+    </Modal>}
   </>);
 }
