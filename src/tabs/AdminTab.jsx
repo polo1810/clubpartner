@@ -13,6 +13,8 @@ export default function AdminTab() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [newClub, setNewClub] = useState({ id: "", name: "" });
   const [newMember, setNewMember] = useState({ email: "", club_id: "", role: "commercial", name: "" });
+  const [editClub, setEditClub] = useState(null); // { id, name, newId, newName }
+  const [confirmDel, setConfirmDel] = useState(null); // { type: "club"|"member", id, label }
 
   const load = async () => {
     if (!supabase) return;
@@ -31,9 +33,31 @@ export default function AdminTab() {
     setShowAddClub(false); setNewClub({ id: "", name: "" }); load();
   };
 
-  const deleteClub = async (id) => {
-    if (!confirm(`Supprimer le club "${id}" et tous ses membres ?`)) return;
-    await supabase.from('clubs').delete().eq('id', id); load();
+  const saveEditClub = async () => {
+    if (!editClub || !editClub.newName.trim()) return;
+    const newId = editClub.newId.trim().toLowerCase().replace(/\s/g, "-");
+    if (newId !== editClub.id) {
+      // ID changed: create new, migrate members, delete old
+      const oldClub = clubs.find(c => c.id === editClub.id);
+      const { error: insErr } = await supabase.from('clubs').insert({ id: newId, name: editClub.newName.trim(), data: oldClub?.data || {} });
+      if (insErr) { alert("Erreur : " + insErr.message); return; }
+      await supabase.from('club_members').update({ club_id: newId }).eq('club_id', editClub.id);
+      await supabase.from('clubs').delete().eq('id', editClub.id);
+    } else {
+      const { error } = await supabase.from('clubs').update({ name: editClub.newName.trim() }).eq('id', editClub.id);
+      if (error) { alert("Erreur : " + error.message); return; }
+    }
+    setEditClub(null); load();
+  };
+
+  const doDelete = async () => {
+    if (!confirmDel) return;
+    if (confirmDel.type === "club") {
+      await supabase.from('clubs').delete().eq('id', confirmDel.id);
+    } else {
+      await supabase.from('club_members').delete().eq('id', confirmDel.id);
+    }
+    setConfirmDel(null); load();
   };
 
   const addMember = async () => {
@@ -41,11 +65,6 @@ export default function AdminTab() {
     const { error } = await supabase.from('club_members').insert({ email: newMember.email.trim().toLowerCase(), club_id: newMember.club_id, role: newMember.role, name: newMember.name.trim() });
     if (error) { alert("Erreur : " + error.message); return; }
     setShowAddMember(false); setNewMember({ email: "", club_id: "", role: "commercial", name: "" }); load();
-  };
-
-  const deleteMember = async (id) => {
-    if (!confirm("Supprimer ce membre ?")) return;
-    await supabase.from('club_members').delete().eq('id', id); load();
   };
 
   const updateRole = async (id, role) => {
@@ -73,7 +92,8 @@ export default function AdminTab() {
               <div><strong style={{ fontSize: 15 }}>{c.name}</strong><span style={{ fontSize: 11, color: Cl.txtL, marginLeft: 8, fontFamily: "monospace" }}>{c.id}</span></div>
               <div style={{ display: "flex", gap: 6 }}>
                 <span style={{ fontSize: 12, color: Cl.txtL }}>{cm.length} membre{cm.length > 1 ? "s" : ""}</span>
-                <button style={S.btnDelete} onClick={() => deleteClub(c.id)}>🗑️</button>
+                <button style={S.btnS("ghost")} onClick={() => setEditClub({ id: c.id, name: c.name, newId: c.id, newName: c.name })}>✏️</button>
+                <button style={S.btnDelete} onClick={() => setConfirmDel({ type: "club", id: c.id, label: c.name })}>🗑️</button>
               </div>
             </div>
             {cm.length > 0 && <div style={{ marginTop: 8 }}>
@@ -86,7 +106,7 @@ export default function AdminTab() {
                     <option value="commercial">Commercial</option>
                     <option value="readonly">Lecture seule</option>
                   </select>
-                  <button style={S.btnDelete} onClick={() => deleteMember(m.id)}>✕</button>
+                  <button style={S.btnDelete} onClick={() => setConfirmDel({ type: "member", id: m.id, label: m.name || m.email })}>✕</button>
                 </div>
               ))}
             </div>}
@@ -123,6 +143,24 @@ export default function AdminTab() {
       <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button style={S.btn("ghost")} onClick={() => setShowAddMember(false)}>Annuler</button>
         <button style={S.btn("primary")} onClick={addMember}>Ajouter</button>
+      </div>
+    </Modal>}
+
+    {editClub && <Modal title="✏️ Modifier le club" onClose={() => setEditClub(null)}>
+      <Field label="Identifiant (sans espaces)"><input style={{ ...S.inp, fontFamily: "monospace" }} value={editClub.newId} onChange={e => setEditClub({ ...editClub, newId: e.target.value })} placeholder="ex: fc-nantes" /></Field>
+      <Field label="Nom du club"><input style={S.inp} value={editClub.newName} onChange={e => setEditClub({ ...editClub, newName: e.target.value })} placeholder="ex: FC Nantes" /></Field>
+      {editClub.newId !== editClub.id && <div style={S.alert("warning")}>⚠️ Changer l'identifiant va migrer tous les membres vers le nouvel ID.</div>}
+      <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button style={S.btn("ghost")} onClick={() => setEditClub(null)}>Annuler</button>
+        <button style={S.btn("primary")} onClick={saveEditClub}>Enregistrer</button>
+      </div>
+    </Modal>}
+
+    {confirmDel && <Modal title="🗑 Confirmer la suppression" onClose={() => setConfirmDel(null)}>
+      <p style={{ fontSize: 14, marginBottom: 16 }}>Êtes-vous sûr de vouloir supprimer <strong>{confirmDel.label}</strong>{confirmDel.type === "club" ? " et tous ses membres" : ""} ? Cette action est irréversible.</p>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button style={S.btn("ghost")} onClick={() => setConfirmDel(null)}>Annuler</button>
+        <button style={{ ...S.btn("primary"), background: Cl.err }} onClick={doDelete}>Supprimer</button>
       </div>
     </Modal>}
   </>);
