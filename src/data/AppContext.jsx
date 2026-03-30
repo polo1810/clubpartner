@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds, INIT_ACCOUNT_CODES, genAccountCode, invoiceNum, cerfaDocNum, INIT_SCRIPTS, INIT_CONTRACT_TEMPLATES, DEFAULT_EXCLUSIVITE } from '../data/initialData';
+import { uid, isSigned, lineHT, lineTTC, INIT_MEMBERS, INIT_SEASONS, INIT_CATS, INIT_SUBCATS, INIT_PRODUCT_TYPES, INIT_PLACEMENTS, INIT_CURRENT, INIT_PRODUCTS, INIT_COMPANIES, INIT_CONTRACTS, INIT_CLUB_INFO, ACTION_TYPES, getPrice, getContractSeasonIds, INIT_ACCOUNT_CODES, genAccountCode, invoiceNum, cerfaDocNum, INIT_SCRIPTS, INIT_CONTRACT_TEMPLATES, DEFAULT_EXCLUSIVITE } from '../data/initialData';
 import { useAuth } from './AuthContext';
 import { supabase } from './supabase';
 
@@ -78,6 +78,9 @@ export function AppProvider({ children }) {
   const [members, setMembers] = useState(cd?.members || INIT_MEMBERS);
   const [seasons, setSeasons] = useState(cd?.seasons || INIT_SEASONS);
   const [cats, setCats] = useState(cd?.cats || INIT_CATS);
+  const [subcats, setSubcats] = useState(cd?.subcats || INIT_SUBCATS);
+  const [productTypes, setProductTypes] = useState(cd?.productTypes || INIT_PRODUCT_TYPES);
+  const [placements, setPlacements] = useState(cd?.placements || INIT_PLACEMENTS);
   const [currentSeason, setCurrentSeason] = useState(cd?.currentSeason || INIT_CURRENT);
   const [miniForm, setMiniForm] = useState(null);
   const [clubInfo, setClubInfo] = useState(cd?.clubInfo || INIT_CLUB_INFO);
@@ -97,9 +100,9 @@ export function AppProvider({ children }) {
   // --- Sync des paramètres vers clubs.data (debounced) ---
   const settingsTimer = useRef(null);
   const getSettings = useCallback(() => ({
-    members, seasons, cats, currentSeason,
+    members, seasons, cats, subcats, productTypes, placements, currentSeason,
     clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives,
-  }), [members, seasons, cats, currentSeason, clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
+  }), [members, seasons, cats, subcats, productTypes, placements, currentSeason, clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
 
   useEffect(() => {
     if (auth?.isLocal || !auth?.saveClubData) return;
@@ -108,7 +111,7 @@ export function AppProvider({ children }) {
       auth.saveClubData(getSettings());
     }, 1000);
     return () => { if (settingsTimer.current) clearTimeout(settingsTimer.current); };
-  }, [members, seasons, cats, currentSeason, clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
+  }, [members, seasons, cats, subcats, productTypes, placements, currentSeason, clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
 
   // ==================================================================
   // Tout le reste est IDENTIQUE à l'ancien AppContext
@@ -334,7 +337,7 @@ export function AppProvider({ children }) {
 
   const value = {
     companies, setCompanies, products, setProducts, contracts, setContracts,
-    members, setMembers, addMember, seasons, setSeasons, cats, setCats, currentSeason, setCurrentSeason,
+    members, setMembers, addMember, seasons, setSeasons, cats, setCats, subcats, setSubcats, productTypes, setProductTypes, placements, setPlacements, currentSeason, setCurrentSeason,
     miniForm, setMiniForm, todayStr, clubInfo, setClubInfo,
     invoices, setInvoices, seasonInvoices, generateInvoice, generateCerfaRecord, accountCodes, setAccountCodes, scripts, setScripts, contractTemplates, setContractTemplates, exclusiviteText, setExclusiviteText,
     prospectsList, partnersList, getCompany, companyContracts,
