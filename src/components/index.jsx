@@ -95,8 +95,7 @@ export const ProductFormModal = ({ onClose, onAdd, cats, subcats, placements, se
   <div style={{ marginTop: 14, display: "flex", gap: 8, justifyContent: "flex-end" }}><button style={S.btn("ghost")} onClick={onClose}>Annuler</button><button style={S.btn("primary")} onClick={() => { const prices = {}; Object.entries(sp).forEach(([k, v]) => { if (v.price || v.cost || v.amort) prices[k] = v; }); onAdd({ ...f, prices, totalCost: f.totalCost }); }}>Ajouter</button></div></Modal>);
 };
 
-export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeason, clubInfo, setClubInfo, accountCodes, setAccountCodes, scripts, setScripts, contractTemplates, setContractTemplates, exclusiviteText, setExclusiviteText, onClose }) => {
-  const [newCat, setNewCat] = useState("");
+export const SettingsModal = ({ cats, seasons, setSeasons, currentSeason, clubInfo, setClubInfo, accountCodes, setAccountCodes, scripts, setScripts, contractTemplates, setContractTemplates, exclusiviteText, setExclusiviteText, onClose }) => {
   const [newSeason, setNewSeason] = useState({ name: "", startDate: "", endDate: "" });
   const updateSeason = (id, key, value) => setSeasons(ss => ss.map(s => s.id === id ? { ...s, [key]: value } : s));
   const setClub = (k, v) => setClubInfo(ci => ({ ...ci, [k]: v }));
@@ -168,10 +167,6 @@ export const SettingsModal = ({ cats, setCats, seasons, setSeasons, currentSeaso
         <tr key={cat}><td style={S.td}><strong>{cat}</strong></td><td style={S.td}><input style={{ ...S.inp, fontFamily: "monospace" }} value={accountCodes.categories?.[cat] || ""} onChange={e => setAccCat(cat, e.target.value)} placeholder="708XXXXX" /></td></tr>
       ))}</tbody>
     </table>
-
-    <div style={{ ...S.cT, marginTop: 22 }}>📁 Catégories de produits</div>
-    {cats.map(c => (<div key={c} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: `1px solid ${Cl.brd}` }}><span style={{ flex: 1, fontSize: 14 }}>{c}</span>{cats.length > 1 && <button style={S.btnS("ghost")} onClick={() => setCats(cs => cs.filter(x => x !== c))}>✕</button>}</div>))}
-    <div style={{ marginTop: 10, display: "flex", gap: 8 }}><input style={{ ...S.inp, flex: 1 }} placeholder="Nouvelle catégorie..." value={newCat} onChange={e => setNewCat(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && newCat.trim() && !cats.includes(newCat.trim())) { setCats(cs => [...cs, newCat.trim()]); setNewCat(""); } }} /><button style={S.btn("primary")} onClick={() => { if (newCat.trim() && !cats.includes(newCat.trim())) { setCats(cs => [...cs, newCat.trim()]); setNewCat(""); } }}>Ajouter</button></div>
 
     <div style={{ ...S.cT, marginTop: 22 }}>📅 Saisons</div>
     <table style={S.tbl}>
