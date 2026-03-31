@@ -136,6 +136,70 @@ function AccessDenied() {
   );
 }
 
+// ★ NOUVEAU : Écran de sélection de club
+function ClubSelector() {
+  const { allMemberships, selectClub, logout, user } = useAuth();
+  const [selecting, setSelecting] = useState(false);
+
+  const handleSelect = async (m) => {
+    setSelecting(true);
+    await selectClub(m);
+  };
+
+  const roleLabels = { superadmin: "Super Admin", admin: "Admin", commercial: "Commercial", readonly: "Lecture seule" };
+  const roleColors = { superadmin: "#e74c3c", admin: "#3b5998", commercial: "#27ae60", readonly: "#95a5a6" };
+
+  return (
+    <div style={S.authBg}>
+      <div style={{ ...S.authCard, maxWidth: 440 }}>
+        <div style={S.authCenter}>
+          <div style={S.authIcon}>🏟️</div>
+          <h1 style={S.authTitle}>Choisissez un club</h1>
+          <p style={S.authSub}>{user?.email}</p>
+        </div>
+
+        {selecting ? (
+          <p style={{ textAlign: "center", color: "#666", marginTop: 16 }}>Chargement...</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+            {allMemberships.map(m => (
+              <button
+                key={m.id}
+                onClick={() => handleSelect(m)}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "14px 18px", borderRadius: 12,
+                  border: "1px solid #e0e0e0", background: "#fff",
+                  cursor: "pointer", transition: "all 0.15s",
+                  textAlign: "left", fontFamily: "inherit",
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = "#f0f4ff"; e.currentTarget.style.borderColor = "#3b5998"; }}
+                onMouseOut={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#e0e0e0"; }}
+              >
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a2e" }}>{m.clubName}</div>
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{m.club_id}</div>
+                </div>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                  color: roleColors[m.role] || "#666",
+                  background: (roleColors[m.role] || "#666") + "15",
+                }}>
+                  {roleLabels[m.role] || m.role}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div style={{ textAlign: "center", marginTop: 20 }}>
+          <button style={S.authLinkBtn} onClick={logout}>← Se déconnecter</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Main App (after auth) ---
 function AppInner() {
   const ctx = useApp();
@@ -167,6 +231,9 @@ function AppInner() {
   const tc = ctx.clubInfo?.themeColor || "#3b5998";
   const logo = ctx.clubInfo?.logo;
 
+  // ★ L'utilisateur a accès à plusieurs clubs ?
+  const hasMultipleClubs = auth.allMemberships.length > 1;
+
   return (
     <div style={S.app}>
       <div style={{ ...S.header, background: `linear-gradient(135deg, ${tc} 0%, ${tc}cc 100%)` }}>
@@ -179,6 +246,8 @@ function AppInner() {
         </div>
         <div style={S.hdrRight}>
           {!auth.isLocal && <span style={S.hdrUser}>{memberName}</span>}
+          {/* ★ Bouton changer de club */}
+          {hasMultipleClubs && <button style={S.hdrBtn} onClick={auth.switchClub} title="Changer de club">🔄 Club</button>}
           <button style={S.hdrBtn} onClick={() => setShowTeam(true)}>Équipe</button>
           {auth.canSettings && <button style={S.hdrBtn} onClick={() => setShowSettings(true)}>Paramètres</button>}
           <button style={S.hdrBtn} onClick={() => setShowExport(true)}>Export</button>
@@ -216,10 +285,12 @@ function AppInner() {
 
 // --- Auth Gate ---
 function AuthGate() {
-  const { user, loading, error, member, clubData, isLocal } = useAuth();
+  const { user, loading, error, member, clubData, isLocal, needsClubSelection } = useAuth();
   if (isLocal) return <AppProvider><AppInner /></AppProvider>;
   if (loading) return <LoadingScreen />;
   if (!user) return <LoginScreen />;
+  // ★ NOUVEAU : sélection de club si multi-clubs
+  if (needsClubSelection) return <ClubSelector />;
   if (error || !member) return <AccessDenied />;
   if (clubData !== null) return <AppProvider><AppInner /></AppProvider>;
   return <LoadingScreen />;
