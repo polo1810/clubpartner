@@ -90,7 +90,6 @@ export default function PartnersTab({ onOpenContract }) {
 
     <div style={{ marginTop: 10 }}>{filtered.length === 0 ? <div style={S.empty}>Aucun partenaire trouvé</div> : filtered.map(co => {
       const myC = companyContracts(co.id);
-      const hasSigned = myC.some(c => isSigned(c));
       const isSelected = selected.includes(co.id);
       const ht = ((co.seasonProducts?.[currentSeason]) || co.products || []).reduce((t, cp) => t + lineHT(cp), 0);
       const isM = co.dealType === "Mécénat";
@@ -108,10 +107,16 @@ export default function PartnersTab({ onOpenContract }) {
               </div>
             </div>
             <div style={S.coRight}>
-              {hasSigned && <Badge type="signed">Contrat signé</Badge>}
+              <Badge type={isM ? "mecenat" : "partenariat"}>{isM ? "💜 Mécénat" : "🤝 Partenariat"}</Badge>
               {myC.length > 0
-                ? <button style={S.btnS("primary")} onClick={(e) => { e.stopPropagation(); onOpenContract && onOpenContract(myC[0]); }}>Voir contrat</button>
-                : <button style={S.btnS("ghost")} onClick={(e) => { e.stopPropagation(); setEditCo(co); setShowForm(true); }}>Modifier</button>
+                ? <>
+                    <Badge type={isSigned(myC[0]) ? "signed" : myC[0].status === "En attente" ? "pending" : "draft"}>{myC[0].status}</Badge>
+                    <button style={S.btnS("primary")} onClick={(e) => { e.stopPropagation(); onOpenContract && onOpenContract(myC[0]); }}>Voir contrat</button>
+                  </>
+                : <>
+                    <Badge type="draft">Pas de contrat</Badge>
+                    <button style={S.btnS("ghost")} onClick={(e) => { e.stopPropagation(); setEditCo(co); setShowForm(true); }}>Modifier</button>
+                  </>
               }
             </div>
           </div>
