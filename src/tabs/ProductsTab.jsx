@@ -5,11 +5,10 @@ import { uid, fmt, getPrice } from '../data/initialData';
 import { Badge, ProductFormModal, Modal } from '../components/index';
 import ImportWizard from '../components/ImportWizard';
 
-// --- Settings Modal for subcats, productTypes, placements ---
+// --- Settings Modal for subcats, placements ---
 function ProductSettingsModal({ onClose }) {
-  const { subcats, setSubcats, productTypes, setProductTypes, placements, setPlacements } = useApp();
+  const { subcats, setSubcats, placements, setPlacements } = useApp();
   const [newSub, setNewSub] = useState("");
-  const [newType, setNewType] = useState("");
   const [newPlace, setNewPlace] = useState("");
 
   const addItem = (list, setList, val, setVal) => { if (val.trim() && !list.includes(val.trim())) { setList([...list, val.trim()]); setVal(""); } };
@@ -37,7 +36,6 @@ function ProductSettingsModal({ onClose }) {
   return (
     <Modal title="⚙️ Paramètres Produits & Stocks" onClose={onClose}>
       {renderList("Sous-catégories", "📂", subcats, setSubcats, newSub, setNewSub)}
-      {renderList("Types de produit", "📦", productTypes, setProductTypes, newType, setNewType)}
       {renderList("Emplacements", "📍", placements, setPlacements, newPlace, setNewPlace)}
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
         <button style={S.btn("primary")} onClick={onClose}>Fermer</button>
@@ -47,7 +45,7 @@ function ProductSettingsModal({ onClose }) {
 }
 
 export default function ProductsTab() {
-  const { products, setProducts, cats, subcats, productTypes, placements, seasons, currentSeason, stockSold, stockProv, caByProd, setMiniForm } = useApp();
+  const { products, setProducts, cats, subcats, placements, seasons, currentSeason, stockSold, stockProv, caByProd, setMiniForm } = useApp();
   const [showProdF, setShowProdF] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -73,7 +71,6 @@ export default function ProductsTab() {
     setMiniForm({ title: `Modifier ${selected.length} produit(s)`, fields: [
       { key: "category", label: "Catégorie (vide = ne pas changer)", value: "", type: "select", options: ["", ...cats] },
       { key: "subcategory", label: "Sous-catégorie (vide = ne pas changer)", value: "", type: "select", options: ["", ...subcats] },
-      { key: "productType", label: "Type (vide = ne pas changer)", value: "", type: "select", options: ["", ...productTypes] },
       { key: "placement", label: "Emplacement (vide = ne pas changer)", value: "", type: "select", options: ["", ...placements] },
       { key: "tva", label: "TVA % (vide = ne pas changer)", value: "", type: "select", options: ["", "20", "10", "5.5", "0"] },
     ], onSave: (v) => {
@@ -82,7 +79,6 @@ export default function ProductsTab() {
         const u = { ...p };
         if (v.category) u.category = v.category;
         if (v.subcategory) u.subcategory = v.subcategory;
-        if (v.productType) u.productType = v.productType;
         if (v.placement) u.placement = v.placement;
         if (v.tva) u.tva = +v.tva;
         return u;
@@ -116,7 +112,7 @@ export default function ProductsTab() {
     const dispoReel = p.stock - sold;
     const dispoSiTous = p.stock - sold - prov;
     const isSelected = selected.includes(p.id);
-    const details = [p.productType, p.placement].filter(Boolean).join(" · ");
+    const details = p.placement || "";
 
     return (
       <tr key={p.id} style={isSelected ? { background: Cl.priL } : {}}>
@@ -137,7 +133,7 @@ export default function ProductsTab() {
         </td>
         <td style={S.tdR}><strong>{fmt(caByProd[p.id] || 0)}</strong></td>
         <td style={S.td}>
-          <button style={S.btnS("ghost")} onClick={() => setMiniForm({ title: `Modifier — ${p.name}`, fields: [{ key: "name", label: "Nom", value: p.name }, { key: "category", label: "Catégorie", value: p.category, type: "select", options: cats }, { key: "subcategory", label: "Sous-catégorie", value: p.subcategory || "", type: "select", options: ["", ...subcats] }, { key: "productType", label: "Type de produit", value: p.productType || "", type: "select", options: ["", ...productTypes] }, { key: "placement", label: "Emplacement", value: p.placement || "", type: "select", options: ["", ...placements] }, { key: "stock", label: "Stock", value: p.stock, type: "number" }, { key: "price", label: `Prix vente HT (${currentSeason})`, value: pr.price, type: "number" }, { key: "cost", label: "Coût revient", value: pr.cost, type: "number" }, { key: "amort", label: "Amortissement", value: pr.amort || 0, type: "number" }, { key: "tva", label: "TVA %", value: p.tva, type: "number" }, { key: "totalCost", label: "Investissement total", value: p.totalCost || 0, type: "number" }], onSave: (v) => { setProducts(ps => ps.map(x => x.id === p.id ? { ...x, name: v.name || x.name, category: v.category || x.category, subcategory: v.subcategory || "", productType: v.productType || "", placement: v.placement || "", stock: +v.stock, tva: +v.tva, totalCost: +v.totalCost, prices: { ...x.prices, [currentSeason]: { price: +v.price, cost: +v.cost, amort: +v.amort } } } : x)); setMiniForm(null); } })}>✏️</button>
+          <button style={S.btnS("ghost")} onClick={() => setMiniForm({ title: `Modifier — ${p.name}`, fields: [{ key: "name", label: "Nom", value: p.name }, { key: "category", label: "Catégorie", value: p.category, type: "select", options: cats }, { key: "subcategory", label: "Sous-catégorie", value: p.subcategory || "", type: "select", options: ["", ...subcats] }, { key: "placement", label: "Emplacement", value: p.placement || "", type: "select", options: ["", ...placements] }, { key: "stock", label: "Stock", value: p.stock, type: "number" }, { key: "price", label: `Prix vente HT (${currentSeason})`, value: pr.price, type: "number" }, { key: "cost", label: "Coût revient", value: pr.cost, type: "number" }, { key: "amort", label: "Amortissement", value: pr.amort || 0, type: "number" }, { key: "tva", label: "TVA %", value: p.tva, type: "number" }, { key: "totalCost", label: "Investissement total", value: p.totalCost || 0, type: "number" }], onSave: (v) => { setProducts(ps => ps.map(x => x.id === p.id ? { ...x, name: v.name || x.name, category: v.category || x.category, subcategory: v.subcategory || "", placement: v.placement || "", stock: +v.stock, tva: +v.tva, totalCost: +v.totalCost, prices: { ...x.prices, [currentSeason]: { price: +v.price, cost: +v.cost, amort: +v.amort } } } : x)); setMiniForm(null); } })}>✏️</button>
           <button style={S.btnDelete} onClick={() => deleteOne(p.id)}>🗑</button>
         </td>
       </tr>
@@ -244,7 +240,7 @@ export default function ProductsTab() {
       </div>);
     })}
 
-    {showProdF && <ProductFormModal onClose={() => setShowProdF(false)} onAdd={p => { setProducts(ps => [...ps, { ...p, id: uid() }]); setShowProdF(false); }} cats={cats} subcats={subcats} productTypes={productTypes} placements={placements} seasons={seasons} currentSeason={currentSeason} />}
+    {showProdF && <ProductFormModal onClose={() => setShowProdF(false)} onAdd={p => { setProducts(ps => [...ps, { ...p, id: uid() }]); setShowProdF(false); }} cats={cats} subcats={subcats} placements={placements} seasons={seasons} currentSeason={currentSeason} />}
     {showImport && <ImportWizard defaultType="produits" onClose={() => setShowImport(false)} />}
     {showSettings && <ProductSettingsModal onClose={() => setShowSettings(false)} />}
     {confirmDel && <Modal title="🗑 Confirmer la suppression" onClose={() => setConfirmDel(null)}>
