@@ -93,6 +93,10 @@ export default function PartnersTab({ onOpenContract }) {
       const hasSigned = myC.some(c => isSigned(c));
       const isSelected = selected.includes(co.id);
       const ht = ((co.seasonProducts?.[currentSeason]) || co.products || []).reduce((t, cp) => t + lineHT(cp), 0);
+      const isM = co.dealType === "Mécénat";
+      const don = co.seasonDonAmounts?.[currentSeason] ?? co.donAmount ?? 0;
+      const displayAmt = isM ? don : ht;
+      const amtLabel = isM ? "don" : "HT";
       return (
         <div key={co.id} style={{ ...S.coCard(Cl.ok), background: isSelected ? Cl.okL : undefined }} onClick={() => setViewCo(co)}>
           <div style={S.fx}>
@@ -100,7 +104,7 @@ export default function PartnersTab({ onOpenContract }) {
               <input type="checkbox" checked={isSelected} onClick={e => e.stopPropagation()} onChange={() => toggleSelect(co.id)} />
               <div>
                 <div style={S.coName}>{co.company}</div>
-                <div style={S.coSub}>{co.contact}{co.sector ? ` · ${co.sector}` : ""}{ht > 0 ? ` · ${fmt(ht)} HT` : ""}</div>
+                <div style={S.coSub}>{co.contact}{co.sector ? ` · ${co.sector}` : ""}{displayAmt > 0 ? ` · ${fmt(displayAmt)} ${amtLabel}` : ""}</div>
               </div>
             </div>
             <div style={S.coRight}>
