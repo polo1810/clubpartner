@@ -66,17 +66,17 @@ export const TeamModal = ({ members, onAdd, onRemove, onClose }) => {
   </Modal>);
 };
 
-export const ProductFormModal = ({ onClose, onAdd, cats, subcats, productTypes, placements, seasons, currentSeason }) => {
-  const [f, setF] = useState({ name: "", category: cats[0] || "Signalétique", subcategory: "", productType: "", placement: "", stock: 0, tva: 20, totalCost: 0 });
+export const ProductFormModal = ({ onClose, onAdd, cats, subcats, placements, seasons, currentSeason }) => {
+  const [f, setF] = useState({ name: "", category: cats[0] || "Signalétique", subcategory: "", placement: "", stock: 0, tva: 20, totalCost: 0 });
   const [sp, setSp] = useState(() => { const o = {}; seasons.forEach(s => { o[s.id] = { price: 0, cost: 0, amort: 0 }; }); return o; });
   const setSpVal = (sid, k, v) => setSp(prev => ({ ...prev, [sid]: { ...prev[sid], [k]: v } }));
   const fmt = (n) => Math.round(n).toLocaleString("fr-FR") + " €";
+  const catPlacements = (placements && typeof placements === "object" && !Array.isArray(placements)) ? (placements[f.category] || []) : (Array.isArray(placements) ? placements : []);
   return (<Modal title="Nouveau produit" onClose={onClose}><div style={S.g2}>
     <Field label="Nom"><input style={S.inp} value={f.name} onChange={e => setF({ ...f, name: e.target.value })} /></Field>
-    <Field label="Catégorie"><select style={S.sel} value={f.category} onChange={e => setF({ ...f, category: e.target.value })}>{cats.map(c => <option key={c}>{c}</option>)}</select></Field>
+    <Field label="Catégorie"><select style={S.sel} value={f.category} onChange={e => setF({ ...f, category: e.target.value, placement: "" })}>{cats.map(c => <option key={c}>{c}</option>)}</select></Field>
     {subcats && subcats.length > 0 && <Field label="Sous-catégorie"><select style={S.sel} value={f.subcategory} onChange={e => setF({ ...f, subcategory: e.target.value })}><option value="">— Aucune —</option>{subcats.map(c => <option key={c}>{c}</option>)}</select></Field>}
-    {productTypes && productTypes.length > 0 && <Field label="Type de produit"><select style={S.sel} value={f.productType} onChange={e => setF({ ...f, productType: e.target.value })}><option value="">— Aucun —</option>{productTypes.map(c => <option key={c}>{c}</option>)}</select></Field>}
-    {placements && placements.length > 0 && <Field label="Emplacement"><select style={S.sel} value={f.placement} onChange={e => setF({ ...f, placement: e.target.value })}><option value="">— Aucun —</option>{placements.map(c => <option key={c}>{c}</option>)}</select></Field>}
+    {catPlacements.length > 0 && <Field label="Emplacement"><select style={S.sel} value={f.placement} onChange={e => setF({ ...f, placement: e.target.value })}><option value="">— Aucun —</option>{catPlacements.map(c => <option key={c}>{c}</option>)}</select></Field>}
     <Field label="Stock"><input type="number" style={S.inp} value={f.stock} onChange={e => setF({ ...f, stock: +e.target.value })} /></Field>
     <Field label="TVA %"><select style={S.sel} value={f.tva} onChange={e => setF({ ...f, tva: +e.target.value })}><option value={20}>20%</option><option value={10}>10%</option><option value={5.5}>5.5%</option><option value={0}>0%</option></select></Field>
     <Field label="Coût total investissement"><input type="number" style={S.inp} value={f.totalCost} onChange={e => setF({ ...f, totalCost: +e.target.value })} /></Field>
