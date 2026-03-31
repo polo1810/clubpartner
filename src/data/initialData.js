@@ -130,7 +130,7 @@ export const INIT_MEMBERS = ["Sarah Martin", "Lucas Dupont", "Amina Bey", "Thoma
 export const INIT_CATS = ["Signalétique", "Print", "Textile", "Digital", "Événement"];
 export const INIT_SUBCATS = ["Senior", "Paul Jeune", "École de rugby"];
 export const INIT_PRODUCT_TYPES = ["Maillot", "Short", "Survêtement"];
-export const INIT_PLACEMENTS = ["Devant", "Derrière", "Dos", "Manche", "Épaule"];
+export const INIT_PLACEMENTS = { "Signalétique": ["Tribune", "Pelouse", "Bord terrain"], "Textile": ["Devant", "Derrière", "Dos", "Manche", "Épaule"] };
 export const INIT_CURRENT = "2025-2026";
 
 export const INIT_SEASONS = [
