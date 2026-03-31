@@ -5,11 +5,15 @@ import { uid, fmt, getPrice } from '../data/initialData';
 import { Badge, ProductFormModal, Modal } from '../components/index';
 import ImportWizard from '../components/ImportWizard';
 
-// --- Settings Modal for subcats + placements par catégorie ---
+// --- Settings Modal for cats, subcats + placements par catégorie ---
 function ProductSettingsModal({ onClose }) {
-  const { subcats, setSubcats, placements, setPlacements, cats } = useApp();
+  const { cats, setCats, subcats, setSubcats, placements, setPlacements } = useApp();
+  const [newCat, setNewCat] = useState("");
   const [newSub, setNewSub] = useState("");
   const [newPlaceVals, setNewPlaceVals] = useState({});
+
+  const addCat = () => { if (newCat.trim() && !cats.includes(newCat.trim())) { setCats([...cats, newCat.trim()]); setNewCat(""); } };
+  const removeCat = (val) => { if (cats.length > 1) setCats(cats.filter(x => x !== val)); };
 
   const addSub = () => { if (newSub.trim() && !subcats.includes(newSub.trim())) { setSubcats([...subcats, newSub.trim()]); setNewSub(""); } };
   const removeSub = (val) => setSubcats(subcats.filter(x => x !== val));
@@ -29,6 +33,23 @@ function ProductSettingsModal({ onClose }) {
 
   return (
     <Modal title="⚙️ Paramètres Produits & Stocks" onClose={onClose}>
+      {/* Catégories */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={S.sectionTitle}>📁 Catégories</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+          {cats.map(c => (
+            <span key={c} style={S.chip(true)}>
+              {c}
+              {cats.length > 1 && <button style={{ background: "none", border: "none", cursor: "pointer", color: Cl.err, fontWeight: 700, fontSize: 14, padding: 0, marginLeft: 4 }} onClick={() => removeCat(c)}>×</button>}
+            </span>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <input style={S.inp} placeholder="Ajouter une catégorie..." value={newCat} onChange={e => setNewCat(e.target.value)} onKeyDown={e => e.key === "Enter" && addCat()} />
+          <button style={S.btn("primary")} onClick={addCat}>+</button>
+        </div>
+      </div>
+
       {/* Sous-catégories (globales) */}
       <div style={{ marginBottom: 20 }}>
         <div style={S.sectionTitle}>📂 Sous-catégories</div>
