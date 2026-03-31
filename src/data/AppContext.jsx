@@ -80,7 +80,11 @@ export function AppProvider({ children }) {
   const [cats, setCats] = useState(cd?.cats || INIT_CATS);
   const [subcats, setSubcats] = useState(cd?.subcats || INIT_SUBCATS);
   const [productTypes, setProductTypes] = useState(cd?.productTypes || INIT_PRODUCT_TYPES);
-  const [placements, setPlacements] = useState(cd?.placements || INIT_PLACEMENTS);
+  const [placements, setPlacements] = useState(() => {
+    const p = cd?.placements || INIT_PLACEMENTS;
+    if (Array.isArray(p)) { const obj = {}; (cd?.cats || INIT_CATS).forEach(c => { obj[c] = [...p]; }); return obj; }
+    return p;
+  });
   const [currentSeason, setCurrentSeason] = useState(cd?.currentSeason || INIT_CURRENT);
   const [miniForm, setMiniForm] = useState(null);
   const [clubInfo, setClubInfo] = useState(cd?.clubInfo || INIT_CLUB_INFO);
