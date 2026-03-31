@@ -350,7 +350,7 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
             </div>
             <div style={S.coRight}>
               <Badge type={isSigned(c) ? "signed" : c.status === "En attente" ? "pending" : "draft"}>{c.status}</Badge>
-              <span style={S.ctAmt}>{fmt(contractHT(c))} HT</span>
+              <span style={S.ctAmt}>{c.type === "Mécénat" ? `${fmt(c.donAmount || 0)} don` : `${fmt(contractHT(c))} HT`}</span>
               {canDelete && <button style={S.btnDelete} onClick={e => onDeleteClick(e, c)} title="Supprimer">🗑️</button>}
             </div>
           </div>
