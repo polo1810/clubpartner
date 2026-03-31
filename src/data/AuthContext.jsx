@@ -7,7 +7,7 @@ export const useAuth = () => useContext(AuthCtx);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [member, setMember] = useState(null);
-  const [clubData, setClubData] = useState(null);    // Paramètres du club (saisons, catégories, etc.)
+  const [clubData, setClubData] = useState(null);
   const [clubInfo, setClubInfoState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -17,6 +17,9 @@ export function AuthProvider({ children }) {
   const [initContracts, setInitContracts] = useState([]);
   const [initInvoices, setInitInvoices] = useState([]);
   const [initProducts, setInitProducts] = useState([]);
+
+  // ★ NOUVEAU : multi-clubs
+  const [allMemberships, setAllMemberships] = useState([]);
 
   const isLocal = !supabase;
 
@@ -30,28 +33,19 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) loadUserData(session.user);
-      else { setUser(null); setMember(null); setClubData(null); setClubInfoState(null); setLoading(false); }
+      else { setUser(null); setMember(null); setClubData(null); setClubInfoState(null); setAllMemberships([]); setLoading(false); }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadUserData = async (u) => {
-    setUser(u);
-    setError("");
+  // ★ Charger les données d'UN club spécifique
+  const loadClubData = async (m) => {
+    setMember(m);
     try {
-      // Trouver le membre
-      const { data: members, error: mErr } = await supabase.from('club_members').select('*').eq('email', u.email);
-      if (mErr) throw mErr;
-      if (!members || members.length === 0) { setError("Aucun accès. Contactez votre administrateur."); setLoading(false); return; }
-      const m = members[0];
-      setMember(m);
-
-      // Charger le club (paramètres uniquement)
       const { data: club, error: cErr } = await supabase.from('clubs').select('*').eq('id', m.club_id).single();
       if (cErr) throw cErr;
 
-      // Charger les 4 tables séparées EN PARALLÈLE
       const [compRes, contRes, invRes, prodRes] = await Promise.all([
         supabase.from('companies').select('*').eq('club_id', m.club_id),
         supabase.from('contracts').select('*').eq('club_id', m.club_id),
@@ -59,21 +53,64 @@ export function AuthProvider({ children }) {
         supabase.from('products').select('*').eq('club_id', m.club_id),
       ]);
 
-      // Tout mettre à jour EN MÊME TEMPS pour éviter les rendus intermédiaires
       setInitCompanies((compRes.data || []).map(r => r.data));
       setInitContracts((contRes.data || []).map(r => r.data));
       setInitInvoices((invRes.data || []).map(r => r.data));
       setInitProducts((prodRes.data || []).map(r => r.data));
       setClubInfoState({ id: club.id, name: club.name });
-      setClubData(club.data || {}); // Doit être EN DERNIER (déclenche le montage d'AppProvider)
-
+      setClubData(club.data || {});
     } catch (e) {
       setError("Erreur de chargement : " + (e.message || e));
     }
     setLoading(false);
   };
 
-  // Sauvegarder les paramètres du club (saisons, catégories, scripts, etc.)
+  const loadUserData = async (u) => {
+    setUser(u);
+    setError("");
+    try {
+      const { data: members, error: mErr } = await supabase.from('club_members').select('*').eq('email', u.email);
+      if (mErr) throw mErr;
+      if (!members || members.length === 0) { setError("Aucun accès. Contactez votre administrateur."); setLoading(false); return; }
+
+      // ★ Si un seul club → on entre directement
+      if (members.length === 1) {
+        await loadClubData(members[0]);
+        return;
+      }
+
+      // ★ Plusieurs clubs → on récupère les noms et on laisse choisir
+      const clubIds = members.map(m => m.club_id);
+      const { data: clubsData } = await supabase.from('clubs').select('id, name').in('id', clubIds);
+      setAllMemberships(members.map(m => ({
+        ...m,
+        clubName: clubsData?.find(c => c.id === m.club_id)?.name || m.club_id
+      })));
+      setLoading(false);
+
+    } catch (e) {
+      setError("Erreur de chargement : " + (e.message || e));
+      setLoading(false);
+    }
+  };
+
+  // ★ L'utilisateur choisit un club
+  const selectClub = async (membership) => {
+    setLoading(true);
+    await loadClubData(membership);
+  };
+
+  // ★ Revenir à la sélection de club
+  const switchClub = () => {
+    setMember(null);
+    setClubData(null);
+    setClubInfoState(null);
+    setInitCompanies([]);
+    setInitContracts([]);
+    setInitInvoices([]);
+    setInitProducts([]);
+  };
+
   const saveClubData = async (data) => {
     if (isLocal || !member) return;
     if (member.role === "readonly") return;
@@ -108,7 +145,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     if (isLocal) return;
     await supabase.auth.signOut();
-    setUser(null); setMember(null); setClubData(null); setClubInfoState(null);
+    setUser(null); setMember(null); setClubData(null); setClubInfoState(null); setAllMemberships([]);
   };
 
   const role = member?.role || "admin";
@@ -117,12 +154,16 @@ export function AuthProvider({ children }) {
   const canSettings = role === "admin" || role === "superadmin";
   const isSuperAdmin = role === "superadmin";
 
+  // ★ Vrai si l'utilisateur doit choisir un club
+  const needsClubSelection = allMemberships.length > 1 && !member;
+
   const value = {
     user, member, clubData, clubInfo, loading, error, isLocal,
     login, loginWithPassword, signUp, logout, saveClubData, loadUserData,
     role, canEdit, canInvoice, canSettings, isSuperAdmin,
-    // Données initiales des tables séparées
     initCompanies, initContracts, initInvoices, initProducts,
+    // ★ NOUVEAU
+    allMemberships, needsClubSelection, selectClub, switchClub,
   };
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
