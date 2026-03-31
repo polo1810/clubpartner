@@ -5,38 +5,82 @@ import { uid, fmt, getPrice } from '../data/initialData';
 import { Badge, ProductFormModal, Modal } from '../components/index';
 import ImportWizard from '../components/ImportWizard';
 
-// --- Settings Modal for subcats, placements ---
+// --- Settings Modal for subcats + placements par catégorie ---
 function ProductSettingsModal({ onClose }) {
-  const { subcats, setSubcats, placements, setPlacements } = useApp();
+  const { subcats, setSubcats, placements, setPlacements, cats } = useApp();
   const [newSub, setNewSub] = useState("");
-  const [newPlace, setNewPlace] = useState("");
+  const [newPlaceVals, setNewPlaceVals] = useState({});
 
-  const addItem = (list, setList, val, setVal) => { if (val.trim() && !list.includes(val.trim())) { setList([...list, val.trim()]); setVal(""); } };
-  const removeItem = (list, setList, val) => setList(list.filter(x => x !== val));
+  const addSub = () => { if (newSub.trim() && !subcats.includes(newSub.trim())) { setSubcats([...subcats, newSub.trim()]); setNewSub(""); } };
+  const removeSub = (val) => setSubcats(subcats.filter(x => x !== val));
 
-  const renderList = (title, emoji, list, setList, newVal, setNewVal) => (
-    <div style={{ marginBottom: 16 }}>
-      <div style={S.sectionTitle}>{emoji} {title}</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-        {list.map(item => (
-          <span key={item} style={S.chip(true)}>
-            {item}
-            <button style={{ background: "none", border: "none", cursor: "pointer", color: Cl.err, fontWeight: 700, fontSize: 14, padding: 0, marginLeft: 4 }} onClick={() => removeItem(list, setList, item)}>×</button>
-          </span>
-        ))}
-        {list.length === 0 && <span style={{ fontSize: 12, color: Cl.txtL }}>Aucun élément</span>}
-      </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <input style={S.inp} placeholder={`Ajouter un(e) ${title.toLowerCase()}...`} value={newVal} onChange={e => setNewVal(e.target.value)} onKeyDown={e => e.key === "Enter" && addItem(list, setList, newVal, setNewVal)} />
-        <button style={S.btn("primary")} onClick={() => addItem(list, setList, newVal, setNewVal)}>+</button>
-      </div>
-    </div>
-  );
+  const addPlacement = (cat) => {
+    const val = (newPlaceVals[cat] || "").trim();
+    if (!val) return;
+    const catList = placements[cat] || [];
+    if (catList.includes(val)) return;
+    setPlacements({ ...placements, [cat]: [...catList, val] });
+    setNewPlaceVals({ ...newPlaceVals, [cat]: "" });
+  };
+
+  const removePlacement = (cat, val) => {
+    setPlacements({ ...placements, [cat]: (placements[cat] || []).filter(x => x !== val) });
+  };
 
   return (
     <Modal title="⚙️ Paramètres Produits & Stocks" onClose={onClose}>
-      {renderList("Sous-catégories", "📂", subcats, setSubcats, newSub, setNewSub)}
-      {renderList("Emplacements", "📍", placements, setPlacements, newPlace, setNewPlace)}
+      {/* Sous-catégories (globales) */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={S.sectionTitle}>📂 Sous-catégories</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+          {subcats.map(item => (
+            <span key={item} style={S.chip(true)}>
+              {item}
+              <button style={{ background: "none", border: "none", cursor: "pointer", color: Cl.err, fontWeight: 700, fontSize: 14, padding: 0, marginLeft: 4 }} onClick={() => removeSub(item)}>×</button>
+            </span>
+          ))}
+          {subcats.length === 0 && <span style={{ fontSize: 12, color: Cl.txtL }}>Aucun élément</span>}
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <input style={S.inp} placeholder="Ajouter une sous-catégorie..." value={newSub} onChange={e => setNewSub(e.target.value)} onKeyDown={e => e.key === "Enter" && addSub()} />
+          <button style={S.btn("primary")} onClick={addSub}>+</button>
+        </div>
+      </div>
+
+      {/* Emplacements par catégorie */}
+      <div style={S.sectionTitle}>📍 Emplacements par catégorie</div>
+      <div style={{ fontSize: 12, color: Cl.txtL, marginBottom: 10 }}>
+        Chaque catégorie a ses propres emplacements.
+      </div>
+
+      {cats.map(cat => {
+        const catList = placements[cat] || [];
+        return (
+          <div key={cat} style={{ marginBottom: 14, padding: 12, background: Cl.hov, borderRadius: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: Cl.pri }}>{cat}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+              {catList.map(item => (
+                <span key={item} style={S.chip(true)}>
+                  {item}
+                  <button style={{ background: "none", border: "none", cursor: "pointer", color: Cl.err, fontWeight: 700, fontSize: 14, padding: 0, marginLeft: 4 }} onClick={() => removePlacement(cat, item)}>×</button>
+                </span>
+              ))}
+              {catList.length === 0 && <span style={{ fontSize: 11, color: Cl.txtL }}>Aucun emplacement</span>}
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <input
+                style={{ ...S.inp, fontSize: 12 }}
+                placeholder={`Ajouter pour ${cat}...`}
+                value={newPlaceVals[cat] || ""}
+                onChange={e => setNewPlaceVals({ ...newPlaceVals, [cat]: e.target.value })}
+                onKeyDown={e => e.key === "Enter" && addPlacement(cat)}
+              />
+              <button style={S.btn("primary")} onClick={() => addPlacement(cat)}>+</button>
+            </div>
+          </div>
+        );
+      })}
+
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
         <button style={S.btn("primary")} onClick={onClose}>Fermer</button>
       </div>
@@ -44,13 +88,28 @@ function ProductSettingsModal({ onClose }) {
   );
 }
 
+// Helper : récupérer les emplacements d'une catégorie
+const getCatPlacements = (placements, cat) => {
+  if (!placements || Array.isArray(placements)) return Array.isArray(placements) ? placements : [];
+  return placements[cat] || [];
+};
+
+// Helper : tous les emplacements (pour bulk edit)
+const getAllPlacements = (placements) => {
+  if (!placements) return [];
+  if (Array.isArray(placements)) return placements;
+  const all = new Set();
+  Object.values(placements).forEach(arr => (arr || []).forEach(v => all.add(v)));
+  return [...all];
+};
+
 export default function ProductsTab() {
   const { products, setProducts, cats, subcats, placements, seasons, currentSeason, stockSold, stockProv, caByProd, setMiniForm } = useApp();
   const [showProdF, setShowProdF] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [selected, setSelected] = useState([]);
-  const [collapsed, setCollapsed] = useState({}); // { "cat:Signalétique": true, "sub:Signalétique:T-shirt": true }
+  const [collapsed, setCollapsed] = useState({});
 
   const totPot = products.reduce((t, p) => t + getPrice(p, currentSeason).price * p.stock, 0);
   const totReal = Object.values(caByProd).reduce((a, b) => a + b, 0);
@@ -67,11 +126,13 @@ export default function ProductsTab() {
   const deleteOne = (id) => { const p = products.find(x => x.id === id); setConfirmDel({ ids: [id], label: p?.name || "ce produit" }); };
   const doDelete = () => { setProducts(ps => ps.filter(p => !confirmDel.ids.includes(p.id))); setSelected(s => s.filter(x => !confirmDel.ids.includes(x))); setConfirmDel(null); };
 
+  const allPlc = getAllPlacements(placements);
+
   const bulkEdit = () => {
     setMiniForm({ title: `Modifier ${selected.length} produit(s)`, fields: [
       { key: "category", label: "Catégorie (vide = ne pas changer)", value: "", type: "select", options: ["", ...cats] },
       { key: "subcategory", label: "Sous-catégorie (vide = ne pas changer)", value: "", type: "select", options: ["", ...subcats] },
-      { key: "placement", label: "Emplacement (vide = ne pas changer)", value: "", type: "select", options: ["", ...placements] },
+      { key: "placement", label: "Emplacement (vide = ne pas changer)", value: "", type: "select", options: ["", ...allPlc] },
       { key: "tva", label: "TVA % (vide = ne pas changer)", value: "", type: "select", options: ["", "20", "10", "5.5", "0"] },
     ], onSave: (v) => {
       setProducts(ps => ps.map(p => {
@@ -87,7 +148,7 @@ export default function ProductsTab() {
     }});
   };
 
-  // --- Regrouper les produits par sous-catégorie au sein d'une catégorie ---
+  // --- Regrouper les produits par sous-catégorie ---
   const getSubgroups = (items) => {
     const groups = {};
     items.forEach(p => {
@@ -95,7 +156,6 @@ export default function ProductsTab() {
       if (!groups[sub]) groups[sub] = [];
       groups[sub].push(p);
     });
-    // Trier : sous-catégories nommées d'abord, puis "sans sous-catégorie"
     const keys = Object.keys(groups).sort((a, b) => {
       if (!a) return 1;
       if (!b) return -1;
@@ -113,6 +173,7 @@ export default function ProductsTab() {
     const dispoSiTous = p.stock - sold - prov;
     const isSelected = selected.includes(p.id);
     const details = p.placement || "";
+    const pCatPlacements = getCatPlacements(placements, p.category);
 
     return (
       <tr key={p.id} style={isSelected ? { background: Cl.priL } : {}}>
@@ -133,7 +194,7 @@ export default function ProductsTab() {
         </td>
         <td style={S.tdR}><strong>{fmt(caByProd[p.id] || 0)}</strong></td>
         <td style={S.td}>
-          <button style={S.btnS("ghost")} onClick={() => setMiniForm({ title: `Modifier — ${p.name}`, fields: [{ key: "name", label: "Nom", value: p.name }, { key: "category", label: "Catégorie", value: p.category, type: "select", options: cats }, { key: "subcategory", label: "Sous-catégorie", value: p.subcategory || "", type: "select", options: ["", ...subcats] }, { key: "placement", label: "Emplacement", value: p.placement || "", type: "select", options: ["", ...placements] }, { key: "stock", label: "Stock", value: p.stock, type: "number" }, { key: "price", label: `Prix vente HT (${currentSeason})`, value: pr.price, type: "number" }, { key: "cost", label: "Coût revient", value: pr.cost, type: "number" }, { key: "amort", label: "Amortissement", value: pr.amort || 0, type: "number" }, { key: "tva", label: "TVA %", value: p.tva, type: "number" }, { key: "totalCost", label: "Investissement total", value: p.totalCost || 0, type: "number" }], onSave: (v) => { setProducts(ps => ps.map(x => x.id === p.id ? { ...x, name: v.name || x.name, category: v.category || x.category, subcategory: v.subcategory || "", placement: v.placement || "", stock: +v.stock, tva: +v.tva, totalCost: +v.totalCost, prices: { ...x.prices, [currentSeason]: { price: +v.price, cost: +v.cost, amort: +v.amort } } } : x)); setMiniForm(null); } })}>✏️</button>
+          <button style={S.btnS("ghost")} onClick={() => setMiniForm({ title: `Modifier — ${p.name}`, fields: [{ key: "name", label: "Nom", value: p.name }, { key: "category", label: "Catégorie", value: p.category, type: "select", options: cats }, { key: "subcategory", label: "Sous-catégorie", value: p.subcategory || "", type: "select", options: ["", ...subcats] }, { key: "placement", label: "Emplacement", value: p.placement || "", type: "select", options: ["", ...pCatPlacements] }, { key: "stock", label: "Stock", value: p.stock, type: "number" }, { key: "price", label: `Prix vente HT (${currentSeason})`, value: pr.price, type: "number" }, { key: "cost", label: "Coût revient", value: pr.cost, type: "number" }, { key: "amort", label: "Amortissement", value: pr.amort || 0, type: "number" }, { key: "tva", label: "TVA %", value: p.tva, type: "number" }, { key: "totalCost", label: "Investissement total", value: p.totalCost || 0, type: "number" }], onSave: (v) => { setProducts(ps => ps.map(x => x.id === p.id ? { ...x, name: v.name || x.name, category: v.category || x.category, subcategory: v.subcategory || "", placement: v.placement || "", stock: +v.stock, tva: +v.tva, totalCost: +v.totalCost, prices: { ...x.prices, [currentSeason]: { price: +v.price, cost: +v.cost, amort: +v.amort } } } : x)); setMiniForm(null); } })}>✏️</button>
           <button style={S.btnDelete} onClick={() => deleteOne(p.id)}>🗑</button>
         </td>
       </tr>
@@ -164,7 +225,6 @@ export default function ProductsTab() {
       {selected.length > 0 && <span style={S.selCount}>{selected.length} sélectionné{selected.length > 1 ? "s" : ""}</span>}
     </div>}
 
-    {/* ===== AFFICHAGE HIÉRARCHIQUE : Catégorie → Sous-catégorie → Produits ===== */}
     {cats.map(cat => {
       const items = products.filter(p => p.category === cat);
       if (!items.length) return null;
@@ -177,11 +237,7 @@ export default function ProductsTab() {
       const hasSubcats = subgroups.length > 1 || (subgroups.length === 1 && subgroups[0].name !== "");
 
       return (<div key={cat} style={S.card}>
-        {/* En-tête catégorie (cliquable pour plier/déplier) */}
-        <div
-          style={{ ...S.fx, cursor: "pointer", userSelect: "none" }}
-          onClick={() => toggleCollapse(catKey)}
-        >
+        <div style={{ ...S.fx, cursor: "pointer", userSelect: "none" }} onClick={() => toggleCollapse(catKey)}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 12, color: Cl.txtL, transition: "transform 0.2s", transform: catCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}>▼</span>
             <div style={S.cT}>{cat}</div>
@@ -193,7 +249,6 @@ export default function ProductsTab() {
 
         {!catCollapsed && (
           hasSubcats ? (
-            /* Avec sous-catégories : afficher chaque groupe séparément */
             subgroups.map(sg => {
               const subKey = `sub:${cat}:${sg.name}`;
               const subCollapsed = collapsed[subKey];
@@ -202,25 +257,17 @@ export default function ProductsTab() {
 
               return (
                 <div key={sg.name || "__none"} style={{ marginTop: 10 }}>
-                  {/* En-tête sous-catégorie */}
                   <div
                     style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: Cl.hov, borderRadius: 8, cursor: "pointer", userSelect: "none" }}
                     onClick={() => toggleCollapse(subKey)}
                   >
                     <span style={{ fontSize: 11, color: Cl.txtL, transition: "transform 0.2s", transform: subCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}>▼</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: Cl.pri }}>
-                      {sg.name || "Sans sous-catégorie"}
-                    </span>
-                    <span style={{ fontSize: 11, color: Cl.txtL }}>
-                      ({sg.items.length}) · {fmt(subPot)} pot. · {fmt(subReal)} réal.
-                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: Cl.pri }}>{sg.name || "Sans sous-catégorie"}</span>
+                    <span style={{ fontSize: 11, color: Cl.txtL }}>({sg.items.length}) · {fmt(subPot)} pot. · {fmt(subReal)} réal.</span>
                   </div>
-
                   {!subCollapsed && (
                     <table style={{ ...S.tbl, marginTop: 4 }}>
-                      <thead><tr>
-                        <th style={S.th}></th><th style={S.th}>Produit</th><th style={S.th}>Prix HT</th><th style={S.th}>TVA</th><th style={S.th}>Stock</th><th style={S.th}>Vendus</th><th style={S.th}>Provisoire</th><th style={S.th}>Dispo réel</th><th style={S.thR}>CA HT</th><th style={S.th}></th>
-                      </tr></thead>
+                      <thead><tr><th style={S.th}></th><th style={S.th}>Produit</th><th style={S.th}>Prix HT</th><th style={S.th}>TVA</th><th style={S.th}>Stock</th><th style={S.th}>Vendus</th><th style={S.th}>Provisoire</th><th style={S.th}>Dispo réel</th><th style={S.thR}>CA HT</th><th style={S.th}></th></tr></thead>
                       <tbody>{sg.items.map(renderProductRow)}</tbody>
                     </table>
                   )}
@@ -228,11 +275,8 @@ export default function ProductsTab() {
               );
             })
           ) : (
-            /* Sans sous-catégories : table simple comme avant */
             <table style={{ ...S.tbl, marginTop: 10 }}>
-              <thead><tr>
-                <th style={S.th}></th><th style={S.th}>Produit</th><th style={S.th}>Prix HT</th><th style={S.th}>TVA</th><th style={S.th}>Stock</th><th style={S.th}>Vendus</th><th style={S.th}>Provisoire</th><th style={S.th}>Dispo réel</th><th style={S.thR}>CA HT</th><th style={S.th}></th>
-              </tr></thead>
+              <thead><tr><th style={S.th}></th><th style={S.th}>Produit</th><th style={S.th}>Prix HT</th><th style={S.th}>TVA</th><th style={S.th}>Stock</th><th style={S.th}>Vendus</th><th style={S.th}>Provisoire</th><th style={S.th}>Dispo réel</th><th style={S.thR}>CA HT</th><th style={S.th}></th></tr></thead>
               <tbody>{items.map(renderProductRow)}</tbody>
             </table>
           )
