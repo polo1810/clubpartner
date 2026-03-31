@@ -59,7 +59,6 @@ const IMPORT_TYPES = {
       { key: "name",        label: "Nom du produit",   required: true },
       { key: "category",    label: "Catégorie",        required: false },
       { key: "subcategory", label: "Sous-catégorie",   required: false },
-      { key: "productType", label: "Type de produit",  required: false },
       { key: "placement",   label: "Emplacement",      required: false },
       { key: "price",       label: "Prix vente HT",    required: false },
       { key: "cost",        label: "Coût revient",     required: false },
@@ -100,7 +99,6 @@ const ALIASES = {
   amort:          ["amortissement", "amort", "depreciation"],
   category:       ["catégorie", "categorie", "category", "cat", "famille"],
   subcategory:    ["sous-catégorie", "sous_categorie", "sous categorie", "subcategory", "sub_category", "sous-cat", "sous_cat", "sous cat"],
-  productType:    ["type de produit", "type_produit", "type produit", "product_type", "product type", "type"],
   placement:      ["emplacement", "lieu", "localisation", "location", "placement", "zone"],
 };
 
@@ -277,7 +275,6 @@ export default function ImportWizard({ onClose, defaultType }) {
           name: row.name,
           category: row.category || cats[0] || "Signalétique",
           subcategory: row.subcategory || "",
-          productType: row.productType || "",
           placement: row.placement || "",
           stock: parseInt(row.stock) || 0,
           tva: parseFloat(row.tva) || 20,
@@ -342,7 +339,7 @@ export default function ImportWizard({ onClose, defaultType }) {
     const examples = {
       prospects: { Entreprise: "Boulangerie Dupont", Contact: "Jean Dupont", "Téléphone": "0601020304", Email: "jean@dupont.fr", Secteur: "Alimentaire", Commercial: "Marie" },
       partenaires: { Entreprise: "Garage Martin", Contact: "Pierre Martin", "Téléphone": "0611223344", Email: "pierre@garage.fr", Secteur: "Automobile", Commercial: "Paul" },
-      produits: { "Nom du produit": "Panneau LED 4x3", "Catégorie": "Signalétique", "Sous-catégorie": "Panneaux", "Type de produit": "LED", "Emplacement": "Tribune", "Prix vente HT": "1500", "Coût revient": "200", Stock: "10", "TVA %": "20", Investissement: "5000", Amortissement: "1000" },
+      produits: { "Nom du produit": "Panneau LED 4x3", "Catégorie": "Signalétique", "Sous-catégorie": "Panneaux", "Emplacement": "Tribune", "Prix vente HT": "1500", "Coût revient": "200", Stock: "10", "TVA %": "20", Investissement: "5000", Amortissement: "1000" },
     };
     const ex = examples[importType] || {};
     const exampleRow = fields.map(f => ex[f.label] || "").join(sep);
