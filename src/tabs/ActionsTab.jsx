@@ -121,6 +121,22 @@ export default function ActionsTab() {
     `}</style>
     {/* Titre + bouton */}
     <div style={S.fx}><h2 style={S.pageH}>Actions ({filtered.length})</h2><button style={S.btn("primary")} onClick={addAction}>+ Action</button></div>
+
+    {/* Mini tableau de bord */}
+    {(() => {
+      const all = allActions.filter(a => !a.archived);
+      const todo = all.filter(a => !a.done);
+      const late = todo.filter(a => a.date < todayStr);
+      const todoToday = todo.filter(a => a.date === todayStr);
+      const lateToday = todo.filter(a => a.date < todayStr);
+      return <div style={{ ...S.card, marginTop: 10, ...S.g4 }}>
+        <div style={S.statCard}><div style={S.statL}>À faire (total)</div><div style={S.statV(Cl.pri)}>{todo.length}</div></div>
+        <div style={S.statCard}><div style={S.statL}>En retard (total)</div><div style={S.statV(Cl.err)}>{late.length}</div></div>
+        <div style={S.statCard}><div style={S.statL}>À faire aujourd'hui</div><div style={S.statV(Cl.warn)}>{todoToday.length}</div></div>
+        <div style={S.statCard}><div style={S.statL}>En retard aujourd'hui</div><div style={S.statV(lateToday.length > 0 ? Cl.err : Cl.ok)}>{lateToday.length}</div></div>
+      </div>;
+    })()}
+
     {/* Filtres */}
     <div style={S.filterBar}>
       <select style={{ ...S.filterSel, fontWeight: 600 }} value={periodF} onChange={e => setPeriodF(e.target.value)}>
