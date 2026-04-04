@@ -68,7 +68,7 @@ function addCompanyBlock(doc, co, startY) {
   return y + 36;
 }
 
-export function generateDevis(club, company, products, allProducts, currentSeason, payments, seasons) {
+export function generateDevis(club, company, products, allProducts, currentSeason, payments, seasons, returnBlob) {
   const doc = new jsPDF();
   const isM = company.dealType === "Mécénat";
   const num = devisNum();
@@ -248,6 +248,7 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
   doc.setFont("helvetica", "normal");
   doc.text(club.president || "", 60, y + 10, { align: "center" });
   doc.text(company.contact || "", 150, y + 10, { align: "center" });
+  if (club.signature) { try { doc.addImage(club.signature, "AUTO", 35, y + 12, 30, 18); } catch(e) {} }
   doc.setFontSize(7);
   doc.setTextColor(150);
   doc.text("Bon pour accord", 150, y + 17, { align: "center" });
@@ -259,10 +260,12 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
   doc.setTextColor(150);
   doc.text(`${club.name} · SIRET ${club.siret || "___"} · TVA ${club.tvaNumber || "___"}`, 105, pageH - 10, { align: "center" });
 
-  doc.save(`Devis_${company.company.replace(/\s/g, "_")}_${num}.pdf`);
+  const fname = `Devis_${company.company.replace(/\s/g, "_")}_${num}.pdf`;
+  if (returnBlob) return { blob: doc.output('blob'), name: fname };
+  doc.save(fname);
 }
 
-export function generateContrat(club, company, contract, allProducts, seasons, currentSeason, contractTemplates, exclusiviteText) {
+export function generateContrat(club, company, contract, allProducts, seasons, currentSeason, contractTemplates, exclusiviteText, returnBlob) {
   const doc = new jsPDF();
   const isM = contract.type === "Mécénat" || company.dealType === "Mécénat";
   const num = contratNum();
@@ -407,8 +410,9 @@ export function generateContrat(club, company, contract, allProducts, seasons, c
   doc.setFont("helvetica", "normal");
   doc.text(club.president || "___", 60, y + 12, { align: "center" });
   doc.text(contract.signataire || company.contact || "___", 150, y + 12, { align: "center" });
+  if (club.signature) { try { doc.addImage(club.signature, "AUTO", 35, y + 16, 30, 18); } catch(e) {} }
   doc.setFontSize(7); doc.setTextColor(150);
-  doc.text("Signature et cachet", 60, y + 20, { align: "center" });
+  doc.text("Signature et cachet", 60, y + 37, { align: "center" });
   doc.text("Signature et cachet", 150, y + 20, { align: "center" });
 
   // Footer
@@ -416,10 +420,12 @@ export function generateContrat(club, company, contract, allProducts, seasons, c
   doc.setFontSize(6); doc.setTextColor(150);
   doc.text(`${club.name} · SIRET ${club.siret || "___"} · TVA ${club.tvaNumber || "___"}`, 105, pageH - 10, { align: "center" });
 
-  doc.save(`Contrat_${company.company.replace(/\s/g, "_")}_${num}.pdf`);
+  const fname = `Contrat_${company.company.replace(/\s/g, "_")}_${num}.pdf`;
+  if (returnBlob) return { blob: doc.output('blob'), name: fname };
+  doc.save(fname);
 }
 
-export function generateFacturePDF(club, company, invoice) {
+export function generateFacturePDF(club, company, invoice, returnBlob) {
   const doc = new jsPDF();
   const showTVA = club.soumisTVA !== false;
 
@@ -502,6 +508,7 @@ export function generateFacturePDF(club, company, invoice) {
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.text("Cachet et signature", 150, y + 6, { align: "center" });
+  if (club.signature) { try { doc.addImage(club.signature, "AUTO", 125, y + 8, 30, 18); } catch(e) {} }
 
   // Footer
   const pageH = doc.internal.pageSize.height;
@@ -509,7 +516,9 @@ export function generateFacturePDF(club, company, invoice) {
   doc.setTextColor(150);
   doc.text(`${club.name} · SIRET ${club.siret || "___"} · TVA ${club.tvaNumber || "___"}`, 105, pageH - 10, { align: "center" });
 
-  doc.save(`Facture_${(company?.company || invoice.companyName).replace(/\s/g, "_")}_${invoice.number.replace(/\//g, "-")}.pdf`);
+  const fname = `Facture_${(company?.company || invoice.companyName).replace(/\s/g, "_")}_${invoice.number.replace(/\//g, "-")}.pdf`;
+  if (returnBlob) return { blob: doc.output('blob'), name: fname };
+  doc.save(fname);
 }
 
 
@@ -557,7 +566,7 @@ const CERFA_COORDS = {
   nom_signature:          { page: 2, x: 336, y: 659, size: 9 },
 };
 
-export async function generateCerfa(club, company, contract, invoice, season) {
+export async function generateCerfa(club, company, contract, invoice, season, returnBlob) {
   var pdfLib = await import('pdf-lib');
   var PDFDocument = pdfLib.PDFDocument;
   var rgb = pdfLib.rgb;
@@ -658,7 +667,7 @@ export async function generateCerfa(club, company, contract, invoice, season) {
     write(numberToFrench(productsHT), C.nature_lettres);
     var descY = C.nature_description.y;
     prods.forEach(function(cp) {
-      var line = "Qte " + cp.qty + " x " + fmtE(cp.unitPrice) + " = " + fmtE((cp.unitPrice || 0) * (cp.qty || 1));
+      var line = fmtE((cp.unitPrice || 0) * (cp.qty || 1));
       write(line, { page: 2, x: C.nature_description.x, y: descY, size: C.nature_description.size });
       descY += C.nature_description.lineHeight;
     });
@@ -683,13 +692,27 @@ export async function generateCerfa(club, company, contract, invoice, season) {
   write(todayFr, C.date_signature);
   write(club.president || "", C.nom_signature);
 
+  // Signature image
+  if (club.signature) {
+    try {
+      var sigData = club.signature;
+      var sigBytes = Uint8Array.from(atob(sigData.split(",")[1]), function(c) { return c.charCodeAt(0); });
+      var sigImage = sigData.includes("image/png") ? await pdfDoc.embedPng(sigBytes) : await pdfDoc.embedJpg(sigBytes);
+      var sigW = 60; var sigH = sigW * sigImage.height / sigImage.width;
+      if (sigH > 35) { sigH = 35; sigW = sigH * sigImage.width / sigImage.height; }
+      p2.drawImage(sigImage, { x: 340, y: H - 700, width: sigW, height: sigH });
+    } catch(e) { console.warn("Signature CERFA error:", e); }
+  }
+
   // Download
   var pdfBytes = await pdfDoc.save();
   var blob = new Blob([pdfBytes], { type: "application/pdf" });
+  var fname = "CERFA_Mecenat_" + company.company.replace(/\s/g, "_") + "_" + season + ".pdf";
+  if (returnBlob) return { blob: blob, name: fname };
   var url = URL.createObjectURL(blob);
   var a = document.createElement("a");
   a.href = url;
-  a.download = "CERFA_Mecenat_" + company.company.replace(/\s/g, "_") + "_" + season + ".pdf";
+  a.download = fname;
   a.click();
   URL.revokeObjectURL(url);
 }
