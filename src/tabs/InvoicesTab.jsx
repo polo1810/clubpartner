@@ -179,13 +179,18 @@ export default function InvoicesTab() {
       <select style={S.filterSel} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
     </div>
 
-    {/* Stats — même statCard que Dashboard */}
-    {filtered.length > 0 && <div style={{ ...S.card, ...S.g4, marginTop: 10 }}>
-      <div style={S.statCard}><div style={S.statL}>Factures</div><div style={S.statV(Cl.pri)}>{filtered.filter(i => i.type !== "cerfa" && !i.isAvoir).length}</div></div>
-      <div style={S.statCard}><div style={S.statL}>CERFA</div><div style={S.statV(Cl.pur)}>{filtered.filter(i => i.type === "cerfa").length}</div></div>
-      <div style={S.statCard}><div style={S.statL}>Avoirs</div><div style={S.statV(Cl.err)}>{filtered.filter(i => i.isAvoir).length}</div></div>
-      <div style={S.statCard}><div style={S.statL}>Net</div><div style={S.statV(Cl.txt)}>{fmt(totalTTC)}</div></div>
-    </div>}
+    {/* Mini tableau de bord */}
+    {(() => {
+      const factures = seasonInvoices.filter(i => i.type !== "cerfa" && !i.isAvoir && i.status !== "Annulée");
+      const totalEmis = factures.reduce((t, i) => t + i.totalTTC, 0);
+      const totalPaye = factures.filter(i => i.status === "Payée").reduce((t, i) => t + i.totalTTC, 0);
+      const reste = totalEmis - totalPaye;
+      return <div style={{ ...S.card, marginTop: 10, ...S.g3 }}>
+        <div style={S.statCard}><div style={S.statL}>Total émis</div><div style={S.statV(Cl.pri)}>{fmt(totalEmis)}</div></div>
+        <div style={S.statCard}><div style={S.statL}>Total payé</div><div style={S.statV(Cl.ok)}>{fmt(totalPaye)}</div></div>
+        <div style={S.statCard}><div style={S.statL}>Reste à payer</div><div style={S.statV(reste > 0 ? Cl.warn : Cl.ok)}>{fmt(reste)}</div></div>
+      </div>;
+    })()}
 
     {/* Liste — même marginTop: 10 et coCard que partout */}
     <div style={{ marginTop: 10 }}>
@@ -210,7 +215,7 @@ export default function InvoicesTab() {
                   ? <Badge type="danger">Avoir</Badge>
                   : isCerfa
                   ? <Badge type="mecenat">CERFA</Badge>
-                  : <Badge type={inv.status === "Payée" ? "signed" : inv.status === "Annulée" ? "draft" : late ? "danger" : "pending"}>{late && inv.status !== "Payée" ? "Retard" : inv.status}</Badge>
+                  : <select style={S.inlineStatusSel} value={inv.status} onClick={e => e.stopPropagation()} onChange={e => { e.stopPropagation(); setInvoices(is => is.map(i => i.id === inv.id ? { ...i, status: e.target.value } : i)); }}>{INVOICE_STATUSES.map(s => <option key={s}>{s}</option>)}</select>
                 }
                 <span style={S.invAmt(isAv ? Cl.err : isCerfa ? Cl.pur : Cl.pri)}>
                   {isAv ? `-${fmt(inv.totalTTC)}` : isCerfa ? fmt(inv.donAmount || inv.totalTTC) : fmt(inv.totalTTC)}
