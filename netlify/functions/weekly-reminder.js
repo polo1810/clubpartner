@@ -5,7 +5,7 @@ export default async () => {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_KEY; // service role = bypass RLS
   const resendKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.REMINDER_FROM_EMAIL || 'ClubPartner <noreply@clubpartner.fr>';
+  const fromEmail = process.env.REMINDER_FROM_EMAIL || 'onboarding@resend.dev';
 
   if (!supabaseUrl || !supabaseKey || !resendKey) {
     console.error('Variables manquantes : VITE_SUPABASE_URL, SUPABASE_SERVICE_KEY ou RESEND_API_KEY');
