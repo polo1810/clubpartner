@@ -162,8 +162,7 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       if (isM && seasonDon > 0 && seasonHT > 0) {
-        const ratio = ((seasonHT / seasonDon) * 100).toFixed(1);
-        doc.text(`Contreparties ${sid} : ${fmtE(seasonHT)} HT (${ratio}% du don)`, 190, y, { align: "right" });
+        doc.text(`Contreparties ${sid} : ${fmtE(seasonHT)} HT`, 190, y, { align: "right" });
       } else {
         doc.text(`Sous-total ${sid} : ${fmtE(seasonHT)} HT`, 190, y, { align: "right" });
       }
@@ -207,7 +206,7 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
     y += 5;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text(`Contreparties totales : ${fmtE(grandTotalHT)} HT (${grandTotalDon > 0 ? ((grandTotalHT / grandTotalDon) * 100).toFixed(1) : 0}% du don)`, 190, y, { align: "right" });
+    doc.text(`Contreparties totales : ${fmtE(grandTotalHT)} HT`, 190, y, { align: "right" });
     y += 8;
   } else {
     doc.text(`Total HT : ${fmtE(grandTotalHT)}`, 190, y, { align: "right" });
@@ -275,7 +274,6 @@ export function generateContrat(club, company, contract, allProducts, seasons, c
   const grandTotalHT = hasSP
     ? Object.values(contract.seasonProducts).reduce((t, ps) => t + ps.reduce((s, cp) => s + lineHT(cp), 0), 0)
     : (company.products || []).reduce((t, cp) => t + lineHT(cp), 0);
-  const ratio = donAmount > 0 ? ((grandTotalHT / donAmount) * 100).toFixed(1) : "0";
 
   // Get template
   const defaultTemplates = { "Partenariat": "", "Mécénat": "" };
@@ -296,7 +294,7 @@ export function generateContrat(club, company, contract, allProducts, seasons, c
     .replace(/\[nb_saisons\]/gi, String(contract.seasons || 1))
     .replace(/\[montant_total\]/gi, fmtE(grandTotalHT))
     .replace(/\[montant_don\]/gi, fmtE(donAmount))
-    .replace(/\[ratio_contreparties\]/gi, ratio)
+    .replace(/\[ratio_contreparties\]% ?/gi, "")
     .replace(/\[objet_social\]/gi, club.objetSocial ? `Objet social : ${club.objetSocial}` : "")
     .replace(/\[clause_exclusivite\]/gi, exclText)
     .replace(/\[tableau_produits\]/gi, "%%TABLEAU%%")
@@ -677,8 +675,9 @@ export async function generateCerfa(club, company, contract, invoice, season) {
   write(fmtN(donAmount), C.total_montant, true);
   write(numberToFrench(donAmount), C.total_lettres);
 
-  // Date periode
-  write("Saison " + season, C.date_periode);
+  // Date période = date de paiement (pas la saison)
+  var paymentDate = invoice?.dateStr || todayFr;
+  write(paymentDate, C.date_periode);
 
   // Signature
   write(todayFr, C.date_signature);
