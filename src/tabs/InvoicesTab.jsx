@@ -124,11 +124,41 @@ function InvoiceDetail({ invoice, onClose }) {
 }
 
 export default function InvoicesTab() {
-  const { seasonInvoices, invoices, setInvoices, getCompany, contracts, clubInfo, accountCodes, currentSeason } = useApp();
+  const { seasonInvoices, invoices, setInvoices, getCompany, contracts, clubInfo, accountCodes, currentSeason, products } = useApp();
   const [viewInv, setViewInv] = useState(null);
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("Tous");
   const [typeF, setTypeF] = useState("Tous");
+  const [showExport, setShowExport] = useState(false);
+  const [exportSel, setExportSel] = useState({});
+  const [exporting, setExporting] = useState(false);
+
+  const doExportInvoices = async () => {
+    const sel = Object.entries(exportSel).filter(([, v]) => v).map(([id]) => id);
+    if (sel.length === 0) return;
+    setExporting(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      for (const invId of sel) {
+        const inv = invoices.find(i => i.id === invId);
+        if (!inv) continue;
+        const co = getCompany(inv.companyId);
+        const con = contracts.find(c => c.id === inv.contractId);
+        if (inv.type === "cerfa" && co && con) {
+          const cf = await generateCerfa(clubInfo, co, con, inv, inv.season, true);
+          if (cf) zip.file(cf.name, cf.blob);
+        } else if (!inv.isAvoir && co) {
+          const ff = generateFacturePDF(clubInfo, co, inv, true);
+          if (ff) zip.file(ff.name, ff.blob);
+        }
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+      a.download = `Export_Factures_${currentSeason}.zip`; a.click(); URL.revokeObjectURL(a.href);
+    } catch (e) { console.error("Export error:", e); alert("Erreur lors de l'export : " + e.message); }
+    setExporting(false);
+  };
 
   const buildAllEntries = () => {
     const allEntries = [];
@@ -171,7 +201,10 @@ export default function InvoicesTab() {
   return (<>
     <div style={S.fx}>
       <h2 style={S.pageH}>Factures & CERFA</h2>
-      {seasonInvoices.filter(i => i.type !== "cerfa").length > 0 && <button style={S.btn("ghost")} onClick={() => dlCSV(`Ecritures_comptables_${currentSeason}.csv`, toCSV(buildAllEntries()))}>📤 Export écritures</button>}
+      <div style={{ display: "flex", gap: 6 }}>
+        <button style={S.btn("ghost")} onClick={() => { setExportSel({}); setShowExport(true); }}>📦 Export ZIP</button>
+        {seasonInvoices.filter(i => i.type !== "cerfa").length > 0 && <button style={S.btn("ghost")} onClick={() => dlCSV(`Ecritures_comptables_${currentSeason}.csv`, toCSV(buildAllEntries()))}>📤 Export écritures</button>}
+      </div>
     </div>
     <div style={S.filterBar}>
       <input style={S.filterInp} placeholder="🔍 Rechercher entreprise, n° facture..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -228,5 +261,31 @@ export default function InvoicesTab() {
     </div>
 
     {viewInv && <InvoiceDetail invoice={invoices.find(i => i.id === viewInv.id) || viewInv} onClose={() => setViewInv(null)} />}
+
+    {showExport && <Modal title="📦 Export factures (ZIP)" onClose={() => setShowExport(false)}>
+      <div style={{ fontSize: 12, color: Cl.txtL, marginBottom: 10 }}>Cochez les factures et CERFA à exporter en PDF. Idéal pour l'archivage comptable ou la facturation électronique.</div>
+      <div style={{ marginBottom: 10, display: "flex", gap: 8 }}>
+        <button style={S.btnS("ghost")} onClick={() => { const all = {}; seasonInvoices.forEach(i => { if (!i.isAvoir) all[i.id] = true; }); setExportSel(all); }}>Tout cocher</button>
+        <button style={S.btnS("ghost")} onClick={() => setExportSel({})}>Tout décocher</button>
+        <button style={S.btnS("ghost")} onClick={() => { const sel = {}; seasonInvoices.filter(i => i.type !== "cerfa" && !i.isAvoir).forEach(i => { sel[i.id] = true; }); setExportSel(sel); }}>Factures seules</button>
+        <button style={S.btnS("ghost")} onClick={() => { const sel = {}; seasonInvoices.filter(i => i.type === "cerfa").forEach(i => { sel[i.id] = true; }); setExportSel(sel); }}>CERFA seuls</button>
+      </div>
+      <div style={{ maxHeight: 300, overflowY: "auto" }}>
+        {seasonInvoices.filter(i => !i.isAvoir).map(inv => (
+          <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: `1px solid ${Cl.brd}` }}>
+            <input type="checkbox" checked={!!exportSel[inv.id]} onChange={() => setExportSel(s => ({ ...s, [inv.id]: !s[inv.id] }))} />
+            <div style={{ flex: 1 }}>
+              <strong style={{ fontSize: 13 }}>{inv.companyName}</strong>
+              <span style={{ fontSize: 11, color: Cl.txtL, marginLeft: 6 }}>{inv.number} · {inv.type === "cerfa" ? "CERFA" : "Facture"} · {inv.dateStr}</span>
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: inv.type === "cerfa" ? Cl.pur : Cl.pri }}>{fmt(inv.type === "cerfa" ? (inv.donAmount || 0) : inv.totalTTC)}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 14, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button style={S.btn("ghost")} onClick={() => setShowExport(false)}>Annuler</button>
+        <button style={S.btn("primary")} disabled={exporting || Object.values(exportSel).filter(Boolean).length === 0} onClick={doExportInvoices}>{exporting ? "Export en cours..." : `📦 Exporter (${Object.values(exportSel).filter(Boolean).length})`}</button>
+      </div>
+    </Modal>}
   </>);
 }
