@@ -268,7 +268,7 @@ function AppInner() {
         {tab === "invoices" && <InvoicesTab />}
         {tab === "admin" && <AdminTab />}
       </div>
-      {showTeam && <TeamModal members={members} onAdd={addMember} onRemove={m => setMembers(ms => ms.filter(x => x !== m))} onClose={() => setShowTeam(false)} />}
+      {showTeam && <TeamModal members={members} memberEmails={ctx.memberEmails} onAdd={addMember} onRemove={m => { setMembers(ms => ms.filter(x => x !== m)); ctx.setMemberEmails(prev => { const n = {...prev}; delete n[m]; return n; }); }} onSetEmail={(m, email) => ctx.setMemberEmails(prev => ({ ...prev, [m]: email }))} onClose={() => setShowTeam(false)} />}
       {showSettings && <SettingsModal cats={cats} seasons={seasons} setSeasons={ctx.setSeasons} currentSeason={currentSeason} clubInfo={ctx.clubInfo} setClubInfo={ctx.setClubInfo} accountCodes={ctx.accountCodes} setAccountCodes={ctx.setAccountCodes} scripts={ctx.scripts} setScripts={ctx.setScripts} contractTemplates={ctx.contractTemplates} setContractTemplates={ctx.setContractTemplates} exclusiviteText={ctx.exclusiviteText} setExclusiviteText={ctx.setExclusiviteText} onClose={() => setShowSettings(false)} />}
       {showExport && <Modal title="📤 Export" onClose={() => setShowExport(false)}>
         <div style={S.exportList}>
