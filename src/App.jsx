@@ -13,6 +13,7 @@ import AmortTab from './tabs/AmortTab';
 import ContractsTab from './tabs/ContractsTab';
 import InvoicesTab from './tabs/InvoicesTab';
 import AdminTab from './tabs/AdminTab';
+import HelpChat from './components/HelpChat';
 
 // --- Login Screen ---
 function LoginScreen() {
@@ -279,6 +280,7 @@ function AppInner() {
         </div>
       </Modal>}
       {miniForm && <MiniForm title={miniForm.title} fields={miniForm.fields} onSave={miniForm.onSave} onClose={() => setMiniForm(null)} />}
+      <HelpChat />
     </div>
   );
 }
