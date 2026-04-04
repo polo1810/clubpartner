@@ -136,6 +136,17 @@ export const SettingsModal = ({ cats, seasons, setSeasons, currentSeason, clubIn
           {clubInfo.logo && <button style={S.btnS("ghost")} onClick={() => setClub("logo", "")}>✕</button>}
         </div>
       </Field>
+      <Field label="Signature du représentant légal">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {clubInfo.signature && <img src={clubInfo.signature} alt="Signature" style={{ height: 40, borderRadius: 6, border: `1px solid ${Cl.brd}`, background: "#fff" }} />}
+          <label style={{ ...S.btnS("primary"), cursor: "pointer", display: "inline-block" }}>
+            {clubInfo.signature ? "Changer" : "✍️ Charger"}
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => setClub("signature", ev.target.result); reader.readAsDataURL(file); }} />
+          </label>
+          {clubInfo.signature && <button style={S.btnS("ghost")} onClick={() => setClub("signature", "")}>✕</button>}
+        </div>
+        <div style={{ fontSize: 11, color: Cl.txtL, marginTop: 4 }}>Cette signature sera intégrée automatiquement dans les devis, contrats, conventions et CERFA.</div>
+      </Field>
       <Field label="Couleur du thème">
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input type="color" value={clubInfo.themeColor || "#2563eb"} onChange={e => setClub("themeColor", e.target.value)} style={{ width: 40, height: 32, border: "none", cursor: "pointer", borderRadius: 6 }} />
