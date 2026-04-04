@@ -61,6 +61,7 @@ export const S = {
   g2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   g3: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 },
   g4: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 },
+  g5: { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 },
   fx: { display: "flex", justifyContent: "space-between", alignItems: "center" },
 
   // --- Stats (enrichies avec contexte) ---
@@ -73,6 +74,7 @@ export const S = {
   statSub: (c) => ({ fontSize: 11, color: c || Cl.txtL, marginTop: 4 }),
   statBar: { height: 4, background: Cl.brd, borderRadius: 2, marginTop: 4, overflow: "hidden" },
   statBarFill: (w, c) => ({ height: "100%", width: `${Math.min(100, w)}%`, background: c, borderRadius: 2 }),
+  inlineStatusSel: { fontSize: 11, padding: "3px 6px", borderRadius: 6, border: `1px solid ${Cl.brd}`, background: Cl.wh, cursor: "pointer", fontWeight: 600 },
 
   // --- Modals ---
   modal: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(3px)" },
