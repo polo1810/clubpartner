@@ -96,6 +96,24 @@ export function AppProvider({ children }) {
   const [exclusiviteText, setExclusiviteText] = useState(cd?.exclusiviteText || DEFAULT_EXCLUSIVITE);
   const [allObjectives, setAllObjectives] = useState(cd?.allObjectives || { "2025-2026": { partenariat: 50000, mecenat: 20000, members: {} } });
 
+  // --- Sync automatique : ajouter les club_members Supabase dans l'équipe ---
+  useEffect(() => {
+    if (auth?.isLocal || !clubId || !supabase) return;
+    supabase.from('club_members').select('name, email').eq('club_id', clubId).then(({ data }) => {
+      if (!data) return;
+      setMembers(prev => {
+        const newMembers = [...prev];
+        data.forEach(m => { if (m.name && !newMembers.includes(m.name)) newMembers.push(m.name); });
+        return newMembers;
+      });
+      setMemberEmails(prev => {
+        const updated = { ...prev };
+        data.forEach(m => { if (m.name && m.email && !updated[m.name]) updated[m.name] = m.email; });
+        return updated;
+      });
+    });
+  }, [clubId]);
+
   // --- Sync automatique des 4 tables vers Supabase ---
   useTableSync('companies', companies, clubId, canSync);
   useTableSync('contracts', contracts, clubId, canSync);
