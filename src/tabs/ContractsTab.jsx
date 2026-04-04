@@ -4,7 +4,7 @@ import { useAuth } from '../data/AuthContext';
 import { S, Cl } from '../data/styles';
 import { uid, fmt, lineHT, lineTTC, isSigned, getPrice, getContractSeasonIds } from '../data/initialData';
 import { Badge, Modal, Field, MemberSelect, PhoneLink, ProductPicker } from '../components/index';
-import { generateContrat, generateFacturePDF, generateCerfa } from '../utils/pdfGenerator';
+import { generateContrat, generateFacturePDF, generateCerfa, generateDevis } from '../utils/pdfGenerator';
 
 function SeasonProductTable({ prods, products: allProducts }) {
   if (!prods || prods.length === 0) return <p style={{ fontSize: 12, color: Cl.txtL }}>Aucun produit pour cette saison</p>;
@@ -238,7 +238,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
 
       {/* Zone documents dédiée */}
       {co && <div style={S.docZone}>
-        <div style={S.docZoneTitle}>Documents</div>
+        <div style={S.docZoneTitle}>Documents générés</div>
         <div style={S.docGrid}>
           <button style={S.btnDoc} onClick={() => generateContrat(clubInfo, co, contract, products, seasons, currentSeason, contractTemplates, exclusiviteText)}>📄 Contrat PDF</button>
           <button style={S.btnDoc} onClick={() => { if (onOpenCompany) onOpenCompany(co); onClose(); }}>👁️ Fiche {co.company}</button>
@@ -253,6 +253,26 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
                 ? <div key={sid} style={S.docDone}><span style={{ color: Cl.ok }}>✓</span> {already.number} <button style={{ ...S.btnS("ghost"), fontSize: 11 }} onClick={() => generateFacturePDF(clubInfo, co, already)}>re-télécharger</button></div>
                 : <button key={sid} style={S.btnDocAction(Cl.ok, Cl.okL)} onClick={() => generateInvoice(contract, sid)}>🧾 Générer facture {sid}</button>;
             }
+          })}
+        </div>
+
+        <div style={{ ...S.docZoneTitle, marginTop: 12 }}>📎 Documents signés (archivage)</div>
+        <div style={{ fontSize: 11, color: Cl.txtL, marginBottom: 6 }}>Téléchargez ici les versions signées pour garder un historique.</div>
+        <div style={S.docGrid}>
+          {["devis", "contrat", "cerfa"].map(docType => {
+            const label = docType === "devis" ? "Devis signé" : docType === "contrat" ? "Contrat signé" : "CERFA signé";
+            const icon = docType === "cerfa" ? "🏛️" : "📄";
+            const signedDoc = contract.signedDocs?.[docType];
+            return <div key={docType} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {signedDoc ? <>
+                <span style={{ fontSize: 12, color: Cl.ok }}>✅ {label}</span>
+                <button style={{ ...S.btnS("ghost"), fontSize: 11 }} onClick={() => { const a = document.createElement("a"); a.href = signedDoc.data; a.download = signedDoc.name || `${label}.pdf`; a.click(); }}>⬇️</button>
+                <button style={{ ...S.btnS("ghost"), fontSize: 11 }} onClick={() => upd({ signedDocs: { ...(contract.signedDocs || {}), [docType]: null } })}>✕</button>
+              </> : <label style={{ ...S.btnS("ghost"), cursor: "pointer", fontSize: 11 }}>
+                {icon} {label}
+                <input type="file" accept=".pdf,image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => upd({ signedDocs: { ...(contract.signedDocs || {}), [docType]: { data: ev.target.result, name: file.name } } }); reader.readAsDataURL(file); }} />
+              </label>}
+            </div>;
           })}
         </div>
       </div>}
@@ -301,7 +321,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
 
 // --- Contracts List (même pattern que Prospects/Partners) ---
 export default function ContractsTab({ onOpenCompany, directContract, onDirectContractClosed }) {
-  const { contracts, setContracts, getCompany, contractHT, contractTTC, seasonContracts, invoices, setInvoices, currentSeason } = useApp();
+  const { contracts, setContracts, getCompany, contractHT, contractTTC, seasonContracts, invoices, setInvoices, currentSeason, clubInfo, products, seasons, contractTemplates, exclusiviteText } = useApp();
   const auth = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editC, setEditC] = useState(null);
@@ -311,6 +331,9 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
   const [typeF, setTypeF] = useState("Tous");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [showExport, setShowExport] = useState(false);
+  const [exportSel, setExportSel] = useState({});
+  const [exporting, setExporting] = useState(false);
 
   const canDelete = auth.role === "admin" || auth.role === "superadmin";
   const isSuperDemo = auth.isSuperAdmin && auth.member?.club_id === "demo";
@@ -330,10 +353,60 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
   };
   const doAvoir = (cid) => { setInvoices(is => is.map(i => i.contractId === cid && i.type !== "cerfa" && i.status !== "Annulée" ? { ...i, status: "Annulée" } : i)); };
 
+  const doExportZip = async () => {
+    const sel = Object.entries(exportSel).filter(([, v]) => v).map(([id]) => id);
+    if (sel.length === 0) return;
+    setExporting(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      for (const cid of sel) {
+        const c = contracts.find(x => x.id === cid);
+        if (!c) continue;
+        const co = getCompany(c.companyId);
+        if (!co) continue;
+        const isM = c.type === "Mécénat" || co.dealType === "Mécénat";
+        const folder = zip.folder((co.company || "Entreprise").replace(/[\/\\]/g, "_"));
+        // Contrat PDF
+        const ct = generateContrat(clubInfo, co, c, products, seasons, currentSeason, contractTemplates, exclusiviteText, true);
+        if (ct) folder.file(ct.name, ct.blob);
+        // Factures / CERFA
+        const cInvs = invoices.filter(i => i.contractId === cid);
+        for (const inv of cInvs) {
+          if (inv.type === "cerfa") {
+            const cf = await generateCerfa(clubInfo, co, c, inv, inv.season, true);
+            if (cf) folder.file(cf.name, cf.blob);
+          } else if (!inv.isAvoir) {
+            const ff = generateFacturePDF(clubInfo, co, inv, true);
+            if (ff) folder.file(ff.name, ff.blob);
+          }
+        }
+        // Documents signés
+        if (c.signedDocs) {
+          Object.entries(c.signedDocs).forEach(([type, doc]) => {
+            if (doc?.data) {
+              const bytes = atob(doc.data.split(",")[1]);
+              const arr = new Uint8Array(bytes.length);
+              for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+              folder.file(doc.name || `${type}_signe.pdf`, arr);
+            }
+          });
+        }
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+      a.download = `Export_Contrats_${currentSeason}.zip`; a.click(); URL.revokeObjectURL(a.href);
+    } catch (e) { console.error("Export error:", e); alert("Erreur lors de l'export : " + e.message); }
+    setExporting(false);
+  };
+
   return (<>
     {/* Titre — même pattern que Prospects/Partners */}
     <div style={S.fx}><h2 style={S.pageH}>Contrats ({filtered.length})</h2>
-      <button style={S.btn("primary")} onClick={() => { setEditC(null); setShowForm(true); }}>+ Contrat</button>
+      <div style={{ display: "flex", gap: 6 }}>
+        <button style={S.btn("ghost")} onClick={() => { setExportSel({}); setShowExport(true); }}>📦 Export ZIP</button>
+        <button style={S.btn("primary")} onClick={() => { setEditC(null); setShowForm(true); }}>+ Contrat</button>
+      </div>
     </div>
     {/* Filtres — même pattern */}
     <div style={S.filterBar}>
@@ -403,6 +476,31 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
           </>)}
         </>;
       })()}
+    </Modal>}
+
+    {showExport && <Modal title="📦 Export documents (ZIP)" onClose={() => setShowExport(false)}>
+      <div style={{ fontSize: 12, color: Cl.txtL, marginBottom: 10 }}>Cochez les contrats à exporter. Les contrats PDF, factures, CERFA et documents signés seront inclus.</div>
+      <div style={{ marginBottom: 10, display: "flex", gap: 8 }}>
+        <button style={S.btnS("ghost")} onClick={() => { const all = {}; seasonContracts.forEach(c => { all[c.id] = true; }); setExportSel(all); }}>Tout cocher</button>
+        <button style={S.btnS("ghost")} onClick={() => setExportSel({})}>Tout décocher</button>
+      </div>
+      <div style={{ maxHeight: 300, overflowY: "auto" }}>
+        {seasonContracts.map(c => {
+          const co = getCompany(c.companyId);
+          const nbDocs = 1 + invoices.filter(i => i.contractId === c.id).length + Object.values(c.signedDocs || {}).filter(Boolean).length;
+          return <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: `1px solid ${Cl.brd}` }}>
+            <input type="checkbox" checked={!!exportSel[c.id]} onChange={() => setExportSel(s => ({ ...s, [c.id]: !s[c.id] }))} />
+            <div style={{ flex: 1 }}>
+              <strong style={{ fontSize: 13 }}>{co?.company || "?"}</strong>
+              <span style={{ fontSize: 11, color: Cl.txtL, marginLeft: 6 }}>{c.type} · {c.status} · {nbDocs} doc{nbDocs > 1 ? "s" : ""}</span>
+            </div>
+          </div>;
+        })}
+      </div>
+      <div style={{ marginTop: 14, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button style={S.btn("ghost")} onClick={() => setShowExport(false)}>Annuler</button>
+        <button style={S.btn("primary")} disabled={exporting || Object.values(exportSel).filter(Boolean).length === 0} onClick={doExportZip}>{exporting ? "Export en cours..." : `📦 Exporter (${Object.values(exportSel).filter(Boolean).length})`}</button>
+      </div>
     </Modal>}
   </>);
 }
