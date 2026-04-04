@@ -76,6 +76,7 @@ export function AppProvider({ children }) {
 
   // --- Paramètres du club : restent dans le JSON clubs.data ---
   const [members, setMembers] = useState(cd?.members || INIT_MEMBERS);
+  const [memberEmails, setMemberEmails] = useState(cd?.memberEmails || {});
   const [seasons, setSeasons] = useState(cd?.seasons || INIT_SEASONS);
   const [cats, setCats] = useState(cd?.cats || INIT_CATS);
   const [subcats, setSubcats] = useState(cd?.subcats || INIT_SUBCATS);
@@ -104,9 +105,9 @@ export function AppProvider({ children }) {
   // --- Sync des paramètres vers clubs.data (debounced) ---
   const settingsTimer = useRef(null);
   const getSettings = useCallback(() => ({
-    members, seasons, cats, subcats, productTypes, placements, currentSeason,
+    members, memberEmails, seasons, cats, subcats, productTypes, placements, currentSeason,
     clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives,
-  }), [members, seasons, cats, subcats, productTypes, placements, currentSeason, clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
+  }), [members, memberEmails, seasons, cats, subcats, productTypes, placements, currentSeason, clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
 
   useEffect(() => {
     if (auth?.isLocal || !auth?.saveClubData) return;
@@ -115,13 +116,13 @@ export function AppProvider({ children }) {
       auth.saveClubData(getSettings());
     }, 1000);
     return () => { if (settingsTimer.current) clearTimeout(settingsTimer.current); };
-  }, [members, seasons, cats, subcats, productTypes, placements, currentSeason, clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
+  }, [members, memberEmails, seasons, cats, subcats, productTypes, placements, currentSeason, clubInfo, accountCodes, invoiceSeq, scripts, contractTemplates, exclusiviteText, allObjectives]);
 
   // ==================================================================
   // Tout le reste est IDENTIQUE à l'ancien AppContext
   // ==================================================================
 
-  const addMember = (n) => { if (n && !members.includes(n)) setMembers(ms => [...ms, n]); };
+  const addMember = (n, email) => { if (n && !members.includes(n)) setMembers(ms => [...ms, n]); if (n && email) setMemberEmails(prev => ({ ...prev, [n]: email })); };
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const companyInSeason = (c, sid) => c.season === sid || !!(c.seasonProducts?.[sid]?.length) || !!(c.seasonDonAmounts?.[sid]) || !!(c.seasonStatus?.[sid]) || contracts.some(con => con.companyId === c.id && getContractSeasonIds(con, seasons).includes(sid));
@@ -341,7 +342,7 @@ export function AppProvider({ children }) {
 
   const value = {
     companies, setCompanies, products, setProducts, contracts, setContracts,
-    members, setMembers, addMember, seasons, setSeasons, cats, setCats, subcats, setSubcats, productTypes, setProductTypes, placements, setPlacements, currentSeason, setCurrentSeason,
+    members, setMembers, addMember, memberEmails, setMemberEmails, seasons, setSeasons, cats, setCats, subcats, setSubcats, productTypes, setProductTypes, placements, setPlacements, currentSeason, setCurrentSeason,
     miniForm, setMiniForm, todayStr, clubInfo, setClubInfo,
     invoices, setInvoices, seasonInvoices, generateInvoice, generateCerfaRecord, accountCodes, setAccountCodes, scripts, setScripts, contractTemplates, setContractTemplates, exclusiviteText, setExclusiviteText,
     prospectsList, partnersList, getCompany, companyContracts,
