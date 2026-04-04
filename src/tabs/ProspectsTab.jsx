@@ -199,6 +199,15 @@ export default function ProspectsTab() {
       <select style={S.filterSel} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
     </div>
 
+    {/* Mini tableau de bord */}
+    <div style={{ ...S.card, marginTop: 10, ...S.g5 }}>
+      <div style={S.statCard}><div style={S.statL}>Total</div><div style={S.statV(Cl.pri)}>{prospectsList.length}</div></div>
+      <div style={S.statCard}><div style={S.statL}>Nouveaux</div><div style={S.statV(Cl.txt)}>{prospectsList.filter(p => p.prospectStatus === "Nouveau").length}</div></div>
+      <div style={S.statCard}><div style={S.statL}>Renouvellements</div><div style={S.statV(Cl.warn)}>{prospectsList.filter(p => p.prospectStatus === "Renouvellement potentiel").length}</div></div>
+      <div style={S.statCard}><div style={S.statL}>Refusés</div><div style={S.statV(Cl.err)}>{prospectsList.filter(p => p.prospectStatus === "Refusé").length}</div></div>
+      <div style={S.statCard}><div style={S.statL}>Proposition envoyée</div><div style={S.statV(Cl.warn)}>{prospectsList.filter(p => p.prospectStatus === "Proposition envoyée").length}</div></div>
+    </div>
+
     {filtered.length > 0 && <div style={S.selAll}>
       <input type="checkbox" checked={allSelected} onChange={toggleAll} />
       <span style={{ cursor: "pointer" }} onClick={toggleAll}>{allSelected ? "Tout désélectionner" : "Tout sélectionner"}</span>
@@ -225,7 +234,7 @@ export default function ProspectsTab() {
             </div>
           </div>
           <div style={S.coRight}>
-            <Badge type={statusBType(co.prospectStatus)}>{co.prospectStatus}</Badge>
+            <select style={S.inlineStatusSel} value={co.prospectStatus} onClick={e => e.stopPropagation()} onChange={e => { e.stopPropagation(); setCompanies(cs => cs.map(c => c.id === co.id ? { ...c, prospectStatus: e.target.value } : c)); }}>{P_STATUSES.map(s => <option key={s}>{s}</option>)}</select>
             {ctxBtn}
           </div>
         </div>
