@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../data/AuthContext';
+import { useApp } from '../data/AppContext';
 import { supabase } from '../data/supabase';
 import { S, Cl } from '../data/styles';
 import { Badge, Modal, Field } from '../components/index';
 
 export default function AdminTab() {
   const { isSuperAdmin, member } = useAuth();
+  const { addMember: addToTeam } = useApp();
   const [clubs, setClubs] = useState([]);
   const [allMembers, setAllMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,7 @@ export default function AdminTab() {
     if (!newMember.email.trim() || !newMember.club_id) return;
     const { error } = await supabase.from('club_members').insert({ email: newMember.email.trim().toLowerCase(), club_id: newMember.club_id, role: newMember.role, name: newMember.name.trim() });
     if (error) { alert("Erreur : " + error.message); return; }
+    if (newMember.name.trim()) addToTeam(newMember.name.trim(), newMember.email.trim().toLowerCase());
     setShowAddMember(false); setNewMember({ email: "", club_id: "", role: "commercial", name: "" }); load();
   };
 
