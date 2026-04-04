@@ -7,7 +7,7 @@ import { CompanyForm, CompanyDetail } from '../components/CompanyModals';
 import ImportWizard from '../components/ImportWizard';
 
 export default function PartnersTab({ onOpenContract }) {
-  const { partnersList, companies, setCompanies, seasons, currentSeason, companyContracts, setSeasonStatus, hasContractForSeason, members, setMiniForm } = useApp();
+  const { partnersList, companies, setCompanies, contracts, setContracts, seasons, currentSeason, companyContracts, setSeasonStatus, hasContractForSeason, members, setMiniForm } = useApp();
   const [sectorF, setSectorF] = useState("Tous");
   const [typeF, setTypeF] = useState("Tous");
   const [search, setSearch] = useState("");
@@ -82,6 +82,22 @@ export default function PartnersTab({ onOpenContract }) {
       <select style={S.filterSel} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
     </div>
 
+    {/* Mini tableau de bord */}
+    {(() => {
+      const nbM = partnersList.filter(p => p.dealType === "Mécénat").length;
+      const nbP = partnersList.length - nbM;
+      const allC = partnersList.flatMap(p => companyContracts(p.id));
+      const nbAtt = allC.filter(c => c.status === "En attente").length;
+      const nbSig = allC.filter(c => isSigned(c)).length;
+      return <div style={{ ...S.card, marginTop: 10, ...S.g5 }}>
+        <div style={S.statCard}><div style={S.statL}>Total</div><div style={S.statV(Cl.pri)}>{partnersList.length}</div></div>
+        <div style={S.statCard}><div style={S.statL}>Mécénat</div><div style={S.statV(Cl.pur)}>{nbM}</div></div>
+        <div style={S.statCard}><div style={S.statL}>Partenariat</div><div style={S.statV(Cl.pri)}>{nbP}</div></div>
+        <div style={S.statCard}><div style={S.statL}>En attente</div><div style={S.statV(Cl.warn)}>{nbAtt}</div></div>
+        <div style={S.statCard}><div style={S.statL}>Signés</div><div style={S.statV(Cl.ok)}>{nbSig}</div></div>
+      </div>;
+    })()}
+
     {filtered.length > 0 && <div style={S.selAll}>
       <input type="checkbox" checked={allSelected} onChange={toggleAll} />
       <span style={{ cursor: "pointer" }} onClick={toggleAll}>{allSelected ? "Tout désélectionner" : "Tout sélectionner"}</span>
@@ -110,7 +126,7 @@ export default function PartnersTab({ onOpenContract }) {
               <Badge type={isM ? "mecenat" : "partenariat"}>{isM ? "💜 Mécénat" : "🤝 Partenariat"}</Badge>
               {myC.length > 0
                 ? <>
-                    <Badge type={isSigned(myC[0]) ? "signed" : myC[0].status === "En attente" ? "pending" : "draft"}>{myC[0].status}</Badge>
+                    <select style={S.inlineStatusSel} value={myC[0].status} onClick={e => e.stopPropagation()} onChange={e => { e.stopPropagation(); setContracts(cs => cs.map(c => c.id === myC[0].id ? { ...c, status: e.target.value } : c)); }}>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select>
                     <button style={S.btnS("primary")} onClick={(e) => { e.stopPropagation(); onOpenContract && onOpenContract(myC[0]); }}>Voir contrat</button>
                   </>
                 : <>
