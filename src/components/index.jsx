@@ -58,10 +58,14 @@ export const ProductPicker = ({ products, selected, onToggle, cats, currentSeaso
   </div>);
 };
 
-export const TeamModal = ({ members, onAdd, onRemove, onClose }) => {
+export const TeamModal = ({ members, memberEmails, onAdd, onRemove, onSetEmail, onClose }) => {
   const [nn, setNn] = useState("");
   return (<Modal title="👥 Équipe" onClose={onClose}>
-    {members.map(m => (<div key={m} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${Cl.brd}` }}><span style={{ flex: 1, fontSize: 14 }}>{m}</span>{members.length > 1 && <button style={S.btnS("ghost")} onClick={() => onRemove(m)}>✕</button>}</div>))}
+    {members.map(m => (<div key={m} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${Cl.brd}` }}>
+      <span style={{ minWidth: 120, fontSize: 14, fontWeight: 600 }}>{m}</span>
+      <input style={{ ...S.inp, flex: 1, fontSize: 12 }} placeholder="email@example.com" value={memberEmails?.[m] || ""} onChange={e => onSetEmail(m, e.target.value)} />
+      {members.length > 1 && <button style={S.btnS("ghost")} onClick={() => onRemove(m)}>✕</button>}
+    </div>))}
     <div style={{ marginTop: 12, display: "flex", gap: 8 }}><input style={{ ...S.inp, flex: 1 }} placeholder="Nouveau membre..." value={nn} onChange={e => setNn(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && nn.trim()) { onAdd(nn.trim()); setNn(""); } }} /><button style={S.btn("primary")} onClick={() => { if (nn.trim()) { onAdd(nn.trim()); setNn(""); } }}>Ajouter</button></div>
   </Modal>);
 };
