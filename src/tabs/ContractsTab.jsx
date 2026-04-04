@@ -212,7 +212,12 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
         <div><span style={S.lbl}>Type</span><Badge type={isM ? "mecenat" : "partenariat"}>{isM ? "Mécénat" : "Partenariat"}</Badge></div>
         <div><span style={S.lbl}>Responsable</span>{contract.member}</div>
         <div><span style={S.lbl}>Saisons</span>{contract.seasons} ({coveredSeasons.join(", ")})</div>
-        <div><span style={S.lbl}>Exclusivité</span>{contract.exclusivite ? <span style={{ color: Cl.ok, fontWeight: 700 }}>✅ Oui</span> : <span style={{ color: Cl.txtL }}>Non</span>}</div>
+        <div><span style={S.lbl}>Exclusivité</span>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button style={S.chip(contract.exclusivite)} onClick={() => upd({ exclusivite: true })}>✅ Oui</button>
+            <button style={S.chip(!contract.exclusivite)} onClick={() => upd({ exclusivite: false })}>❌ Non</button>
+          </div>
+        </div>
       </div>
 
       {isM && <div style={S.mecCard}>
@@ -296,7 +301,7 @@ function ContractDetail({ contract, onClose, onOpenCompany }) {
 
 // --- Contracts List (même pattern que Prospects/Partners) ---
 export default function ContractsTab({ onOpenCompany, directContract, onDirectContractClosed }) {
-  const { contracts, setContracts, getCompany, contractHT, contractTTC, seasonContracts, invoices, setInvoices } = useApp();
+  const { contracts, setContracts, getCompany, contractHT, contractTTC, seasonContracts, invoices, setInvoices, currentSeason } = useApp();
   const auth = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editC, setEditC] = useState(null);
@@ -336,6 +341,19 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
       <select style={S.filterSel} value={statusF} onChange={e => setStatusF(e.target.value)}><option>Tous</option>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select>
       <select style={S.filterSel} value={typeF} onChange={e => setTypeF(e.target.value)}><option>Tous</option><option>Partenariat</option><option>Mécénat</option></select>
     </div>
+
+    {/* Mini tableau de bord */}
+    {(() => {
+      const att = seasonContracts.filter(c => c.status === "En attente");
+      const sig = seasonContracts.filter(c => isSigned(c));
+      const fac = seasonContracts.filter(c => c.status === "Facturé" || c.status === "Payé");
+      return <div style={{ ...S.card, marginTop: 10, ...S.g3 }}>
+        <div style={S.statCard}><div style={S.statL}>En attente</div><div style={S.statV(Cl.warn)}>{fmt(att.reduce((t, c) => t + contractHT(c), 0))}</div></div>
+        <div style={S.statCard}><div style={S.statL}>Signé</div><div style={S.statV(Cl.ok)}>{fmt(sig.reduce((t, c) => t + contractHT(c), 0))}</div></div>
+        <div style={S.statCard}><div style={S.statL}>Facturé</div><div style={S.statV(Cl.pri)}>{fmt(fac.reduce((t, c) => t + contractHT(c), 0))}</div></div>
+      </div>;
+    })()}
+
     {/* Cartes — même coCard que Prospects/Partners */}
     <div style={{ marginTop: 10 }}>{filtered.length === 0 ? <div style={S.empty}>Aucun contrat trouvé</div>
       : filtered.map(c => {
@@ -349,7 +367,7 @@ export default function ContractsTab({ onOpenCompany, directContract, onDirectCo
               <div style={S.coSub}>{c.type}{c.seasons > 1 ? ` · ${c.seasons} saisons` : ""} · {c.member}{(c.payments || []).length > 0 ? ` · ${fmt(paid)}/${fmt(contractTTC(c))}` : ""}</div>
             </div>
             <div style={S.coRight}>
-              <Badge type={isSigned(c) ? "signed" : c.status === "En attente" ? "pending" : "draft"}>{c.status}</Badge>
+              <select style={S.inlineStatusSel} value={c.status} onClick={e => e.stopPropagation()} onChange={e => { e.stopPropagation(); setContracts(cs => cs.map(x => x.id === c.id ? { ...x, status: e.target.value } : x)); }}>{["Brouillon", "En attente", "Signé", "Facturé", "Payé"].map(s => <option key={s}>{s}</option>)}</select>
               <span style={S.ctAmt}>{c.type === "Mécénat" ? `${fmt(c.donAmount || 0)} don` : `${fmt(contractHT(c))} HT`}</span>
               {canDelete && <button style={S.btnDelete} onClick={e => onDeleteClick(e, c)} title="Supprimer">🗑️</button>}
             </div>
