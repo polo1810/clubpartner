@@ -207,7 +207,7 @@ export function AppProvider({ children }) {
     }
     const coSDA = co.seasonDonAmounts && Object.keys(co.seasonDonAmounts).length > 0 ? { ...co.seasonDonAmounts } : {};
     const totDon = Object.keys(coSDA).length > 0 ? Object.values(coSDA).reduce((t, d) => t + (d || 0), 0) : (co.donAmount || 0);
-    setContracts(cs => [...cs, { id: uid(), companyId, type: co.dealType || "Partenariat", member: co.member, signataire: co.contact, seasons: Object.keys(sp).length || 1, startSeason: Object.keys(sp).sort()[0] || currentSeason, status: "En attente", donAmount: totDon, seasonDonAmounts: coSDA, seasonProducts: sp, payments: [], actions: [] }]);
+    setContracts(cs => [...cs, { id: uid(), companyId, type: co.dealType || "Partenariat", member: co.member, signataire: co.contact, seasons: Object.keys(sp).length || 1, startSeason: Object.keys(sp).sort()[0] || currentSeason, status: "En attente", donAmount: totDon, seasonDonAmounts: coSDA, seasonProducts: sp, exclusivite: false, payments: [], actions: [] }]);
     setCompanies(cs => cs.map(c => c.id === companyId ? { ...c, isPartner: true, prospectStatus: "", partnerStatus: "Nouveau partenaire", seasonStatus: { ...(c.seasonStatus || {}), [currentSeason]: "partenaire" } } : c));
   };
 
