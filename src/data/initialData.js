@@ -100,7 +100,6 @@ La présente convention est conclue pour [nb_saisons] saison(s), de [saison_debu
 
 **Article 3 — Contreparties**
 [tableau_produits]
-Les contreparties représentent [ratio_contreparties]% du montant du don, conformément à la limite de 25% prévue par la loi.
 
 **Article 4 — Avantage fiscal**
 Le Mécène bénéficiera d'une réduction d'impôt égale à 60% du montant du don, dans la limite de 0,5% du chiffre d'affaires HT, conformément à l'article 238 bis du CGI.
