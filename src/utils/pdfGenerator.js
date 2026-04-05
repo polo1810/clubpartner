@@ -12,7 +12,7 @@ function addHeader(doc, club, title, num, customDate) {
   // Logo (if available)
   let logoOffset = 0;
   if (club.logo) {
-    try { doc.addImage(club.logo, "AUTO", 20, 12, 18, 18); logoOffset = 22; } catch(e) { /* ignore if logo fails */ }
+    try { doc.addImage(club.logo, "AUTO", 20, 12, 18, 18); logoOffset = 22; } catch(e) { console.warn("Logo PDF error:", e); }
   }
 
   // Club info (left)
@@ -248,7 +248,7 @@ export function generateDevis(club, company, products, allProducts, currentSeaso
   doc.setFont("helvetica", "normal");
   doc.text(club.president || "", 60, y + 10, { align: "center" });
   doc.text(company.contact || "", 150, y + 10, { align: "center" });
-  if (club.signature) { try { doc.addImage(club.signature, "AUTO", 35, y + 12, 30, 18); } catch(e) {} }
+  if (club.signature) { try { doc.addImage(club.signature, "AUTO", 35, y + 12, 30, 18); } catch(e) { console.warn("Signature devis error:", e); } }
   doc.setFontSize(7);
   doc.setTextColor(150);
   doc.text("Bon pour accord", 150, y + 17, { align: "center" });
@@ -410,7 +410,7 @@ export function generateContrat(club, company, contract, allProducts, seasons, c
   doc.setFont("helvetica", "normal");
   doc.text(club.president || "___", 60, y + 12, { align: "center" });
   doc.text(contract.signataire || company.contact || "___", 150, y + 12, { align: "center" });
-  if (club.signature) { try { doc.addImage(club.signature, "AUTO", 35, y + 16, 30, 18); } catch(e) {} }
+  if (club.signature) { try { doc.addImage(club.signature, "AUTO", 35, y + 16, 30, 18); } catch(e) { console.warn("Signature contrat error:", e); } }
   doc.setFontSize(7); doc.setTextColor(150);
   doc.text("Signature et cachet", 60, y + 37, { align: "center" });
   doc.text("Signature et cachet", 150, y + 20, { align: "center" });
@@ -508,7 +508,7 @@ export function generateFacturePDF(club, company, invoice, returnBlob) {
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.text("Cachet et signature", 150, y + 6, { align: "center" });
-  if (club.signature) { try { doc.addImage(club.signature, "AUTO", 125, y + 8, 30, 18); } catch(e) {} }
+  if (club.signature) { try { doc.addImage(club.signature, "AUTO", 125, y + 8, 30, 18); } catch(e) { console.warn("Signature facture error:", e); } }
 
   // Footer
   const pageH = doc.internal.pageSize.height;
