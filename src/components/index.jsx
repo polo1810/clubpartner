@@ -131,7 +131,7 @@ export const SettingsModal = ({ cats, seasons, setSeasons, currentSeason, clubIn
           {clubInfo.logo && <img src={clubInfo.logo} alt="Logo" style={{ height: 40, borderRadius: 6, border: `1px solid ${Cl.brd}` }} />}
           <label style={{ ...S.btnS("primary"), cursor: "pointer", display: "inline-block" }}>
             {clubInfo.logo ? "Changer" : "📷 Charger"}
-            <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => setClub("logo", ev.target.result); reader.readAsDataURL(file); }} />
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { const img = new Image(); img.onload = () => { const MAX = 200; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } if (h > MAX) { w = w * MAX / h; h = MAX; } const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h); setClub("logo", c.toDataURL("image/png")); }; img.src = ev.target.result; }; reader.readAsDataURL(file); }} />
           </label>
           {clubInfo.logo && <button style={S.btnS("ghost")} onClick={() => setClub("logo", "")}>✕</button>}
         </div>
@@ -141,11 +141,11 @@ export const SettingsModal = ({ cats, seasons, setSeasons, currentSeason, clubIn
           {clubInfo.signature && <img src={clubInfo.signature} alt="Signature" style={{ height: 40, borderRadius: 6, border: `1px solid ${Cl.brd}`, background: "#fff" }} />}
           <label style={{ ...S.btnS("primary"), cursor: "pointer", display: "inline-block" }}>
             {clubInfo.signature ? "Changer" : "✍️ Charger"}
-            <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => setClub("signature", ev.target.result); reader.readAsDataURL(file); }} />
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { const img = new Image(); img.onload = () => { const MAX = 400; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h); setClub("signature", c.toDataURL("image/png")); }; img.src = ev.target.result; }; reader.readAsDataURL(file); }} />
           </label>
           {clubInfo.signature && <button style={S.btnS("ghost")} onClick={() => setClub("signature", "")}>✕</button>}
         </div>
-        <div style={{ fontSize: 11, color: Cl.txtL, marginTop: 4 }}>Cette signature sera intégrée automatiquement dans les devis, contrats, conventions et CERFA.</div>
+        <div style={{ fontSize: 11, color: Cl.txtL, marginTop: 4 }}>Cette signature sera intégrée automatiquement dans les devis, contrats, conventions et CERFA. (Image redimensionnée à 400px max)</div>
       </Field>
       <Field label="Couleur du thème">
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
