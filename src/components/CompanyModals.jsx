@@ -33,11 +33,35 @@ function hasAnyProduct(sp) {
   return Object.values(sp).some(prods => prods.length > 0);
 }
 
+async function lookupSiret(siret) {
+  const clean = siret.replace(/\s/g, "");
+  if (clean.length < 9) return null;
+  const res = await fetch(`https://recherche-entreprises.api.gouv.fr/search?q=${clean}`);
+  const json = await res.json();
+  const r = json.results?.[0];
+  if (!r) return null;
+  const siege = r.siege || {};
+  const adr = [siege.numero_voie, siege.type_voie, siege.libelle_voie].filter(Boolean).join(" ");
+  return {
+    company: r.nom_complet || "",
+    formeJuridique: r.nature_juridique ? (r.libelle_nature_juridique || "") : "",
+    siret: siege.siret || clean,
+    tvaNumber: r.numero_tva_intra || "",
+    adresseNum: siege.numero_voie || "",
+    adresseRue: [siege.type_voie, siege.libelle_voie].filter(Boolean).join(" "),
+    adresseCP: siege.code_postal || "",
+    adresseCommune: siege.libelle_commune || "",
+    sector: r.libelle_activite_principale || "",
+  };
+}
+
 export function CompanyForm({ data, onSave, onClose }) {
   const { products, members, addMember, seasons, cats, currentSeason } = useApp();
   const isP = data?.isPartner;
   const [f, setF] = useState(data || { company: "", sector: "", contact: "", phone: "", email: "", adresseNum: "", adresseRue: "", adresseCP: "", adresseCommune: "", formeJuridique: "", siret: "", tvaNumber: "", accountCode: "", season: currentSeason, isPartner: false, dealType: "Partenariat", donAmount: 0, prospectStatus: "Nouveau", partnerStatus: "", callbackDate: "", rdvDate: "", member: members[0], products: [], seasonProducts: {}, seasonDonAmounts: {} });
   const set = (k, v) => setF({ ...f, [k]: v });
+  const [siretLoading, setSiretLoading] = useState(false);
+  const doLookup = async () => { setSiretLoading(true); try { const r = await lookupSiret(f.siret); if (r) setF(prev => ({ ...prev, ...r })); else alert("Aucune entreprise trouvée"); } catch { alert("Erreur de recherche"); } setSiretLoading(false); };
 
   const [sp, setSp] = useState(() => {
     const existing = getCompanySP(data || {}, seasons);
@@ -98,7 +122,7 @@ export function CompanyForm({ data, onSave, onClose }) {
         <Field label="Code postal"><input style={S.inp} value={f.adresseCP || ""} onChange={e => set("adresseCP", e.target.value)} placeholder="49300" /></Field>
         <Field label="Commune"><input style={S.inp} value={f.adresseCommune || ""} onChange={e => set("adresseCommune", e.target.value)} placeholder="Cholet" /></Field>
         <Field label="Forme juridique"><input style={S.inp} value={f.formeJuridique || ""} onChange={e => set("formeJuridique", e.target.value)} placeholder="SAS, SARL, SA..." /></Field>
-        <Field label="SIRET"><input style={S.inp} value={f.siret || ""} onChange={e => set("siret", e.target.value)} placeholder="Optionnel" /></Field>
+        <Field label="SIRET"><div style={{ display: "flex", gap: 4 }}><input style={{ ...S.inp, flex: 1 }} value={f.siret || ""} onChange={e => set("siret", e.target.value)} placeholder="Tapez un SIRET puis 🔍" /><button style={S.btnS("primary")} disabled={siretLoading || !(f.siret || "").replace(/\s/g, "")} onClick={doLookup}>{siretLoading ? "⏳" : "🔍"}</button></div></Field>
         <Field label="N° TVA"><input style={S.inp} value={f.tvaNumber || ""} onChange={e => set("tvaNumber", e.target.value)} placeholder="Optionnel" /></Field>
         <Field label="Compte comptable"><input style={{ ...S.inp, fontFamily: "monospace" }} value={f.accountCode || genAccountCode(f.company)} onChange={e => set("accountCode", e.target.value)} /></Field>
         <Field label="Type"><select style={S.sel} value={f.dealType || "Partenariat"} onChange={e => set("dealType", e.target.value)}><option>Partenariat</option><option>Mécénat</option></select></Field>
@@ -171,6 +195,8 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
   const [showRepass, setShowRepass] = useState(false);
   const [repassSeason, setRepassSeason] = useState("");
   const setCo = (u) => { setCompanies(cs => cs.map(x => x.id === u.id ? u : x)); };
+  const [siretLoading2, setSiretLoading2] = useState(false);
+  const doLookup2 = async () => { setSiretLoading2(true); try { const r = await lookupSiret(co.siret); if (r) setCo({ ...co, ...r }); else alert("Aucune entreprise trouvée"); } catch { alert("Erreur de recherche"); } setSiretLoading2(false); };
   const myContracts = companyContracts(co.id);
   const lastNote = (co.notes || []).sort((a, b) => b.date.localeCompare(a.date))[0];
   const isM = co.dealType === "Mécénat";
@@ -245,7 +271,7 @@ export function CompanyDetail({ company, onClose, onOpenContract }) {
         <div><span style={S.lbl}>Rue</span><input style={S.inp} value={co.adresseRue || ""} onChange={e => setCo({ ...co, adresseRue: e.target.value })} /></div>
         <div><span style={S.lbl}>Code postal</span><input style={S.inp} value={co.adresseCP || ""} onChange={e => setCo({ ...co, adresseCP: e.target.value })} /></div>
         <div><span style={S.lbl}>Commune</span><input style={S.inp} value={co.adresseCommune || ""} onChange={e => setCo({ ...co, adresseCommune: e.target.value })} /></div>
-        <div><span style={S.lbl}>SIRET</span><input style={S.inp} value={co.siret || ""} onChange={e => setCo({ ...co, siret: e.target.value })} /></div>
+        <div><span style={S.lbl}>SIRET</span><div style={{ display: "flex", gap: 4 }}><input style={{ ...S.inp, flex: 1 }} value={co.siret || ""} onChange={e => setCo({ ...co, siret: e.target.value })} /><button style={S.btnS("primary")} disabled={siretLoading2 || !(co.siret || "").replace(/\s/g, "")} onClick={doLookup2}>{siretLoading2 ? "⏳" : "🔍"}</button></div></div>
         <div><span style={S.lbl}>N° TVA</span><input style={S.inp} value={co.tvaNumber || ""} onChange={e => setCo({ ...co, tvaNumber: e.target.value })} /></div>
         <div><span style={S.lbl}>Compte comptable</span><input style={{ ...S.inp, fontFamily: "monospace" }} value={co.accountCode || ""} onChange={e => setCo({ ...co, accountCode: e.target.value })} /></div>
         <div><span style={S.lbl}>Responsable</span><MemberSelect value={co.member} onChange={v => setCo({ ...co, member: v })} members={members} onAdd={addMember} /></div>
