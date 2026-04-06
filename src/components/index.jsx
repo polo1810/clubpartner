@@ -113,6 +113,7 @@ export const SettingsModal = ({ cats, seasons, setSeasons, currentSeason, clubIn
       <Field label="Code postal"><input style={S.inp} value={clubInfo.adresseCP || ""} onChange={e => setClub("adresseCP", e.target.value)} placeholder="49300" /></Field>
       <Field label="Commune"><input style={S.inp} value={clubInfo.adresseCommune || ""} onChange={e => setClub("adresseCommune", e.target.value)} placeholder="Cholet" /></Field>
       <Field label="Téléphone"><input style={S.inp} value={clubInfo.phone || ""} onChange={e => setClub("phone", e.target.value)} /></Field>
+      <Field label="WhatsApp support (aide)"><input style={S.inp} value={clubInfo.supportWhatsapp || ""} onChange={e => setClub("supportWhatsapp", e.target.value)} placeholder="33612345678 (sans +, sans espaces)" /><div style={{ fontSize: 11, color: Cl.txtL, marginTop: 4 }}>Numéro WhatsApp où seront redirigés les utilisateurs si l'assistant ne peut pas répondre</div></Field>
       <Field label="Email"><input style={S.inp} value={clubInfo.email || ""} onChange={e => setClub("email", e.target.value)} /></Field>
       <Field label="SIRET"><input style={S.inp} value={clubInfo.siret || ""} onChange={e => setClub("siret", e.target.value)} /></Field>
       <Field label="N° TVA"><input style={S.inp} value={clubInfo.tvaNumber || ""} onChange={e => setClub("tvaNumber", e.target.value)} /></Field>
