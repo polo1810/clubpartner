@@ -12,6 +12,9 @@ const st = {
   footer: { padding: 12, borderTop: `1px solid ${Cl.brd}`, display: "flex", gap: 8 },
   input: { flex: 1, padding: "8px 12px", borderRadius: 8, border: `1px solid ${Cl.brd}`, fontSize: 13, fontFamily: "inherit", outline: "none" },
   send: { padding: "8px 14px", borderRadius: 8, background: Cl.slate, color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" },
+  feedback: { display: "flex", gap: 8, marginTop: 8 },
+  fbBtn: (ok) => ({ padding: "6px 14px", borderRadius: 8, border: `1px solid ${ok ? "#22c55e" : "#ef4444"}`, background: ok ? "#f0fdf4" : "#fef2f2", color: ok ? "#16a34a" : "#dc2626", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }),
+  waBtn: { display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 10, background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none", marginTop: 8, border: "none", cursor: "pointer" },
 };
 
 // === MINI MOCKUP STYLES ===
@@ -327,27 +330,29 @@ function renderContent(text) {
 const animStyle = `@keyframes pulse-btn { 0%,100%{box-shadow:0 0 0 3px #eef1f7, 0 0 12px #3b5998} 50%{box-shadow:0 0 0 6px #eef1f7, 0 0 20px #3b5998} }`;
 
 // === MAIN COMPONENT ===
-export default function HelpChat() {
+export default function HelpChat({ whatsapp }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "Bonjour ! Je suis l'assistant ClubPartner.\n\nPosez-moi vos questions, par exemple :\n\n1. Comment ajouter un partenaire ?\n[scene:add-prospect]\n2. Comment créer un contrat ?\n[scene:add-contract]\n3. Comment gérer mon équipe ?\n[scene:team-modal]" }
+    { role: "assistant", content: "Bonjour ! Je suis l'assistant ClubPartner.\n\nPosez-moi vos questions, par exemple :\n\n1. Comment ajouter un partenaire ?\n[scene:add-prospect]\n2. Comment créer un contrat ?\n[scene:add-contract]\n3. Comment gérer mon équipe ?\n[scene:team-modal]", noFeedback: true }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [missCount, setMissCount] = useState(0);
+  const [feedbackGiven, setFeedbackGiven] = useState({});
   const bodyRef = useRef(null);
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
   }, [messages]);
 
-  const send = async () => {
-    const q = input.trim();
+  const send = async (text) => {
+    const q = (text || input).trim();
     if (!q || loading) return;
-    setInput("");
+    if (!text) setInput("");
     setMessages(prev => [...prev, { role: "user", content: q }]);
     setLoading(true);
     try {
-      const history = messages.slice(-6).filter(m => m.role !== "system");
+      const history = messages.slice(-8).filter(m => m.role !== "system");
       const res = await fetch("/api/help-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -360,6 +365,27 @@ export default function HelpChat() {
     }
     setLoading(false);
   };
+
+  const handleFeedback = (msgIdx, ok) => {
+    setFeedbackGiven(prev => ({ ...prev, [msgIdx]: true }));
+    if (ok) {
+      setMissCount(0);
+      setMessages(prev => [...prev, { role: "assistant", content: "Super, content d'avoir pu vous aider ! 😊 N'hésitez pas si vous avez d'autres questions.", noFeedback: true }]);
+    } else {
+      const newMiss = missCount + 1;
+      setMissCount(newMiss);
+      if (newMiss >= 2) {
+        const waMsg = whatsapp
+          ? "Je suis désolé de ne pas avoir pu résoudre votre problème. 😕\n\nJe vous propose de contacter directement notre support :"
+          : "Je suis désolé de ne pas avoir pu résoudre votre problème. 😕\n\nJe vous conseille de contacter directement le responsable de votre club pour plus d'aide.";
+        setMessages(prev => [...prev, { role: "assistant", content: waMsg, showWhatsapp: true, noFeedback: true }]);
+      } else {
+        send("Ma réponse précédente n'a pas aidé l'utilisateur. Pose-lui 1 ou 2 questions courtes pour mieux comprendre son problème exact et essaie de donner une réponse plus précise.");
+      }
+    }
+  };
+
+  const waLink = whatsapp ? `https://wa.me/${whatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent("Bonjour, j'ai besoin d'aide avec ClubPartner.")}` : null;
 
   if (!open) return (
     <>
@@ -378,15 +404,28 @@ export default function HelpChat() {
         </div>
         <div style={st.body} ref={bodyRef}>
           {messages.map((m, i) => (
-            <div key={i} style={m.role === "user" ? st.msgUser : st.msgBot}>
-              {m.role === "assistant" ? renderContent(m.content) : m.content}
+            <div key={i}>
+              <div style={m.role === "user" ? st.msgUser : st.msgBot}>
+                {m.role === "assistant" ? renderContent(m.content) : m.content}
+                {m.showWhatsapp && waLink && (
+                  <a href={waLink} target="_blank" rel="noopener noreferrer" style={st.waBtn}>
+                    💬 Contacter le support sur WhatsApp
+                  </a>
+                )}
+              </div>
+              {m.role === "assistant" && !m.noFeedback && !feedbackGiven[i] && !loading && (
+                <div style={st.feedback}>
+                  <button style={st.fbBtn(true)} onClick={() => handleFeedback(i, true)}>✅ Résolu</button>
+                  <button style={st.fbBtn(false)} onClick={() => handleFeedback(i, false)}>❌ Pas résolu</button>
+                </div>
+              )}
             </div>
           ))}
           {loading && <div style={st.msgBot}><span style={{ opacity: 0.6 }}>Réflexion en cours...</span></div>}
         </div>
         <div style={st.footer}>
           <input style={st.input} placeholder="Posez votre question..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} disabled={loading} autoFocus />
-          <button style={{ ...st.send, opacity: loading ? 0.5 : 1 }} onClick={send} disabled={loading}>Envoyer</button>
+          <button style={{ ...st.send, opacity: loading ? 0.5 : 1 }} onClick={() => send()} disabled={loading}>Envoyer</button>
         </div>
       </div>
     </>
