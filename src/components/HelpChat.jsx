@@ -375,6 +375,7 @@ export default function HelpChat({ whatsapp }) {
       const newMiss = missCount + 1;
       setMissCount(newMiss);
       if (newMiss >= 2) {
+        const waNum = whatsapp ? `+${whatsapp.replace(/(\d{2})(\d{1})(\d{2})(\d{2})(\d{2})(\d{2})/, "$1 $2 $3 $4 $5 $6")}` : "";
         const waMsg = whatsapp
           ? "Je suis désolé de ne pas avoir pu résoudre votre problème. 😕\n\nJe vous propose de contacter directement notre support :"
           : "Je suis désolé de ne pas avoir pu résoudre votre problème. 😕\n\nJe vous conseille de contacter directement le responsable de votre club pour plus d'aide.";
@@ -408,9 +409,14 @@ export default function HelpChat({ whatsapp }) {
               <div style={m.role === "user" ? st.msgUser : st.msgBot}>
                 {m.role === "assistant" ? renderContent(m.content) : m.content}
                 {m.showWhatsapp && waLink && (
-                  <a href={waLink} target="_blank" rel="noopener noreferrer" style={st.waBtn}>
-                    💬 Contacter le support sur WhatsApp
-                  </a>
+                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                    <a href={`tel:+${whatsapp.replace(/[^0-9]/g, "")}`} style={{ ...st.waBtn, background: Cl.pri }}>
+                      📞 Appeler le {waNum}
+                    </a>
+                    <a href={waLink} target="_blank" rel="noopener noreferrer" style={st.waBtn}>
+                      💬 Envoyer un message WhatsApp
+                    </a>
+                  </div>
                 )}
               </div>
               {m.role === "assistant" && !m.noFeedback && !feedbackGiven[i] && !loading && (
