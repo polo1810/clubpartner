@@ -375,7 +375,6 @@ export default function HelpChat({ whatsapp }) {
       const newMiss = missCount + 1;
       setMissCount(newMiss);
       if (newMiss >= 2) {
-        const waNum = whatsapp ? `+${whatsapp.replace(/(\d{2})(\d{1})(\d{2})(\d{2})(\d{2})(\d{2})/, "$1 $2 $3 $4 $5 $6")}` : "";
         const waMsg = whatsapp
           ? "Je suis désolé de ne pas avoir pu résoudre votre problème. 😕\n\nJe vous propose de contacter directement notre support :"
           : "Je suis désolé de ne pas avoir pu résoudre votre problème. 😕\n\nJe vous conseille de contacter directement le responsable de votre club pour plus d'aide.";
@@ -386,6 +385,7 @@ export default function HelpChat({ whatsapp }) {
     }
   };
 
+  const waNum = whatsapp ? `+${whatsapp.replace(/(\d{2})(\d{1})(\d{2})(\d{2})(\d{2})(\d{2})/, "$1 $2 $3 $4 $5 $6")}` : "";
   const waLink = whatsapp ? `https://wa.me/${whatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent("Bonjour, j'ai besoin d'aide avec ClubPartner.")}` : null;
 
   if (!open) return (
