@@ -661,17 +661,8 @@ export async function generateCerfa(club, company, contract, invoice, season, re
   write(coCP, C.ent_adresse_cp);
   write(coVille, C.ent_adresse_commune);
 
-  // Dons en nature (contreparties)
-  if (productsHT > 0) {
-    write(fmtN(productsHT), C.nature_montant, true);
-    write(numberToFrench(productsHT), C.nature_lettres);
-    var descY = C.nature_description.y;
-    prods.forEach(function(cp) {
-      var line = fmtE((cp.unitPrice || 0) * (cp.qty || 1));
-      write(line, { page: 2, x: C.nature_description.x, y: descY, size: C.nature_description.size });
-      descY += C.nature_description.lineHeight;
-    });
-  }
+  // Dons en nature : laissé vide volontairement
+  // Le club complètera cette section manuellement et importera le CERFA signé
 
   // Versements
   write(fmtN(donAmount), C.versement_montant, true);
