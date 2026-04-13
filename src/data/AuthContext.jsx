@@ -24,6 +24,12 @@ export function AuthProvider({ children }) {
   // ★ Gestion essai/abonnement
   const [clubStatus, setClubStatus] = useState(null); // { status, trialEndDate, daysLeft }
 
+  // ★ Config globale (WhatsApp support, etc.)
+  const [globalConfig, setGlobalConfig] = useState({});
+
+  // ★ Membres cachés (superadmins) pour les contributions
+  const [hiddenMembers, setHiddenMembers] = useState([]);
+
   const isLocal = !supabase;
 
   useEffect(() => {
@@ -80,6 +86,10 @@ export function AuthProvider({ children }) {
         supabase.from('products').select('*').eq('club_id', m.club_id),
       ]);
 
+      // ★ Charger les noms des superadmins pour les masquer des contributions
+      const { data: saMembers } = await supabase.from('club_members').select('name').eq('club_id', m.club_id).eq('role', 'superadmin');
+      setHiddenMembers((saMembers || []).map(x => x.name).filter(Boolean));
+
       setInitCompanies((compRes.data || []).map(r => r.data));
       setInitContracts((contRes.data || []).map(r => r.data));
       setInitInvoices((invRes.data || []).map(r => r.data));
@@ -96,6 +106,14 @@ export function AuthProvider({ children }) {
     setUser(u);
     setError("");
     try {
+      // ★ Charger la config globale
+      const { data: configRows } = await supabase.from('app_config').select('*');
+      if (configRows) {
+        const cfg = {};
+        configRows.forEach(r => { cfg[r.key] = r.value; });
+        setGlobalConfig(cfg);
+      }
+
       const { data: members, error: mErr } = await supabase.from('club_members').select('*').eq('email', u.email);
       if (mErr) throw mErr;
       if (!members || members.length === 0) { setError("Aucun accès. Contactez votre administrateur."); setLoading(false); return; }
@@ -197,6 +215,10 @@ export function AuthProvider({ children }) {
     allMemberships, needsClubSelection, selectClub, switchClub,
     // ★ Gestion essai
     clubStatus, isClubBlocked,
+    // ★ Config globale
+    globalConfig,
+    // ★ Membres cachés (superadmins)
+    hiddenMembers,
   };
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
