@@ -21,6 +21,9 @@ export function AuthProvider({ children }) {
   // ★ NOUVEAU : multi-clubs
   const [allMemberships, setAllMemberships] = useState([]);
 
+  // ★ Gestion essai/abonnement
+  const [clubStatus, setClubStatus] = useState(null); // { status, trialEndDate, daysLeft }
+
   const isLocal = !supabase;
 
   useEffect(() => {
@@ -33,7 +36,7 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) loadUserData(session.user);
-      else { setUser(null); setMember(null); setClubData(null); setClubInfoState(null); setAllMemberships([]); setLoading(false); }
+      else { setUser(null); setMember(null); setClubData(null); setClubInfoState(null); setAllMemberships([]); setClubStatus(null); setLoading(false); }
     });
 
     return () => subscription.unsubscribe();
@@ -45,6 +48,30 @@ export function AuthProvider({ children }) {
     try {
       const { data: club, error: cErr } = await supabase.from('clubs').select('*').eq('id', m.club_id).single();
       if (cErr) throw cErr;
+
+      // ★ Vérifier le statut d'essai
+      let st = club.status || 'active';
+      let daysLeft = null;
+      const trialEnd = club.trial_end_date ? new Date(club.trial_end_date) : null;
+
+      if (st === 'trial' && trialEnd) {
+        daysLeft = Math.ceil((trialEnd - new Date()) / (1000 * 60 * 60 * 24));
+        if (daysLeft <= 0) {
+          // Essai expiré → bloquer automatiquement
+          st = 'blocked';
+          await supabase.from('clubs').update({ status: 'blocked', blocked_reason: 'Période d\'essai terminée' }).eq('id', club.id);
+        }
+      }
+
+      setClubStatus({ status: st, trialEndDate: trialEnd, daysLeft, blockedReason: club.blocked_reason || '' });
+
+      // Si bloqué et pas superadmin → on charge quand même les infos de base mais on bloque l'accès
+      if (st === 'blocked' && m.role !== 'superadmin') {
+        setClubInfoState({ id: club.id, name: club.name });
+        setClubData(null);
+        setLoading(false);
+        return;
+      }
 
       const [compRes, contRes, invRes, prodRes] = await Promise.all([
         supabase.from('companies').select('*').eq('club_id', m.club_id),
@@ -105,6 +132,7 @@ export function AuthProvider({ children }) {
     setMember(null);
     setClubData(null);
     setClubInfoState(null);
+    setClubStatus(null);
     setInitCompanies([]);
     setInitContracts([]);
     setInitInvoices([]);
@@ -145,7 +173,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     if (isLocal) return;
     await supabase.auth.signOut();
-    setUser(null); setMember(null); setClubData(null); setClubInfoState(null); setAllMemberships([]);
+    setUser(null); setMember(null); setClubData(null); setClubInfoState(null); setAllMemberships([]); setClubStatus(null);
   };
 
   const role = member?.role || "admin";
@@ -157,6 +185,9 @@ export function AuthProvider({ children }) {
   // ★ Vrai si l'utilisateur doit choisir un club
   const needsClubSelection = allMemberships.length > 1 && !member;
 
+  // ★ Vrai si le club est bloqué
+  const isClubBlocked = clubStatus?.status === 'blocked' && !isSuperAdmin;
+
   const value = {
     user, member, clubData, clubInfo, loading, error, isLocal,
     login, loginWithPassword, signUp, logout, saveClubData, loadUserData,
@@ -164,6 +195,8 @@ export function AuthProvider({ children }) {
     initCompanies, initContracts, initInvoices, initProducts,
     // ★ NOUVEAU
     allMemberships, needsClubSelection, selectClub, switchClub,
+    // ★ Gestion essai
+    clubStatus, isClubBlocked,
   };
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
