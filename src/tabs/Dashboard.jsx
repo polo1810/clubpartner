@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useApp } from '../data/AppContext';
+import { useAuth } from '../data/AuthContext';
 import { S, Cl } from '../data/styles';
 import { fmt, isSigned, uid, ACTION_TYPES } from '../data/initialData';
 
 export default function Dashboard() {
   const { prospectsList, partnersList, allActions, todayStr, totalCA, totalPaid, contracts, setContracts, contractTTC, caByType, caByMember, members, addMember, objectives, setObjectives, currentSeason, companies, setCompanies, setInvoices, setMiniForm } = useApp();
+  const { hiddenMembers } = useAuth();
+  // ★ Membres visibles = sans les superadmins
+  const visibleMembers = members.filter(m => !(hiddenMembers || []).includes(m));
   const [editObj, setEditObj] = useState(false);
   const [justDone, setJustDone] = useState({});
   // justDone[id] = "celebrate" | "fadeout"
@@ -205,7 +209,7 @@ export default function Dashboard() {
       </div>
       <table style={S.tbl}>
         <thead><tr><th style={S.th}>Membre</th><th style={S.th}>Partenariat</th><th style={S.th}>Mécénat</th><th style={S.th}>Total réalisé</th>{editObj && <th style={S.th}>Objectif</th>}<th style={S.thR}>Atteinte</th></tr></thead>
-        <tbody>{members.map(m => {
+        <tbody>{visibleMembers.map(m => {
           const d = caByMember[m] || { partenariat: 0, mecenat: 0, total: 0 };
           const obj = objectives.members?.[m] || 0;
           const pct = obj > 0 ? (d.total / obj) * 100 : 0;
@@ -227,7 +231,7 @@ export default function Dashboard() {
         })}</tbody>
       </table>
       {editObj && (() => {
-        const totalMemberObj = members.reduce((t, m) => t + (objectives.members?.[m] || 0), 0);
+        const totalMemberObj = visibleMembers.reduce((t, m) => t + (objectives.members?.[m] || 0), 0);
         const diff = objTotal - totalMemberObj;
         return totalMemberObj > 0 && <div style={S.alert(Math.abs(diff) < 1 ? "success" : "warning")}>{Math.abs(diff) < 1 ? "✅ Objectifs individuels = objectif global" : diff > 0 ? `⚠️ ${fmt(diff)} non répartis (total membres: ${fmt(totalMemberObj)})` : `⚠️ Dépasse l'objectif global de ${fmt(-diff)}`}</div>;
       })()}
