@@ -564,6 +564,7 @@ const CERFA_COORDS = {
   date_periode:           { page: 2, x: 101, y: 609, size: 8 },
   date_signature:         { page: 2, x: 349, y: 631, size: 9 },
   nom_signature:          { page: 2, x: 336, y: 659, size: 9 },
+  signature_image:        { page: 2, x: 340, y: 665, w: 60, maxH: 35 },
 };
 
 export async function generateCerfa(club, company, contract, invoice, season, returnBlob) {
@@ -691,9 +692,10 @@ export async function generateCerfa(club, company, contract, invoice, season, re
       var sigData = club.signature;
       var sigBytes = Uint8Array.from(atob(sigData.split(",")[1]), function(c) { return c.charCodeAt(0); });
       var sigImage = sigData.includes("image/png") ? await pdfDoc.embedPng(sigBytes) : await pdfDoc.embedJpg(sigBytes);
-      var sigW = 60; var sigH = sigW * sigImage.height / sigImage.width;
-      if (sigH > 35) { sigH = 35; sigW = sigH * sigImage.width / sigImage.height; }
-      p2.drawImage(sigImage, { x: 340, y: H - 700, width: sigW, height: sigH });
+      var sigW = C.signature_image.w; var sigH = sigW * sigImage.height / sigImage.width;
+      if (sigH > C.signature_image.maxH) { sigH = C.signature_image.maxH; sigW = sigH * sigImage.width / sigImage.height; }
+      var sigPage = C.signature_image.page === 2 ? p2 : p1;
+      sigPage.drawImage(sigImage, { x: C.signature_image.x, y: H - C.signature_image.y, width: sigW, height: sigH });
     } catch(e) { console.warn("Signature CERFA error:", e); }
   }
 
