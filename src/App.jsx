@@ -295,7 +295,7 @@ function AppInner() {
         </div>
       </Modal>}
       {miniForm && <MiniForm title={miniForm.title} fields={miniForm.fields} onSave={miniForm.onSave} onClose={() => setMiniForm(null)} />}
-      <HelpChat whatsapp={ctx.clubInfo.supportWhatsapp} />
+      <HelpChat whatsapp={auth.globalConfig?.supportWhatsapp} />
     </div>
   );
 }
