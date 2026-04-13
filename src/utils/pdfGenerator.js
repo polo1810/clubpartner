@@ -538,7 +538,7 @@ const CERFA_COORDS = {
   adresse_pays:          { page: 1, x: 68, y: 255, size: 8 },
   objet:                 { page: 1, x: 79, y: 269, size: 8 },
   check_oeuvre:           { page: 1, x: 34, y: 383, size: 10 },
-  check_asso_1901:        { page: 1, x: 55, y: 346, size: 10 },
+  check_asso_1901:        { page: 1, x: 56, y: 360, size: 10 },
   check_asso_rup:         { page: 1, x: 114, y: 365, size: 10 },
   check_fondation_uni:    { page: 1, x: 114, y: 394, size: 10 },
   check_fondation_ent:    { page: 1, x: 114, y: 410, size: 10 },
@@ -677,10 +677,11 @@ export async function generateCerfa(club, company, contract, invoice, season, re
 
   // Date période = date de paiement (pas la saison)
   var paymentDate = invoice?.dateStr || todayFr;
-  write(paymentDate, C.date_periode);
+  var spacedDate = function(d) { var p = d.split("/"); return p[0] + "   /   " + p[1] + "   /   " + p[2]; };
+  write(spacedDate(paymentDate), C.date_periode);
 
   // Signature
-  write(todayFr, C.date_signature);
+  write(spacedDate(todayFr), C.date_signature);
   write(club.president || "", C.nom_signature);
 
   // Signature image
