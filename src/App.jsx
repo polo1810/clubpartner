@@ -255,6 +255,21 @@ function AppInner() {
           {!auth.isLocal && <button style={S.hdrBtn} onClick={auth.logout}>Déconnexion</button>}
         </div>
       </div>
+      {/* ★ Bandeau période d'essai */}
+      {auth.clubStatus?.status === 'trial' && auth.clubStatus?.daysLeft != null && (() => {
+        const d = auth.clubStatus.daysLeft;
+        const urgent = d <= 7;
+        const bg = urgent ? Cl.errL : Cl.warnL;
+        const c = urgent ? Cl.err : Cl.warn;
+        const borderC = urgent ? Cl.err : Cl.warn;
+        return (
+          <div style={{ padding: "8px 28px", background: bg, borderBottom: `1px solid ${borderC}30`, display: "flex", justifyContent: "center", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: c }}>
+              {d <= 1 ? "⚠️ Dernier jour d'essai !" : `🕐 Période d'essai : ${d} jour${d > 1 ? "s" : ""} restant${d > 1 ? "s" : ""}`}
+            </span>
+          </div>
+        );
+      })()}
       <nav style={S.nav}>
           {visibleTabs.map(t => <button key={t.id} style={{ ...S.navB(tab === t.id), ...(tab === t.id ? { borderBottomColor: tc } : {}) }} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}
         </nav>
@@ -285,15 +300,44 @@ function AppInner() {
   );
 }
 
+// --- Blocked Screen (essai terminé) ---
+function BlockedScreen() {
+  const { clubInfo, logout, clubStatus, switchClub, allMemberships } = useAuth();
+  const hasMultipleClubs = allMemberships.length > 1;
+  return (
+    <div style={S.authBg}>
+      <div style={{ ...S.authCard, textAlign: "center" }}>
+        <div style={S.authMsgIcon}>⏰</div>
+        <h2 style={S.authMsgH}>Période d'essai terminée</h2>
+        <p style={{ fontSize: 14, color: Cl.txtL, marginTop: 10, lineHeight: 1.6 }}>
+          L'accès de <strong>{clubInfo?.name || "votre club"}</strong> a été désactivé.<br />
+          {clubStatus?.blockedReason || "Votre période d'essai est arrivée à son terme."}
+        </p>
+        <div style={{ background: Cl.priL, borderRadius: 8, padding: 16, marginTop: 20 }}>
+          <p style={{ fontSize: 13, color: Cl.pri, fontWeight: 500, margin: 0 }}>
+            📧 Contactez-nous pour activer votre abonnement et retrouver l'accès à vos données.
+          </p>
+        </div>
+        <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+          {hasMultipleClubs && <button style={S.authLinkBtn} onClick={switchClub}>← Changer de club</button>}
+          <button style={S.authLinkBtn} onClick={logout}>Se déconnecter</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Auth Gate ---
 function AuthGate() {
-  const { user, loading, error, member, clubData, isLocal, needsClubSelection } = useAuth();
+  const { user, loading, error, member, clubData, isLocal, needsClubSelection, isClubBlocked } = useAuth();
   if (isLocal) return <AppProvider><AppInner /></AppProvider>;
   if (loading) return <LoadingScreen />;
   if (!user) return <LoginScreen />;
   // ★ NOUVEAU : sélection de club si multi-clubs
   if (needsClubSelection) return <ClubSelector />;
   if (error || !member) return <AccessDenied />;
+  // ★ Club bloqué
+  if (isClubBlocked) return <BlockedScreen />;
   if (clubData !== null) return <AppProvider><AppInner /></AppProvider>;
   return <LoadingScreen />;
 }
