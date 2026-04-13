@@ -538,7 +538,7 @@ const CERFA_COORDS = {
   adresse_pays:          { page: 1, x: 68, y: 255, size: 8 },
   objet:                 { page: 1, x: 79, y: 269, size: 8 },
   check_oeuvre:           { page: 1, x: 34, y: 383, size: 10 },
-  check_asso_1901:        { page: 1, x: 46, y: 375, size: 10 },
+  check_asso_1901:        { page: 1, x: 50, y: 349, size: 10 },
   check_asso_rup:         { page: 1, x: 114, y: 365, size: 10 },
   check_fondation_uni:    { page: 1, x: 114, y: 394, size: 10 },
   check_fondation_ent:    { page: 1, x: 114, y: 410, size: 10 },
