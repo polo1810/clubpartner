@@ -140,7 +140,19 @@ export function AppProvider({ children }) {
   // Tout le reste est IDENTIQUE à l'ancien AppContext
   // ==================================================================
 
-  const addMember = (n, email) => { if (n && !members.includes(n)) setMembers(ms => [...ms, n]); if (n && email) setMemberEmails(prev => ({ ...prev, [n]: email })); };
+  const addMember = (n, email) => {
+    if (n && !members.includes(n)) setMembers(ms => [...ms, n]);
+    if (n && email) {
+      setMemberEmails(prev => ({ ...prev, [n]: email }));
+      // ★ Aussi créer l'accès dans club_members (si connecté à Supabase)
+      if (supabase && clubId && email.includes('@')) {
+        supabase.from('club_members').upsert(
+          { email: email.trim().toLowerCase(), club_id: clubId, role: 'commercial', name: n },
+          { onConflict: 'email,club_id' }
+        ).then(({ error }) => { if (error) console.log("Membre déjà existant ou erreur:", error.message); });
+      }
+    }
+  };
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const companyInSeason = (c, sid) => c.season === sid || !!(c.seasonProducts?.[sid]?.length) || !!(c.seasonDonAmounts?.[sid]) || !!(c.seasonStatus?.[sid]) || contracts.some(con => con.companyId === c.id && getContractSeasonIds(con, seasons).includes(sid));
