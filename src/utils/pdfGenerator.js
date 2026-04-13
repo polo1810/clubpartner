@@ -678,7 +678,8 @@ export async function generateCerfa(club, company, contract, invoice, season, re
   // Date période = date de paiement (pas la saison)
   var paymentDate = invoice?.dateStr || todayFr;
   var spacedDate = function(d) { var p = d.split("/"); return p[0] + "   /   " + p[1] + "   /   " + p[2]; };
-  write(spacedDate(paymentDate), C.date_periode);
+  var spacedDateNoSlash = function(d) { var p = d.split("/"); return p[0] + "      " + p[1] + "      " + p[2]; };
+  write(spacedDateNoSlash(paymentDate), C.date_periode);
 
   // Signature
   write(spacedDate(todayFr), C.date_signature);
