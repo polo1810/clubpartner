@@ -118,6 +118,32 @@ export function AuthProvider({ children }) {
       if (mErr) throw mErr;
       if (!members || members.length === 0) { setError("Aucun accès. Contactez votre administrateur."); setLoading(false); return; }
 
+      // ★ Si superadmin → accès à TOUS les clubs automatiquement
+      const isSA = members.some(m => m.role === 'superadmin');
+
+      if (isSA) {
+        // Charger tous les clubs existants
+        const { data: allClubs } = await supabase.from('clubs').select('id, name');
+        if (allClubs && allClubs.length > 0) {
+          // Créer des memberships virtuels pour chaque club
+          const memberships = allClubs.map(c => {
+            const existing = members.find(m => m.club_id === c.id);
+            return existing
+              ? { ...existing, clubName: c.name }
+              : { id: `sa-${c.id}`, email: u.email, club_id: c.id, role: 'superadmin', name: members[0].name || '', clubName: c.name };
+          });
+
+          if (memberships.length === 1) {
+            await loadClubData(memberships[0]);
+            return;
+          }
+
+          setAllMemberships(memberships);
+          setLoading(false);
+          return;
+        }
+      }
+
       // ★ Si un seul club → on entre directement
       if (members.length === 1) {
         await loadClubData(members[0]);
