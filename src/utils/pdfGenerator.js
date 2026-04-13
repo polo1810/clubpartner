@@ -564,7 +564,7 @@ const CERFA_COORDS = {
   date_periode:           { page: 2, x: 101, y: 609, size: 8 },
   date_signature:         { page: 2, x: 349, y: 631, size: 9 },
   nom_signature:          { page: 2, x: 336, y: 659, size: 9 },
-  signature_image:        { page: 2, x: 320, y: 665, w: 60, maxH: 35 },
+  signature_image:        { page: 2, x: 360, y: 665, w: 60, maxH: 35 },
 };
 
 export async function generateCerfa(club, company, contract, invoice, season, returnBlob) {
