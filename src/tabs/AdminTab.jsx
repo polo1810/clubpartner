@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../data/AuthContext';
-import { useApp } from '../data/AppContext';
 import { supabase } from '../data/supabase';
 import { S, Cl } from '../data/styles';
 import { Badge, Modal, Field } from '../components/index';
@@ -23,8 +22,7 @@ const StatusBadge = ({ status, trialEnd }) => {
 };
 
 export default function AdminTab() {
-  const { isSuperAdmin, member } = useAuth();
-  const { addMember: addToTeam } = useApp();
+  const { isSuperAdmin, member, globalConfig } = useAuth();
   const [clubs, setClubs] = useState([]);
   const [allMembers, setAllMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +33,9 @@ export default function AdminTab() {
   const [editClub, setEditClub] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
 
+  // ★ Config globale
+  const [supportWhatsapp, setSupportWhatsapp] = useState(globalConfig?.supportWhatsapp || "");
+
   const load = async () => {
     if (!supabase) return;
     setLoading(true);
@@ -44,6 +45,12 @@ export default function AdminTab() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // ★ Sauvegarder le WhatsApp support dans app_config
+  const saveWhatsapp = async (val) => {
+    setSupportWhatsapp(val);
+    await supabase.from('app_config').upsert({ key: 'supportWhatsapp', value: val });
+  };
 
   const addClub = async () => {
     if (!newClub.id.trim() || !newClub.name.trim()) return;
@@ -110,7 +117,6 @@ export default function AdminTab() {
     if (!newMember.email.trim() || !newMember.club_id) return;
     const { error } = await supabase.from('club_members').insert({ email: newMember.email.trim().toLowerCase(), club_id: newMember.club_id, role: newMember.role, name: newMember.name.trim() });
     if (error) { alert("Erreur : " + error.message); return; }
-    if (newMember.name.trim()) addToTeam(newMember.name.trim(), newMember.email.trim().toLowerCase());
     setShowAddMember(false); setNewMember({ email: "", club_id: "", role: "commercial", name: "" }); load();
   };
 
@@ -139,6 +145,17 @@ export default function AdminTab() {
       <div style={S.statCard}><div style={S.statV(Cl.warn)}>{trialClubs.length}</div><div style={S.statL}>En essai</div></div>
       <div style={S.statCard}><div style={S.statV(Cl.ok)}>{activeClubs.length}</div><div style={S.statL}>Actifs</div></div>
       <div style={S.statCard}><div style={S.statV(Cl.err)}>{blockedClubs.length}</div><div style={S.statL}>Bloqués</div></div>
+    </div>}
+
+    {/* ★ Config globale */}
+    {!loading && <div style={{ ...S.card, marginTop: 12 }}>
+      <div style={S.cT}>⚙️ Configuration globale</div>
+      <div style={S.g2}>
+        <Field label="WhatsApp support (aide)">
+          <input style={S.inp} value={supportWhatsapp} onChange={e => saveWhatsapp(e.target.value)} placeholder="33612345678 (sans +, sans espaces)" />
+          <div style={{ fontSize: 11, color: Cl.txtL, marginTop: 4 }}>Numéro WhatsApp de support commun à tous les clubs</div>
+        </Field>
+      </div>
     </div>}
 
     {urgentClubs.length > 0 && <div style={{ ...S.alert("danger"), marginTop: 12 }}>
