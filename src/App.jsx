@@ -14,6 +14,7 @@ import ContractsTab from './tabs/ContractsTab';
 import InvoicesTab from './tabs/InvoicesTab';
 import AdminTab from './tabs/AdminTab';
 import HelpChat from './components/HelpChat';
+import Onboarding from './components/Onboarding';
 
 // --- Login Screen ---
 function LoginScreen() {
@@ -211,6 +212,13 @@ function AppInner() {
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [directContract, setDirectContract] = useState(null);
+
+  // ★ Onboarding : afficher si le club est nouveau (pas encore de données) et pas encore fait
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const isNewClub = !ctx.clubInfo?.onboardingDone && ctx.companies?.length === 0;
+  const needsOnboarding = !onboardingDismissed && isNewClub && (auth.role === 'admin' || auth.role === 'superadmin');
+
+  if (needsOnboarding) return <Onboarding onFinish={() => setOnboardingDismissed(true)} />;
 
   const openContractDirect = (contract) => { setDirectContract(contract); setTab("contracts"); };
   const setTabAndView = (t) => { setDirectContract(null); setTab(t); };
