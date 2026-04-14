@@ -285,8 +285,12 @@ function AppInner() {
     actions: {
       show: ctx.allActions?.length === 0,
       icon: "✅", title: "Planifiez vos premières actions",
-      text: "Les actions vous aident à suivre ce qu'il reste à faire : relances, installations, RDV...",
-      cta: "Cliquez sur « + Action » ci-dessous ou ajoutez-en depuis une fiche prospect.",
+      text: prospectsList.length === 0 && partnersList.length === 0
+        ? "Les actions servent à planifier vos relances, RDV, installations... Mais il faut d'abord ajouter un prospect ou un partenaire."
+        : "Les actions vous aident à suivre ce qu'il reste à faire : relances, installations, RDV...",
+      cta: prospectsList.length === 0 && partnersList.length === 0
+        ? "Commencez par ajouter un prospect dans l'onglet Prospects, puis revenez ici."
+        : "Cliquez sur « + Action » ci-dessous ou ajoutez-en depuis une fiche prospect.",
     },
   };
   const tabNeedsDot = (tabId) => guides[tabId]?.show === true;
@@ -426,4 +430,4 @@ function AuthGate() {
 
 export default function App() {
   return <AuthProvider><AuthGate /></AuthProvider>;
-}
+    }
