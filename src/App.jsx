@@ -14,7 +14,7 @@ import ContractsTab from './tabs/ContractsTab';
 import InvoicesTab from './tabs/InvoicesTab';
 import AdminTab from './tabs/AdminTab';
 import HelpChat from './components/HelpChat';
-import Onboarding from './components/Onboarding';
+import Onboarding, { WelcomeScreen } from './components/Onboarding';
 
 // --- Login Screen ---
 function LoginScreen() {
@@ -213,12 +213,25 @@ function AppInner() {
   const [showExport, setShowExport] = useState(false);
   const [directContract, setDirectContract] = useState(null);
 
-  // ★ Onboarding : afficher si le club est nouveau (pas encore de données) et pas encore fait
+  // ★ Onboarding
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
-  const isNewClub = !ctx.clubInfo?.onboardingDone && ctx.companies?.length === 0;
-  const needsOnboarding = !onboardingDismissed && isNewClub && (auth.role === 'admin' || auth.role === 'superadmin');
+  const userEmail = auth.user?.email || "";
 
-  if (needsOnboarding) return <Onboarding onFinish={() => setOnboardingDismissed(true)} />;
+  // Parcours complet (admin) : club vide, pas encore configuré
+  const isNewClub = !ctx.clubInfo?.onboardingDone && ctx.companies?.length === 0;
+  const needsFullOnboarding = !onboardingDismissed && isNewClub && (auth.role === 'admin' || auth.role === 'superadmin');
+
+  // Parcours léger (membre) : club configuré mais ce membre n'a pas encore vu l'accueil
+  const onboardedList = ctx.clubInfo?.onboardedMembers || [];
+  const needsWelcome = !onboardingDismissed && !isNewClub && ctx.clubInfo?.onboardingDone && userEmail && !onboardedList.includes(userEmail);
+
+  const markMemberOnboarded = () => {
+    ctx.setClubInfo(ci => ({ ...ci, onboardedMembers: [...(ci.onboardedMembers || []), userEmail] }));
+    setOnboardingDismissed(true);
+  };
+
+  if (needsFullOnboarding) return <Onboarding onFinish={() => setOnboardingDismissed(true)} />;
+  if (needsWelcome) return <WelcomeScreen clubName={ctx.clubInfo?.name} memberName={auth.member?.name || ""} onFinish={markMemberOnboarded} />;
 
   const openContractDirect = (contract) => { setDirectContract(contract); setTab("contracts"); };
   const setTabAndView = (t) => { setDirectContract(null); setTab(t); };
@@ -243,8 +256,50 @@ function AppInner() {
   // ★ L'utilisateur a accès à plusieurs clubs ?
   const hasMultipleClubs = auth.allMemberships.length > 1;
 
+  // ★ Micro-onboarding : guides contextuels par onglet
+  const guides = {
+    prospects: {
+      show: prospectsList.length === 0 && partnersList.length === 0,
+      icon: "🎯", title: "Ajoutez votre premier prospect",
+      text: "Commencez par importer ou ajouter manuellement les entreprises que vous souhaitez démarcher.",
+      cta: "Utilisez le bouton « + Prospect » ou « Importer » ci-dessous pour démarrer.",
+    },
+    products: {
+      show: products.length === 0,
+      icon: "📦", title: "Configurez vos produits",
+      text: "Ajoutez les supports de partenariat que vous proposez : panneaux, maillots, digital, événements...",
+      cta: "Cliquez sur « + Produit » ci-dessous pour créer votre premier support.",
+    },
+    partners: {
+      show: partnersList.length === 0 && prospectsList.length > 0,
+      icon: "🤝", title: "Convertissez un prospect en partenaire",
+      text: "Vous avez des prospects ! Quand un accord est trouvé, convertissez-le en partenaire.",
+      cta: "Allez dans Prospects, ouvrez une fiche et cliquez « Convertir en partenaire ».",
+    },
+    contracts: {
+      show: contracts.length === 0 && partnersList.length > 0,
+      icon: "📝", title: "Créez votre premier contrat",
+      text: "Vous avez des partenaires, formalisez l'accord avec un contrat.",
+      cta: "Ouvrez la fiche d'un partenaire → « Nouveau contrat ».",
+    },
+    actions: {
+      show: ctx.allActions?.length === 0,
+      icon: "✅", title: "Planifiez vos premières actions",
+      text: "Les actions vous aident à suivre ce qu'il reste à faire : relances, installations, RDV...",
+      cta: "Cliquez sur « + Action » ci-dessous ou ajoutez-en depuis une fiche prospect.",
+    },
+  };
+  const tabNeedsDot = (tabId) => guides[tabId]?.show === true;
+
+  // ★ Lien vidéo tuto (configurable dans la config globale)
+  const videoUrl = auth.globalConfig?.tutorialVideoUrl || "";
+
   return (
     <div style={S.app}>
+      <style>{`
+        @keyframes guidePulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+        @keyframes dotPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+      `}</style>
       <div style={{ ...S.header, background: `linear-gradient(135deg, ${tc} 0%, ${tc}cc 100%)` }}>
         <div style={S.hdrLeft}>
           {logo ? <img src={logo} alt="Logo" style={S.hdrLogo} /> : <span style={S.hdrLogoFb}>🏟️</span>}
@@ -279,9 +334,28 @@ function AppInner() {
         );
       })()}
       <nav style={S.nav}>
-          {visibleTabs.map(t => <button key={t.id} style={{ ...S.navB(tab === t.id), ...(tab === t.id ? { borderBottomColor: tc } : {}) }} onClick={() => setTabAndView(t.id)}>{t.label}</button>)}
+          {visibleTabs.map(t => (
+            <button key={t.id} style={{ ...S.navB(tab === t.id), ...(tab === t.id ? { borderBottomColor: tc } : {}), position: "relative" }} onClick={() => setTabAndView(t.id)}>
+              {t.label}
+              {tabNeedsDot(t.id) && <span style={{ position: "absolute", top: 6, right: 4, width: 7, height: 7, borderRadius: "50%", background: Cl.warn, animation: "dotPulse 2s ease-in-out infinite" }} />}
+            </button>
+          ))}
         </nav>
       <div style={S.main}>
+        {/* ★ Guide contextuel */}
+        {guides[tab]?.show && (
+          <div style={{ background: Cl.wh, borderRadius: 10, padding: "24px 28px", marginBottom: 16, border: `1px solid ${Cl.pri}30`, boxShadow: "0 2px 8px rgba(59,89,152,0.08)" }}>
+            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+              <div style={{ fontSize: 32, animation: "guidePulse 2s ease-in-out infinite" }}>{guides[tab].icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, letterSpacing: "-0.02em" }}>{guides[tab].title}</div>
+                <div style={{ fontSize: 13, color: Cl.txtL, lineHeight: 1.5, marginBottom: 8 }}>{guides[tab].text}</div>
+                <div style={{ fontSize: 12, color: Cl.pri, fontWeight: 500 }}>👉 {guides[tab].cta}</div>
+                {videoUrl && <a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 10, fontSize: 12, color: Cl.pri, fontWeight: 500, textDecoration: "none", padding: "5px 12px", background: Cl.priL, borderRadius: 6 }}>🎬 Voir le tutoriel vidéo</a>}
+              </div>
+            </div>
+          </div>
+        )}
         {tab === "dashboard" && <Dashboard />}
         {tab === "prospects" && <ProspectsTab />}
         {tab === "partners" && <PartnersTab onOpenContract={openContractDirect} />}
