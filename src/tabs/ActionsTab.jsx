@@ -81,7 +81,7 @@ export default function ActionsTab() {
 
   const addAction = () => {
     const allCos = [...prospectsList, ...partnersList];
-    if (!allCos.length) return;
+    if (!allCos.length) { alert("Ajoutez d'abord un prospect ou un partenaire avant de créer une action."); return; }
     setMiniForm({ title: "Nouvelle action", fields: [
       { key: "company", label: "Entreprise", value: allCos[0]?.company || "", type: "select", options: allCos.map(c => c.company) },
       { key: "type", label: "Intitulé", value: "" },
@@ -210,4 +210,4 @@ export default function ActionsTab() {
       })}
     </div>
   </>);
-}
+       }
