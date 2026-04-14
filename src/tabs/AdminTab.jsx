@@ -35,6 +35,7 @@ export default function AdminTab() {
 
   // ★ Config globale
   const [supportWhatsapp, setSupportWhatsapp] = useState(globalConfig?.supportWhatsapp || "");
+  const [tutorialVideoUrl, setTutorialVideoUrl] = useState(globalConfig?.tutorialVideoUrl || "");
 
   const load = async () => {
     if (!supabase) return;
@@ -50,6 +51,11 @@ export default function AdminTab() {
   const saveWhatsapp = async (val) => {
     setSupportWhatsapp(val);
     await supabase.from('app_config').upsert({ key: 'supportWhatsapp', value: val });
+  };
+
+  const saveVideoUrl = async (val) => {
+    setTutorialVideoUrl(val);
+    await supabase.from('app_config').upsert({ key: 'tutorialVideoUrl', value: val });
   };
 
   const addClub = async () => {
@@ -154,6 +160,10 @@ export default function AdminTab() {
         <Field label="WhatsApp support (aide)">
           <input style={S.inp} value={supportWhatsapp} onChange={e => saveWhatsapp(e.target.value)} placeholder="33612345678 (sans +, sans espaces)" />
           <div style={{ fontSize: 11, color: Cl.txtL, marginTop: 4 }}>Numéro WhatsApp de support commun à tous les clubs</div>
+        </Field>
+        <Field label="Lien vidéo tutoriel">
+          <input style={S.inp} value={tutorialVideoUrl} onChange={e => saveVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." />
+          <div style={{ fontSize: 11, color: Cl.txtL, marginTop: 4 }}>Lien vers la vidéo de présentation de l'outil (affiché dans les guides)</div>
         </Field>
       </div>
     </div>}
