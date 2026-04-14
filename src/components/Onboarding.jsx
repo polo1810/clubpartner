@@ -24,13 +24,78 @@ const st = {
   tag: { fontSize: 11, padding: "3px 8px", borderRadius: 4, background: Cl.priL, color: Cl.pri, fontWeight: 500 },
   helpBox: { background: Cl.priL, borderRadius: 10, padding: 20, textAlign: "center", marginTop: 16, border: `1px solid ${Cl.pri}30` },
   helpIcon: { fontSize: 36, marginBottom: 8 },
+  guideGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 20, textAlign: "left" },
+  guideCard: { background: Cl.hov, borderRadius: 8, padding: 12 },
+  guideTitle: { fontSize: 13, fontWeight: 600, marginBottom: 4 },
+  guideSub: { fontSize: 11, color: Cl.txtL },
 };
 
+// =============================================================
+// MINI GUIDE + HELP (partagé entre les deux parcours)
+// =============================================================
+function GuideAndHelp() {
+  return (<>
+    <div style={st.helpBox}>
+      <div style={st.helpIcon}>❓</div>
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Besoin d'aide ?</div>
+      <div style={{ fontSize: 13, color: Cl.txtL, lineHeight: 1.5 }}>
+        Un assistant est disponible en bas à droite de votre écran. Posez-lui vos questions, il vous guidera pas à pas. Si jamais il ne peut pas résoudre votre problème, il vous mettra en contact avec le support.
+      </div>
+    </div>
+    <div style={st.guideGrid}>
+      <div style={st.guideCard}>
+        <div style={st.guideTitle}>1. Ajouter un prospect</div>
+        <div style={st.guideSub}>Onglet Prospects → bouton + Prospect</div>
+      </div>
+      <div style={st.guideCard}>
+        <div style={st.guideTitle}>2. Convertir en partenaire</div>
+        <div style={st.guideSub}>Cliquez sur le prospect → Convertir</div>
+      </div>
+      <div style={st.guideCard}>
+        <div style={st.guideTitle}>3. Créer un contrat</div>
+        <div style={st.guideSub}>Fiche partenaire → Nouveau contrat</div>
+      </div>
+      <div style={st.guideCard}>
+        <div style={st.guideTitle}>4. Facturer</div>
+        <div style={st.guideSub}>Contrat signé → Générer facture</div>
+      </div>
+    </div>
+  </>);
+}
+
+// =============================================================
+// WELCOME LIGHT (pour les membres qui arrivent après le setup)
+// =============================================================
+export function WelcomeScreen({ onFinish, clubName, memberName }) {
+  return (
+    <div style={st.bg}>
+      <div style={st.card}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>👋</div>
+          <div style={st.title}>Bienvenue{memberName ? ` ${memberName}` : ""} !</div>
+          <div style={st.sub}>
+            Vous avez rejoint <strong>{clubName || "votre club"}</strong> sur ClubPartner.<br />
+            Voici un rapide aperçu pour bien démarrer.
+          </div>
+          <GuideAndHelp />
+        </div>
+        <div style={{ ...st.footer, justifyContent: "center", marginTop: 24 }}>
+          <button style={{ ...st.btnMain, background: Cl.ok, padding: "12px 32px" }} onClick={onFinish}>C'est parti 🚀</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================
+// ONBOARDING COMPLET (pour le premier admin qui setup le club)
+// =============================================================
 const STEPS = ["Club", "Équipe", "Saison", "Produits", "C'est parti !"];
 
 export default function Onboarding({ onFinish }) {
   const ctx = useApp();
   const auth = useAuth();
+  const userEmail = auth.user?.email || "";
   const [step, setStep] = useState(0);
 
   // Step 1: Club info
@@ -51,9 +116,6 @@ export default function Onboarding({ onFinish }) {
     setNewName(""); setNewEmail("");
   };
 
-  // Step 3: Season
-  const [seasonName, setSeasonName] = useState(ctx.seasons?.[ctx.seasons.length - 1]?.name || "2025-2026");
-
   // Step 4: Products (quick add)
   const [quickProds, setQuickProds] = useState([
     { name: "", category: "Signalétique", price: "", stock: "" },
@@ -66,15 +128,12 @@ export default function Onboarding({ onFinish }) {
   const prev = () => setStep(s => Math.max(s - 1, 0));
 
   const finish = () => {
+    const onboarded = userEmail ? [userEmail] : [];
     // Sauvegarder les infos du club
     if (club.name) {
-      ctx.setClubInfo(ci => ({
-        ...ci,
-        ...club,
-        onboardingDone: true,
-      }));
+      ctx.setClubInfo(ci => ({ ...ci, ...club, onboardingDone: true, onboardedMembers: [...(ci.onboardedMembers || []), ...onboarded] }));
     } else {
-      ctx.setClubInfo(ci => ({ ...ci, onboardingDone: true }));
+      ctx.setClubInfo(ci => ({ ...ci, onboardingDone: true, onboardedMembers: [...(ci.onboardedMembers || []), ...onboarded] }));
     }
 
     // Ajouter les membres d'équipe
@@ -102,7 +161,7 @@ export default function Onboarding({ onFinish }) {
   };
 
   const skipAll = () => {
-    ctx.setClubInfo(ci => ({ ...ci, onboardingDone: true }));
+    ctx.setClubInfo(ci => ({ ...ci, onboardingDone: true, onboardedMembers: [...(ci.onboardedMembers || []), ...(userEmail ? [userEmail] : [])] }));
     onFinish();
   };
 
@@ -246,33 +305,7 @@ export default function Onboarding({ onFinish }) {
             <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
             <div style={st.title}>Tout est prêt !</div>
             <div style={st.sub}>Vous pouvez maintenant commencer à ajouter vos premiers prospects et gérer vos partenariats.</div>
-
-            <div style={st.helpBox}>
-              <div style={st.helpIcon}>❓</div>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Besoin d'aide ?</div>
-              <div style={{ fontSize: 13, color: Cl.txtL, lineHeight: 1.5 }}>
-                Un assistant est disponible en bas à droite de votre écran. Posez-lui vos questions, il vous guidera pas à pas. Si jamais il ne peut pas résoudre votre problème, il vous mettra en contact avec le support.
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 20, textAlign: "left" }}>
-              <div style={{ background: Cl.hov, borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>1. Ajouter un prospect</div>
-                <div style={{ fontSize: 11, color: Cl.txtL }}>Onglet Prospects → bouton + Prospect</div>
-              </div>
-              <div style={{ background: Cl.hov, borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>2. Convertir en partenaire</div>
-                <div style={{ fontSize: 11, color: Cl.txtL }}>Cliquez sur le prospect → Convertir</div>
-              </div>
-              <div style={{ background: Cl.hov, borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>3. Créer un contrat</div>
-                <div style={{ fontSize: 11, color: Cl.txtL }}>Fiche partenaire → Nouveau contrat</div>
-              </div>
-              <div style={{ background: Cl.hov, borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>4. Facturer</div>
-                <div style={{ fontSize: 11, color: Cl.txtL }}>Contrat signé → Générer facture</div>
-              </div>
-            </div>
+            <GuideAndHelp />
           </div>
         </>)}
 
